@@ -1,15 +1,20 @@
 import uuid
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Query, status
+from fastapi import Cookie, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clock import utcnow
 from app.config import settings
 from app.db import get_db
+from app.models.client import Client
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.user import User
 from app.security import decode_access_token
+
+CLIENT_COOKIE_NAME = "qc"
+CLIENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 
 async def current_user(
@@ -71,6 +76,42 @@ async def current_organization_id(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
         return organization_id
     return user.organization_id
+
+
+async def current_client(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    qc: str | None = Cookie(default=None),
+) -> Client:
+    """Resolves the visitor's device identity from the `qc` cookie.
+
+    Creates a new clients row and sets the cookie on first visit, per
+    ARCHITECTURE.md section 2 (clients). Always bumps last_seen_at.
+    """
+    client = None
+    if qc is not None:
+        try:
+            client = await db.get(Client, uuid.UUID(qc))
+        except ValueError:
+            client = None
+
+    now = utcnow()
+    if client is None:
+        client = Client(last_seen_at=now)
+        db.add(client)
+        await db.flush()
+        response.set_cookie(
+            key=CLIENT_COOKIE_NAME,
+            value=str(client.id),
+            httponly=True,
+            samesite="lax",
+            max_age=CLIENT_COOKIE_MAX_AGE,
+            secure=settings.cookie_secure,
+        )
+    else:
+        client.last_seen_at = now
+
+    return client
 
 
 async def get_in_org_or_404(

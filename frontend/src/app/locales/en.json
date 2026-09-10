@@ -1,0 +1,46 @@
+{
+  "app": { "title": "Online Queue" },
+  "landing": {
+    "title": "Online Queue",
+    "subtitle": "Scan the QR code at the counter to join the queue."
+  },
+  "scan": {
+    "joining": "Joining the queue…",
+    "hints": { "rescan": "Please scan the code on the screen again." },
+    "errors": {
+      "token_invalid": "This code is invalid. Please scan the QR code again.",
+      "token_expired": "This code has expired.",
+      "token_not_yet_valid": "This code isn't active yet. Wait a moment and try again.",
+      "queue_closed": "This queue is closed.",
+      "queue_paused": "Intake is temporarily paused. Please try again shortly.",
+      "outside_schedule": "This queue isn't open right now.",
+      "daily_limit_reached": "Today's ticket limit has been reached.",
+      "geo_required": "We couldn't determine your location. Please allow location access and try again.",
+      "geo_out_of_range": "You're too far from the service location.",
+      "unknown_error": "Couldn't join the queue. Please try again."
+    }
+  },
+  "ticket": {
+    "position": "Your position in line: {{position}}",
+    "nowServing": "Now serving: {{number}}",
+    "queueStatus": {
+      "paused": "Intake is temporarily paused",
+      "closed": "This queue is closed"
+    },
+    "status": {
+      "waiting": "Please wait to be called",
+      "called": "You're being called! Please come to the counter.",
+      "confirmed": "You've confirmed you're here, please wait to be served",
+      "serving": "You're being served",
+      "served": "Service complete. Thank you!",
+      "no_show": "You missed your call",
+      "left": "You've left the queue",
+      "transferred": "Your ticket was transferred to another queue"
+    },
+    "notFound": {
+      "message": "Ticket not found.",
+      "checkButton": "Check my tickets"
+    }
+  },
+  "language": { "kk": "Қазақша", "ru": "Русский", "en": "English" }
+}

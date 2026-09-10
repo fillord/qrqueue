@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60 * 24 * 7
     jwt_cookie_name: str = "access_token"
 
+    cookie_secure: bool = False
+
     qr_token_secret: str
     qr_token_ttl_seconds: int = 45
     qr_token_batch_minutes: int = 15

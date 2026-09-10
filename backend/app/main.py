@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.public import router as public_router
 from app.api.superadmin import router as superadmin_router
 from app.config import settings
 from app.db import async_session_factory
@@ -51,6 +52,7 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
 app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
+app.include_router(public_router, prefix="/api")
 
 
 @app.get("/api/health")

@@ -167,6 +167,11 @@ button {
   font-size: 1.1rem;
 }
 
+.ticket-page__wait-estimate {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
 .ticket-page__info--called .ticket-page__called-message {
   font-size: 1.6rem;
   font-weight: 700;
@@ -1183,4 +1188,46 @@ button {
 .registrar-result__countdown {
   color: var(--color-muted);
   font-size: 0.85rem;
+}
+
+/* --- push opt-in banner --- */
+
+.push-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-2);
+  max-width: 320px;
+  border-radius: var(--radius);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.push-banner__actions {
+  display: flex;
+  gap: var(--spacing-1);
+}
+
+.push-banner__actions button {
+  border: none;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.push-banner__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.push-banner__dismiss {
+  background: none !important;
+  color: var(--color-warning-text) !important;
+  text-decoration: underline;
 }

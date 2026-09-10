@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { confirmTicket, getMyTickets, leaveTicket } from '../../api/public'
 import type { TicketDetail } from '../../api/types'
+import PushOptInBanner from '../../components/PushOptInBanner'
 import { useTicket } from '../../hooks/useTicket'
 import { forgetTicketId, rememberTicketId } from '../../lib/ticketStorage'
 
@@ -122,6 +123,8 @@ export default function TicketPage() {
           {actionError && <p className="ticket-page__action-error">{actionError}</p>}
         </div>
       )}
+
+      {canLeave && <PushOptInBanner />}
     </div>
   )
 }
@@ -140,6 +143,11 @@ function StatusBlock({ ticket }: { ticket: TicketDetail }) {
         {ticket.now_serving && (
           <p className="ticket-page__now-serving">
             {t('ticket.nowServing', { number: ticket.now_serving })}
+          </p>
+        )}
+        {ticket.estimated_wait_seconds != null && (
+          <p className="ticket-page__wait-estimate">
+            {t('ticket.waitEstimate', { minutes: Math.max(1, Math.round(ticket.estimated_wait_seconds / 60)) })}
           </p>
         )}
         <p className="ticket-page__status">{t('ticket.status.waiting')}</p>

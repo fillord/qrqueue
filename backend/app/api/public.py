@@ -6,12 +6,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_client
+from app.config import settings
 from app.db import get_db
 from app.models.client import Client
 from app.models.enums import TicketStatus
 from app.models.ticket import Ticket
 from app.redis import get_redis
-from app.schemas.public import ScanRequest, TicketDetailOut, TicketSummaryOut
+from app.schemas.public import (
+    PushSubscribeRequest,
+    PushUnsubscribeRequest,
+    ScanRequest,
+    TicketDetailOut,
+    TicketSummaryOut,
+    VapidKeyOut,
+)
+from app.services import notifications
 from app.services.scan import ScanError
 from app.services.scan import scan as scan_service
 from app.services.tickets import build_ticket_detail
@@ -123,3 +132,28 @@ async def leave_ticket_route(
     detail = await build_ticket_detail(db, ticket)
     await db.commit()
     return detail
+
+
+@router.get("/push/vapid-key", response_model=VapidKeyOut)
+async def get_vapid_key_route() -> dict:
+    return {"public_key": settings.vapid_public_key}
+
+
+@router.post("/push/subscribe", status_code=status.HTTP_204_NO_CONTENT)
+async def subscribe_push_route(
+    payload: PushSubscribeRequest,
+    db: AsyncSession = Depends(get_db),
+    client: Client = Depends(current_client),
+) -> None:
+    await notifications.subscribe(db, client, payload.endpoint, payload.keys.model_dump())
+    await db.commit()
+
+
+@router.delete("/push/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)
+async def unsubscribe_push_route(
+    payload: PushUnsubscribeRequest,
+    db: AsyncSession = Depends(get_db),
+    client: Client = Depends(current_client),
+) -> None:
+    await notifications.unsubscribe(db, client, payload.endpoint)
+    await db.commit()

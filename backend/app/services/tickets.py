@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 
@@ -14,10 +15,16 @@ from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.models.user import User
+from app.services import notifications
 from app.services.audit import log_action
 from app.services.errors import ServiceError
 from app.services.numbering import next_number
 from app.services.realtime import publish_event
+from app.services.wait_estimate import estimate_wait_seconds
+
+logger = logging.getLogger(__name__)
+
+_APPROACHING_POSITION = 3
 
 _CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.serving)
 _ACTIVE_STATUSES = (
@@ -140,7 +147,83 @@ async def call_next(
     # confirm(). The caller's own commit afterward becomes a no-op.
     await db.commit()
     await publish_event(redis, queue.id, "ticket.called", ticket_id=str(ticket.id), status=ticket.status.value)
+
+    # Push is best-effort and strictly after the transition is durable and
+    # published — a delivery failure (or the whole push service being down)
+    # must never turn a successful call into a failed HTTP response.
+    try:
+        await _notify_called(db, ticket)
+    except Exception:
+        logger.exception("push notification for ticket.called failed")
+    try:
+        await _notify_approaching_position(db, queue)
+    except Exception:
+        logger.exception("push notification for approaching position failed")
+
     return ticket
+
+
+async def _notify_called(db: AsyncSession, ticket: Ticket) -> None:
+    if ticket.client_id is None:
+        return
+    client = await db.get(Client, ticket.client_id)
+    if client is None:
+        return
+
+    cabinet_label = None
+    if ticket.cabinet_id is not None:
+        cabinet = await db.get(Cabinet, ticket.cabinet_id)
+        cabinet_label = cabinet.label if cabinet is not None else None
+
+    body = f"Подойдите к {cabinet_label}." if cabinet_label else "Подойдите к окну приёма."
+    await notifications.notify_client(
+        db,
+        client.id,
+        {
+            "title": f"Вас вызывают — {ticket.display_number}",
+            "body": body,
+            "ticket_id": str(ticket.id),
+        },
+    )
+
+
+async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
+    """Pings whoever is now exactly _APPROACHING_POSITION-th in line — not
+    everyone at or under that position on every recompute, which would spam
+    a ticket once for every call ahead of it. `position_notified` makes this
+    a one-time signal per ticket even if it re-enters that position later
+    (e.g. after a no_show `return`).
+    """
+    result = await db.execute(
+        select(Ticket)
+        .where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
+        .order_by(Ticket.called_at.is_(None), Ticket.called_at, Ticket.created_at)
+        .limit(_APPROACHING_POSITION)
+    )
+    waiting = list(result.scalars().all())
+    if len(waiting) < _APPROACHING_POSITION:
+        return
+
+    ticket = waiting[_APPROACHING_POSITION - 1]
+    if ticket.position_notified or ticket.client_id is None:
+        return
+
+    ticket.position_notified = True
+    await db.flush()
+    await db.commit()
+
+    client = await db.get(Client, ticket.client_id)
+    if client is None:
+        return
+    await notifications.notify_client(
+        db,
+        client.id,
+        {
+            "title": f"Скоро ваша очередь — {ticket.display_number}",
+            "body": "Вы примерно третий в очереди — будьте рядом.",
+            "ticket_id": str(ticket.id),
+        },
+    )
 
 
 async def recall(
@@ -439,6 +522,13 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         if cabinet_row is not None:
             cabinet = {"id": cabinet_row.id, "label": cabinet_row.label}
 
+    estimated_wait_seconds = None
+    if position is not None:
+        organization = await db.get(Organization, ticket.organization_id)
+        avg_seconds = await estimate_wait_seconds(db, queue, organization)
+        if avg_seconds is not None:
+            estimated_wait_seconds = avg_seconds * position
+
     return {
         "id": ticket.id,
         "queue_id": ticket.queue_id,
@@ -448,6 +538,6 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         "position": position,
         "queue_status": queue.status,
         "now_serving": now_serving,
-        "estimated_wait_minutes": None,
+        "estimated_wait_seconds": estimated_wait_seconds,
         "cabinet": cabinet,
     }

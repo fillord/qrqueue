@@ -32,5 +32,23 @@ class TicketDetailOut(TicketSummaryOut):
     position: int | None
     queue_status: QueueStatus
     now_serving: str | None
-    estimated_wait_minutes: int | None = None
+    estimated_wait_seconds: int | None = None
     cabinet: CabinetInfo | None = None
+
+
+class PushKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscribeRequest(BaseModel):
+    endpoint: str
+    keys: PushKeys
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
+
+
+class VapidKeyOut(BaseModel):
+    public_key: str | None

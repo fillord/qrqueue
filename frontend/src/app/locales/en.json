@@ -47,6 +47,12 @@
       "imHere": "I'm here",
       "leave": "Leave the queue",
       "error": "Couldn't complete the action. Please try again."
+    },
+    "waitEstimate": "Estimated wait: ~{{minutes}} min",
+    "push": {
+      "prompt": "Turn on notifications so you don't have to wait by the door — we'll let you know when it's close.",
+      "enable": "Turn on notifications",
+      "dismiss": "Not now"
     }
   },
   "auth": {

@@ -31,7 +31,7 @@ export interface TicketDetail extends TicketSummary {
   position: number | null
   queue_status: QueueStatus
   now_serving: string | null
-  estimated_wait_minutes: number | null
+  estimated_wait_seconds: number | null
   cabinet: CabinetInfo | null
 }
 

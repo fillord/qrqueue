@@ -1,0 +1,28 @@
+# docker-compose.override.yml — ТОЛЬКО для локальной разработки.
+# Compose подхватывает его автоматически вместе с docker-compose.yml.
+# При выкладке на домен этот файл удалить (или переименовать), чтобы
+# порты не публиковались и Traefik остался единственным входом.
+#
+# Перед первым запуском один раз: docker network create web
+# (на сервере сеть уже есть, на ноутбуке её нужно создать)
+
+services:
+  frontend:
+    ports:
+      - "8080:80"          # http://localhost:8080 — собранный фронт
+
+  backend:
+    ports:
+      - "8000:8000"        # http://localhost:8000/docs — Swagger
+    volumes:
+      - ./backend:/app     # код монтируется, пересборка не нужна
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      --reload --proxy-headers --forwarded-allow-ips=*
+
+  db:
+    ports:
+      - "5432:5432"        # для DBeaver / psql с хоста
+
+  db-backup:
+    profiles: ["prod"]     # локально не запускается

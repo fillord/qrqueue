@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+alembic
+redis
+pydantic-settings
+pyjwt
+passlib[bcrypt]
+pywebpush
+qrcode[pil]

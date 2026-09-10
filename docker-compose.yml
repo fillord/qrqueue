@@ -1,0 +1,95 @@
+# ~/docker/queue/docker-compose.yml
+# Сервис онлайн-очередей. Вход только через frontend (Traefik → nginx),
+# backend/db/redis живут во внутренней сети и наружу не торчат.
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: queue-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.queue.rule=Host(`queue.example.com`)"
+      - "traefik.http.routers.queue.entrypoints=web"
+      - "traefik.http.services.queue.loadbalancer.server.port=80"
+    networks:
+      - web
+      - internal
+
+  backend:
+    build: ./backend
+    container_name: queue-backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - internal
+
+  db:
+    image: postgres:16-alpine
+    container_name: queue-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: queue-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - internal
+
+  # Ежедневный консистентный дамп Postgres в ./backups — его подхватит backup-bot.
+  # Сырую папку ./data/ бэкапить нельзя: на живой базе архив будет битым.
+  db-backup:
+    image: postgres:16-alpine
+    container_name: queue-db-backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U ${POSTGRES_USER} ${POSTGRES_DB} | gzip > /backups/queue-$$(date +%F).sql.gz;
+        find /backups -name "*.sql.gz" -mtime +7 -delete;
+        sleep 86400;
+      done'
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - internal
+
+networks:
+  web:
+    external: true
+  internal:

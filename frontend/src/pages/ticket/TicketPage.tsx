@@ -1,21 +1,31 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { getMyTickets } from '../../api/public'
+import { confirmTicket, getMyTickets, leaveTicket } from '../../api/public'
 import type { TicketDetail } from '../../api/types'
 import { useTicket } from '../../hooks/useTicket'
 import { forgetTicketId, rememberTicketId } from '../../lib/ticketStorage'
 
 /**
- * /t/:id — ticket page. Polls via useTicket (see that hook's docstring for
- * why polling, not sockets, for now).
+ * /t/:id — ticket page. Live updates via useTicket (WebSocket, see that
+ * hook's docstring). `ticket` here is a local shadow of the hook's value —
+ * synced from it on every change, but also settable directly from the
+ * confirm/leave response for instant feedback instead of waiting on the
+ * round trip back through the socket.
  */
 export default function TicketPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { ticket, loading, notFound } = useTicket(id)
+  const { ticket: liveTicket, loading, notFound } = useTicket(id)
+  const [ticket, setTicket] = useState<TicketDetail | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (liveTicket) setTicket(liveTicket)
+  }, [liveTicket])
 
   useEffect(() => {
     if (id) rememberTicketId(id)
@@ -33,6 +43,32 @@ export default function TicketPage() {
     }
     forgetTicketId()
     navigate('/', { replace: true })
+  }
+
+  async function handleConfirm() {
+    if (!id) return
+    setSubmitting(true)
+    setActionError(null)
+    try {
+      setTicket(await confirmTicket(id))
+    } catch {
+      setActionError(t('ticket.actions.error'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleLeave() {
+    if (!id) return
+    setSubmitting(true)
+    setActionError(null)
+    try {
+      setTicket(await leaveTicket(id))
+    } catch {
+      setActionError(t('ticket.actions.error'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (notFound) {
@@ -54,6 +90,8 @@ export default function TicketPage() {
     )
   }
 
+  const canLeave = ticket.status === 'waiting' || ticket.status === 'called' || ticket.status === 'confirmed'
+
   return (
     <div className="ticket-page">
       {ticket.queue_status !== 'open' && (
@@ -66,8 +104,24 @@ export default function TicketPage() {
 
       <StatusBlock ticket={ticket} />
 
-      {/* "я здесь" и "выйти" — шаг 6 */}
-      <div className="ticket-page__actions" />
+      {canLeave && (
+        <div className="ticket-page__actions">
+          {ticket.status === 'called' && (
+            <button type="button" disabled={submitting} onClick={() => void handleConfirm()}>
+              {t('ticket.actions.imHere')}
+            </button>
+          )}
+          <button
+            type="button"
+            className="ticket-page__leave-btn"
+            disabled={submitting}
+            onClick={() => void handleLeave()}
+          >
+            {t('ticket.actions.leave')}
+          </button>
+          {actionError && <p className="ticket-page__action-error">{actionError}</p>}
+        </div>
+      )}
     </div>
   )
 }

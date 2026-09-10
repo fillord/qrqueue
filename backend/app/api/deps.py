@@ -118,6 +118,7 @@ async def current_client(
 
 
 current_operator = require_role(UserRole.operator.value)
+current_registrar = require_role(UserRole.registrar.value)
 
 
 async def current_cabinet(

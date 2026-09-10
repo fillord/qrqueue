@@ -42,6 +42,11 @@
     "notFound": {
       "message": "Ticket not found.",
       "checkButton": "Check my tickets"
+    },
+    "actions": {
+      "imHere": "I'm here",
+      "leave": "Leave the queue",
+      "error": "Couldn't complete the action. Please try again."
     }
   },
   "auth": {
@@ -99,7 +104,8 @@
         "called": "Called",
         "confirmed": "Confirmed presence",
         "serving": "Being served"
-      }
+      },
+      "confirmedBadge": "✓ Visitor confirmed presence"
     },
     "actions": {
       "callNext": "Call next",
@@ -155,6 +161,27 @@
         "paused": "Intake is paused",
         "closed": "This queue is closed"
       }
+    }
+  },
+  "registrar": {
+    "title": "Visitor registration",
+    "empty": "No open queues.",
+    "paused": "paused",
+    "notePlaceholder": "Note (name, reason)",
+    "record": "Record",
+    "result": {
+      "label": "Your number",
+      "hint": "Call it out or show it at the desk",
+      "again": "Again for this queue",
+      "done": "Done",
+      "countdown": "Back to the list in {{seconds}}s"
+    },
+    "errors": {
+      "queue_closed": "This queue is closed.",
+      "queue_paused": "This queue is paused.",
+      "outside_schedule": "This queue isn't open right now.",
+      "daily_limit_reached": "Today's ticket limit has been reached.",
+      "unknown_error": "Couldn't create the ticket. Please try again."
     }
   },
   "adminTv": {

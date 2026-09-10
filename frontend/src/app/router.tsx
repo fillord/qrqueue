@@ -6,6 +6,7 @@ import LoginPage from '../pages/login/LoginPage'
 import CabinetSelectPage from '../pages/operator/CabinetSelectPage'
 import OperatorQueuePage from '../pages/operator/OperatorQueuePage'
 import InDevelopmentPage from '../pages/placeholder/InDevelopmentPage'
+import RegistrarPage from '../pages/registrar/RegistrarPage'
 import ScanPage from '../pages/scan/ScanPage'
 import TicketPage from '../pages/ticket/TicketPage'
 import TvPage from '../pages/tv/TvPage'
@@ -45,7 +46,7 @@ export default function AppRouter() {
           path="/registrar"
           element={
             <ProtectedRoute role="registrar">
-              <InDevelopmentPage />
+              <RegistrarPage />
             </ProtectedRoute>
           }
         />

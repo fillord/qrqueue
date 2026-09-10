@@ -10,6 +10,7 @@ from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.operator import router as operator_router
 from app.api.public import router as public_router
+from app.api.registrar import router as registrar_router
 from app.api.superadmin import router as superadmin_router
 from app.api.tv import router as tv_router
 from app.config import settings
@@ -84,6 +85,7 @@ app.include_router(admin_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
 app.include_router(public_router, prefix="/api")
 app.include_router(operator_router, prefix="/api")
+app.include_router(registrar_router, prefix="/api")
 app.include_router(tv_router, prefix="/api")
 app.include_router(ws_router)
 

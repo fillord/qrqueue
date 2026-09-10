@@ -44,6 +44,7 @@ async def create_ticket(
     transferred_from: uuid.UUID | None = None,
     actor_type: AuditActorType | None = None,
     actor_id: uuid.UUID | None = None,
+    note: str | None = None,
     now: datetime | None = None,
 ) -> Ticket:
     number, display_number = await next_number(db, queue, organization, now)
@@ -64,6 +65,13 @@ async def create_ticket(
     resolved_actor_type = actor_type or (AuditActorType.client if client else AuditActorType.system)
     resolved_actor_id = actor_id if actor_id is not None else (client.id if client else None)
 
+    # note (e.g. a registrar's visitor name) has nowhere on the ticket row
+    # itself — it's called out or printed on the spot, not looked up later —
+    # so it only lives in the audit trail.
+    payload = {"queue_id": queue.id, "display_number": display_number, "source": source}
+    if note:
+        payload["note"] = note
+
     await log_action(
         db,
         actor_type=resolved_actor_type,
@@ -72,9 +80,7 @@ async def create_ticket(
         entity_type="ticket",
         entity_id=ticket.id,
         organization_id=organization.id,
-        payload=jsonable_encoder(
-            {"queue_id": queue.id, "display_number": display_number, "source": source}
-        ),
+        payload=jsonable_encoder(payload),
     )
     await publish_event(redis, queue.id, "ticket.created", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
@@ -128,6 +134,11 @@ async def call_next(
         organization_id=queue.organization_id,
         payload={"cabinet_id": str(cabinet.id), "queue_id": str(queue.id)},
     )
+    # Commit before publishing, in every transition function below: a WS
+    # push that beats the commit to a subscriber's re-read gets pre-commit
+    # (i.e. stale) data — reproduced via a live socket during step 6's
+    # confirm(). The caller's own commit afterward becomes a no-op.
+    await db.commit()
     await publish_event(redis, queue.id, "ticket.called", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -150,6 +161,35 @@ async def recall(
         organization_id=ticket.organization_id,
         payload={"call_count": ticket.call_count},
     )
+    await db.commit()
+    await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
+    return ticket
+
+
+async def confirm(
+    db: AsyncSession, redis: Redis, *, ticket: Ticket, client: Client, now: datetime | None = None
+) -> Ticket:
+    """Client presses "я здесь" after being called — called -> confirmed
+    (ARCHITECTURE.md section 3). The operator can still start serving
+    straight from `called`, confirm is just the visitor's own signal.
+    """
+    now = now or utcnow()
+    _require_status(ticket, TicketStatus.called)
+
+    ticket.status = TicketStatus.confirmed
+    ticket.confirmed_at = now
+    await db.flush()
+
+    await log_action(
+        db,
+        actor_type=AuditActorType.client,
+        actor_id=client.id,
+        action="ticket.confirmed",
+        entity_type="ticket",
+        entity_id=ticket.id,
+        organization_id=ticket.organization_id,
+    )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -184,6 +224,7 @@ async def mark_no_show(
         entity_id=ticket.id,
         organization_id=ticket.organization_id,
     )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -209,6 +250,7 @@ async def return_to_queue(
         entity_id=ticket.id,
         organization_id=ticket.organization_id,
     )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -232,6 +274,7 @@ async def start_serving(
         entity_id=ticket.id,
         organization_id=ticket.organization_id,
     )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -262,6 +305,7 @@ async def finish(
         entity_id=ticket.id,
         organization_id=ticket.organization_id,
     )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
@@ -302,6 +346,13 @@ async def transfer(
         organization_id=ticket.organization_id,
         payload={"target_queue_id": str(target_queue.id)},
     )
+    # Commit the old ticket's transferred state on its own before publishing
+    # — it's a complete, valid state by itself, and create_ticket() below
+    # (for the new ticket) still commits later via the caller, unchanged,
+    # since it's also reachable directly from scan()/register_ticket() and
+    # committing it early here would break create_ticket() being able to
+    # be part of one atomic transaction in those direct-call cases.
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
 
     client = await db.get(Client, ticket.client_id) if ticket.client_id else None
@@ -322,7 +373,7 @@ async def transfer(
 async def leave(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, client: Client, now: datetime | None = None
 ) -> Ticket:
-    """Client leaves the queue voluntarily. No route yet — that's step 6."""
+    """Client leaves the queue voluntarily."""
     _require_status(ticket, TicketStatus.waiting, TicketStatus.called, TicketStatus.confirmed)
 
     ticket.status = TicketStatus.left
@@ -344,6 +395,7 @@ async def leave(
         entity_id=ticket.id,
         organization_id=ticket.organization_id,
     )
+    await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 

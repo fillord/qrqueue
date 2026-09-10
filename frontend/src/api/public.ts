@@ -12,3 +12,11 @@ export function getMyTickets(): Promise<TicketSummary[]> {
 export function getTicket(id: string): Promise<TicketDetail> {
   return apiGet<TicketDetail>(`/api/public/tickets/${id}`)
 }
+
+export function confirmTicket(id: string): Promise<TicketDetail> {
+  return apiPost<TicketDetail>(`/api/public/tickets/${id}/confirm`)
+}
+
+export function leaveTicket(id: string): Promise<TicketDetail> {
+  return apiPost<TicketDetail>(`/api/public/tickets/${id}/leave`)
+}

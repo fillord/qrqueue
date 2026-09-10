@@ -15,6 +15,8 @@ from app.schemas.public import ScanRequest, TicketDetailOut, TicketSummaryOut
 from app.services.scan import ScanError
 from app.services.scan import scan as scan_service
 from app.services.tickets import build_ticket_detail
+from app.services.tickets import confirm as confirm_ticket
+from app.services.tickets import leave as leave_ticket
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -82,6 +84,42 @@ async def get_ticket_route(
         await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
+    detail = await build_ticket_detail(db, ticket)
+    await db.commit()
+    return detail
+
+
+@router.post("/tickets/{ticket_id}/confirm", response_model=TicketDetailOut)
+async def confirm_ticket_route(
+    ticket_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    client: Client = Depends(current_client),
+) -> dict:
+    ticket = await db.get(Ticket, ticket_id)
+    if ticket is None or ticket.client_id != client.id:
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    ticket = await confirm_ticket(db, redis, ticket=ticket, client=client)
+    detail = await build_ticket_detail(db, ticket)
+    await db.commit()
+    return detail
+
+
+@router.post("/tickets/{ticket_id}/leave", response_model=TicketDetailOut)
+async def leave_ticket_route(
+    ticket_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    client: Client = Depends(current_client),
+) -> dict:
+    ticket = await db.get(Ticket, ticket_id)
+    if ticket is None or ticket.client_id != client.id:
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    ticket = await leave_ticket(db, redis, ticket=ticket, client=client)
     detail = await build_ticket_detail(db, ticket)
     await db.commit()
     return detail

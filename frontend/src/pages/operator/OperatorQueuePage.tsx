@@ -180,6 +180,9 @@ export default function OperatorQueuePage() {
             <>
               <div className="operator-queue__ticket-number">{ticket.display_number}</div>
               <p className="operator-queue__ticket-status">{t(`operator.current.status.${ticket.status}`)}</p>
+              {ticket.status === 'confirmed' && (
+                <p className="operator-queue__confirmed-badge">{t('operator.current.confirmedBadge')}</p>
+              )}
               {calledSeconds !== null && (
                 <p className="operator-queue__called-timer">
                   {t('operator.current.calledFor', { time: formatDuration(calledSeconds) })}

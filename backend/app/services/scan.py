@@ -62,7 +62,7 @@ async def scan(
         raise ScanError("queue_paused")
 
     today = local_date(organization.timezone, now)
-    if not await _within_schedule(db, queue, today, now, organization.timezone):
+    if not await within_schedule(db, queue, today, now, organization.timezone):
         raise ScanError("outside_schedule")
 
     if queue.daily_ticket_limit is not None:
@@ -94,7 +94,7 @@ async def scan(
     )
 
 
-async def _within_schedule(
+async def within_schedule(
     db: AsyncSession, queue: Queue, today, now: datetime, timezone_name: str
 ) -> bool:
     result = await db.execute(select(QueueSchedule).where(QueueSchedule.queue_id == queue.id))

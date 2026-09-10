@@ -4,9 +4,11 @@ from zoneinfo import ZoneInfo
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.models.enums import QueueStatus
+from app.models.cabinet import Cabinet, CabinetOperator
+from app.models.enums import QueueStatus, UserRole
 from app.models.queue import Queue
 from app.services.qr_tokens import issue_batch
+from tests.utils import login
 
 
 def _scan_token(queue_id) -> str:
@@ -124,3 +126,120 @@ async def test_get_ticket_by_other_client_is_404(client, db_session, make_organi
     async with _second_client() as client2:
         resp2 = await client2.get(f"/api/public/tickets/{ticket_id}")
         assert resp2.status_code == 404
+
+
+async def _make_cabinet(db_session, organization, queue, label="Кабинет") -> Cabinet:
+    cabinet = Cabinet(organization_id=organization.id, queue_id=queue.id, label=label)
+    db_session.add(cabinet)
+    await db_session.commit()
+    await db_session.refresh(cabinet)
+    return cabinet
+
+
+async def test_confirm_called_ticket_becomes_confirmed(client, db_session, make_user, make_organization):
+    org = await make_organization(name="Confirm Организация")
+    queue = await _make_queue(db_session, org)
+    cabinet = await _make_cabinet(db_session, org, queue)
+    operator, op_password = await make_user(
+        email="confirm-op@example.com", role=UserRole.operator, organization_id=org.id
+    )
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    async with _second_client() as op_client:
+        await login(op_client, "confirm-op@example.com", op_password)
+        await op_client.post(f"/api/operator/cabinets/{cabinet.id}/select")
+        resp = await op_client.post("/api/operator/call-next")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["id"] == ticket_id
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/confirm")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "confirmed"
+
+
+async def test_confirm_by_other_client_is_404(client, db_session, make_organization):
+    org = await make_organization(name="Confirm Чужой Организация")
+    queue = await _make_queue(db_session, org)
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    async with _second_client() as client2:
+        resp2 = await client2.post(f"/api/public/tickets/{ticket_id}/confirm")
+        assert resp2.status_code == 404
+
+
+async def test_leave_from_waiting_becomes_left(client, db_session, make_organization):
+    org = await make_organization(name="Leave Waiting Организация")
+    queue = await _make_queue(db_session, org)
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/leave")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "left"
+
+
+async def test_leave_from_called_frees_cabinet(client, db_session, make_user, make_organization):
+    org = await make_organization(name="Leave Called Организация")
+    queue = await _make_queue(db_session, org)
+    cabinet = await _make_cabinet(db_session, org, queue)
+    operator, op_password = await make_user(
+        email="leave-op@example.com", role=UserRole.operator, organization_id=org.id
+    )
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    async with _second_client() as op_client:
+        await login(op_client, "leave-op@example.com", op_password)
+        await op_client.post(f"/api/operator/cabinets/{cabinet.id}/select")
+        resp = await op_client.post("/api/operator/call-next")
+        assert resp.status_code == 200, resp.text
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/leave")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "left"
+
+    await db_session.refresh(cabinet)
+    assert cabinet.status.value == "free"
+    assert cabinet.current_ticket_id is None
+
+
+async def test_confirm_and_leave_on_served_ticket_returns_409(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="Served Организация")
+    queue = await _make_queue(db_session, org)
+    cabinet = await _make_cabinet(db_session, org, queue)
+    operator, op_password = await make_user(
+        email="served-op@example.com", role=UserRole.operator, organization_id=org.id
+    )
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    async with _second_client() as op_client:
+        await login(op_client, "served-op@example.com", op_password)
+        await op_client.post(f"/api/operator/cabinets/{cabinet.id}/select")
+        await op_client.post("/api/operator/call-next")
+        await op_client.post(f"/api/operator/tickets/{ticket_id}/start")
+        resp = await op_client.post(f"/api/operator/tickets/{ticket_id}/finish")
+        assert resp.status_code == 200, resp.text
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/confirm")
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"]["code"] == "invalid_transition"
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/leave")
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"]["code"] == "invalid_transition"

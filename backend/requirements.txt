@@ -6,6 +6,10 @@ alembic
 redis
 pydantic-settings
 pyjwt
-passlib[bcrypt]
+bcrypt
 pywebpush
 qrcode[pil]
+email-validator
+pytest
+pytest-asyncio
+httpx

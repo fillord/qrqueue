@@ -10,6 +10,7 @@ bcrypt
 pywebpush
 qrcode[pil]
 email-validator
+tzdata
 pytest
 pytest-asyncio
 httpx

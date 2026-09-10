@@ -2,15 +2,18 @@ import uuid
 
 import jwt
 from fastapi import Cookie, Depends, HTTPException, Query, Response, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import utcnow
 from app.config import settings
 from app.db import get_db
+from app.models.cabinet import Cabinet
 from app.models.client import Client
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.user import User
+from app.redis import get_redis
 from app.security import decode_access_token
 
 CLIENT_COOKIE_NAME = "qc"
@@ -112,6 +115,34 @@ async def current_client(
         client.last_seen_at = now
 
     return client
+
+
+current_operator = require_role(UserRole.operator.value)
+
+
+async def current_cabinet(
+    user: User = Depends(current_operator),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> Cabinet:
+    """Resolves the operator's selected cabinet from Redis (see services/cabinets.select_cabinet).
+
+    409 cabinet_not_selected if nothing is selected, or the selection no
+    longer resolves to a live cabinet in this operator's organization.
+    """
+    cabinet_id_raw = await redis.get(f"operator:{user.id}:cabinet")
+    cabinet = None
+    if cabinet_id_raw is not None:
+        try:
+            cabinet = await db.get(Cabinet, uuid.UUID(cabinet_id_raw))
+        except ValueError:
+            cabinet = None
+
+    if cabinet is None or not cabinet.is_active or cabinet.organization_id != user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail={"code": "cabinet_not_selected"}
+        )
+    return cabinet
 
 
 async def get_in_org_or_404(

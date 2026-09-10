@@ -44,6 +44,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const { code, ticketId } = await parseErrorDetail(response)
+    if (response.status === 401) {
+      window.dispatchEvent(new Event('api:unauthorized'))
+    }
     throw new ApiError(response.status, code, ticketId)
   }
 

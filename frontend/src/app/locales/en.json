@@ -27,6 +27,8 @@
       "paused": "Intake is temporarily paused",
       "closed": "This queue is closed"
     },
+    "calledAt": "You're being called! Please come to \"{{label}}\".",
+    "servingAt": "You're being served. Counter: \"{{label}}\".",
     "status": {
       "waiting": "Please wait to be called",
       "called": "You're being called! Please come to the counter.",
@@ -40,6 +42,99 @@
     "notFound": {
       "message": "Ticket not found.",
       "checkButton": "Check my tickets"
+    }
+  },
+  "auth": {
+    "logout": "Log out"
+  },
+  "login": {
+    "title": "Staff sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "errors": {
+      "invalid_credentials": "Incorrect email or password.",
+      "totp_not_supported": "Two-factor authentication isn't supported in this interface yet.",
+      "unknown_error": "Couldn't sign in. Please try again."
+    }
+  },
+  "placeholder": {
+    "title": "Coming soon",
+    "message": "This part of the interface isn't built yet."
+  },
+  "operator": {
+    "cabinetSelect": {
+      "title": "Choose a counter",
+      "empty": "You're not assigned to any counter. Contact your administrator."
+    },
+    "cabinetStatus": {
+      "free": "Free",
+      "busy": "Busy",
+      "paused": "Paused",
+      "offline": "Offline"
+    },
+    "queueStatus": {
+      "open": "Open",
+      "paused": "Paused",
+      "closed": "Closed"
+    },
+    "header": {
+      "waiting": "Waiting: {{count}}",
+      "pause": "Pause",
+      "resume": "Resume",
+      "paused": "Intake is paused"
+    },
+    "pauseModal": {
+      "title": "Pause intake",
+      "reasonLabel": "Reason (optional)",
+      "confirm": "Pause",
+      "cancel": "Cancel"
+    },
+    "current": {
+      "empty": "No active ticket",
+      "callCount": "Recalls: {{count}}",
+      "calledFor": "Time since called: {{time}}",
+      "status": {
+        "called": "Called",
+        "confirmed": "Confirmed presence",
+        "serving": "Being served"
+      }
+    },
+    "actions": {
+      "callNext": "Call next",
+      "recall": "Recall",
+      "noShow": "No-show",
+      "start": "Start serving",
+      "finish": "Finish",
+      "transfer": "Transfer"
+    },
+    "waiting": {
+      "title": "Waiting",
+      "empty": "The queue is empty",
+      "waitingFor": "{{minutes}} min"
+    },
+    "noShow": {
+      "title": "No-shows today",
+      "empty": "None",
+      "return": "Return to queue"
+    },
+    "transferModal": {
+      "title": "Transfer ticket",
+      "empty": "No queues available",
+      "confirm": "Transfer",
+      "cancel": "Cancel"
+    },
+    "hotkeys": "Space — call next · Enter — start serving · F — finish",
+    "errors": {
+      "cabinet_busy": "This counter is already busy.",
+      "queue_empty": "There's no one in the queue.",
+      "invalid_transition": "The ticket's status already changed — the screen will refresh.",
+      "cabinet_has_no_queue": "This counter isn't linked to a queue.",
+      "active_ticket": "Can't pause — a ticket is being served right now.",
+      "cabinet_not_paused": "This counter isn't paused.",
+      "target_queue_unavailable": "The selected queue isn't available right now.",
+      "unknown_error": "Couldn't complete the action. Please try again."
     }
   },
   "language": { "kk": "Қазақша", "ru": "Русский", "en": "English" }

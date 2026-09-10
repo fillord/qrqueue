@@ -10,11 +10,6 @@ import { forgetTicketId, rememberTicketId } from '../../lib/ticketStorage'
 /**
  * /t/:id — ticket page. Polls via useTicket (see that hook's docstring for
  * why polling, not sockets, for now).
- *
- * NOTE: for the `called` status, ARCHITECTURE.md section 9 step 3 asks for
- * "Вас вызывают, подойдите к <кабинет>" — but /api/public/tickets/:id (step 3
- * backend, frozen for this task) doesn't expose the cabinet's label, only
- * ticket/queue fields. The message below is generic until that's added.
  */
 export default function TicketPage() {
   const { id } = useParams<{ id: string }>()
@@ -98,10 +93,15 @@ function StatusBlock({ ticket }: { ticket: TicketDetail }) {
     )
   }
 
-  if (ticket.status === 'called') {
+  if (ticket.status === 'called' || ticket.status === 'serving') {
+    const label = ticket.cabinet?.label
+    const key = ticket.status === 'called'
+      ? (label ? 'ticket.calledAt' : 'ticket.status.called')
+      : (label ? 'ticket.servingAt' : 'ticket.status.serving')
+
     return (
-      <div className="ticket-page__info ticket-page__info--called">
-        <p className="ticket-page__called-message">{t('ticket.status.called')}</p>
+      <div className={`ticket-page__info ticket-page__info--${ticket.status}`}>
+        <p className="ticket-page__called-message">{t(key, { label })}</p>
       </div>
     )
   }

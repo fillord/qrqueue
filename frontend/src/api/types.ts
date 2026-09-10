@@ -84,3 +84,40 @@ export interface QueueSummary {
   name: string
   status: QueueStatus
 }
+
+export interface TvQueueState {
+  queue_id: string
+  queue_name: string
+  queue_status: QueueStatus
+  now_serving: string | null
+  now_serving_cabinet: string | null
+  waiting_count: number
+}
+
+export interface TvState {
+  organization_name: string
+  logo_url: string | null
+  brand_color: string | null
+  queues: TvQueueState[]
+}
+
+export interface QrBatchToken {
+  token: string
+  nbf: string
+  exp: string
+}
+
+export interface QrBatch {
+  server_time: string
+  tokens: QrBatchToken[]
+}
+
+export interface TvScreen {
+  id: string
+  organization_id: string
+  queue_id: string | null
+  name: string
+  pairing_code: string | null
+  language: 'kk' | 'ru' | 'en'
+  last_seen_at: string | null
+}

@@ -10,17 +10,20 @@ from app.models.cabinet import Cabinet
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.queue import Queue
+from app.models.tv_screen import TVScreen
 from app.models.user import User
 from app.schemas.cabinet import CabinetCreate, CabinetOut, CabinetUpdate
 from app.schemas.organization import OrganizationOut, OrganizationSelfUpdate
 from app.schemas.qr import QRBatchOut
 from app.schemas.queue import QueueCreate, QueueOut, QueueUpdate, ScheduleReplace
 from app.schemas.staff import StaffCreate, StaffOut, StaffUpdate
+from app.schemas.tv import TVScreenCreate, TVScreenOut
 from app.services.cabinets import assign_operator, create_cabinet, unassign_operator, update_cabinet
 from app.services.organizations import update_organization
 from app.services.qr_tokens import issue_batch
 from app.services.queues import create_queue, replace_schedule, update_queue
 from app.services.staff import create_org_user, update_org_user
+from app.services.tv_screens import create_tv_screen, delete_tv_screen
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -273,3 +276,47 @@ async def update_staff_route(
     user = await update_org_user(db, user, changes=changes, actor=actor)
     await db.commit()
     return user
+
+
+# --- tv-screens ---------------------------------------------------------
+
+
+@router.post("/tv-screens", response_model=TVScreenOut, status_code=status.HTTP_201_CREATED)
+async def create_tv_screen_route(
+    payload: TVScreenCreate,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> TVScreen:
+    org = await _get_organization(db, organization_id)
+    if payload.queue_id is not None:
+        queue = await db.get(Queue, payload.queue_id)
+        if queue is None or queue.organization_id != organization_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue not found")
+    screen = await create_tv_screen(db, org, payload, actor)
+    await db.commit()
+    return screen
+
+
+@router.get("/tv-screens", response_model=list[TVScreenOut])
+async def list_tv_screens_route(
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> list[TVScreen]:
+    result = await db.execute(
+        select(TVScreen).where(TVScreen.organization_id == organization_id).order_by(TVScreen.name)
+    )
+    return list(result.scalars().all())
+
+
+@router.delete("/tv-screens/{screen_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tv_screen_route(
+    screen_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> None:
+    screen = await get_in_org_or_404(db, TVScreen, screen_id, organization_id)
+    await delete_tv_screen(db, screen, actor)
+    await db.commit()

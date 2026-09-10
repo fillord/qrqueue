@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { getTicket } from '../api/public'
 import type { TicketDetail } from '../api/types'
-
-const POLL_INTERVAL_MS = 5000
-const TERMINAL_STATUSES: TicketDetail['status'][] = ['served', 'no_show', 'left', 'transferred']
+import { openReconnectingSocket, wsBaseUrl } from '../lib/reconnectingWebSocket'
 
 export interface UseTicketResult {
   ticket: TicketDetail | null
@@ -15,10 +13,11 @@ export interface UseTicketResult {
 }
 
 /**
- * Polls GET /api/public/tickets/:id every 5s. This is a stand-in for
- * real-time updates until the WebSocket lands in step 5 — callers only see
- * { ticket, loading, notFound, error }, so swapping the transport later
- * won't touch any consumer of this hook.
+ * WS /ws/ticket/:id for live updates (reconnects with exponential backoff —
+ * see lib/reconnectingWebSocket), with a REST GET fired on mount and on
+ * every (re)connect as a belt-and-suspenders safety net against a missed
+ * push. External shape is unchanged from the step-3/4b polling version, so
+ * TicketPage didn't need to change at all for this swap.
  */
 export function useTicket(ticketId: string | undefined): UseTicketResult {
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
@@ -30,36 +29,43 @@ export function useTicket(ticketId: string | undefined): UseTicketResult {
     if (!ticketId) return undefined
 
     let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
 
-    async function poll() {
+    async function fetchOnce() {
       try {
         const data = await getTicket(ticketId as string)
         if (cancelled) return
         setTicket(data)
         setNotFound(false)
         setError(null)
-        if (!TERMINAL_STATUSES.includes(data.status)) {
-          timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
-        }
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.status === 404) {
           setNotFound(true)
         } else {
           setError(err instanceof Error ? err.message : 'unknown_error')
-          timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
         }
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
 
-    void poll()
+    void fetchOnce()
+
+    const handle = openReconnectingSocket({
+      url: `${wsBaseUrl()}/ws/ticket/${ticketId}`,
+      onOpen: () => void fetchOnce(),
+      onMessage: (data) => {
+        if (cancelled) return
+        setTicket(data as TicketDetail)
+        setNotFound(false)
+        setError(null)
+        setLoading(false)
+      },
+    })
 
     return () => {
       cancelled = true
-      if (timer) clearTimeout(timer)
+      handle.close()
     }
   }, [ticketId])
 

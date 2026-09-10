@@ -56,8 +56,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-export function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path)
+export function apiGet<T>(path: string, headers?: HeadersInit): Promise<T> {
+  return request<T>(path, { headers })
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
@@ -65,4 +65,8 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' })
 }

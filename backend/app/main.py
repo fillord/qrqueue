@@ -11,6 +11,7 @@ from app.api.auth import router as auth_router
 from app.api.operator import router as operator_router
 from app.api.public import router as public_router
 from app.api.superadmin import router as superadmin_router
+from app.api.tv import router as tv_router
 from app.config import settings
 from app.db import async_session_factory
 from app.models.enums import UserRole
@@ -19,6 +20,8 @@ from app.redis import redis_client
 from app.security import hash_password
 from app.services.errors import ServiceError
 from app.workers.timeouts import run_once as run_timeouts_once
+from app.ws.manager import manager
+from app.ws.routes import router as ws_router
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,7 @@ async def _timeout_worker_loop() -> None:
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     await bootstrap_superadmin()
+    manager.start(redis_client)
     worker_task = asyncio.create_task(_timeout_worker_loop())
     try:
         yield
@@ -64,6 +68,7 @@ async def lifespan(app: FastAPI):
         worker_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await worker_task
+        await manager.stop()
 
 
 app = FastAPI(title="Онлайн-очереди", lifespan=lifespan)
@@ -79,6 +84,8 @@ app.include_router(admin_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
 app.include_router(public_router, prefix="/api")
 app.include_router(operator_router, prefix="/api")
+app.include_router(tv_router, prefix="/api")
+app.include_router(ws_router)
 
 
 @app.get("/api/health")

@@ -137,5 +137,40 @@
       "unknown_error": "Couldn't complete the action. Please try again."
     }
   },
+  "tv": {
+    "pair": {
+      "title": "Connect this screen",
+      "hint": "Enter the 6-digit code shown on this screen.",
+      "submit": "Connect",
+      "submitting": "Connecting…",
+      "error": "That code is wrong or already used. Please try again."
+    },
+    "screen": {
+      "nowServing": "Now serving",
+      "cabinet": "Counter: {{label}}",
+      "waiting": "Waiting: {{count}}",
+      "scanHint": "Scan to join the queue",
+      "footer": "Online Queue",
+      "queueStatus": {
+        "paused": "Intake is paused",
+        "closed": "This queue is closed"
+      }
+    }
+  },
+  "adminTv": {
+    "title": "TV screens",
+    "namePlaceholder": "Screen name",
+    "noQueue": "No queue (hall display)",
+    "create": "Create",
+    "error": "Couldn't create the screen.",
+    "empty": "No screens yet.",
+    "paired": "Paired",
+    "delete": "Delete",
+    "columns": {
+      "name": "Name",
+      "queue": "Queue",
+      "pairingCode": "Pairing code"
+    }
+  },
   "language": { "kk": "Қазақша", "ru": "Русский", "en": "English" }
 }

@@ -14,3 +14,4 @@ tzdata
 pytest
 pytest-asyncio
 httpx
+httpx-ws

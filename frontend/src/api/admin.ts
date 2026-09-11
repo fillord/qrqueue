@@ -6,16 +6,23 @@ export function getAdminQueues(organizationId?: string): Promise<QueueSummary[]>
   return apiGet<QueueSummary[]>(`/api/admin/queues${suffix}`)
 }
 
-export function getTvScreens(): Promise<TvScreen[]> {
-  return apiGet<TvScreen[]>('/api/admin/tv-screens')
+function orgSuffix(organizationId?: string): string {
+  return organizationId ? `?organization_id=${organizationId}` : ''
 }
 
-export function createTvScreen(payload: { name: string; queue_id: string | null }): Promise<TvScreen> {
-  return apiPost<TvScreen>('/api/admin/tv-screens', payload)
+export function getTvScreens(organizationId?: string): Promise<TvScreen[]> {
+  return apiGet<TvScreen[]>(`/api/admin/tv-screens${orgSuffix(organizationId)}`)
 }
 
-export function deleteTvScreen(id: string): Promise<void> {
-  return apiDelete<void>(`/api/admin/tv-screens/${id}`)
+export function createTvScreen(
+  payload: { name: string; queue_id: string | null },
+  organizationId?: string,
+): Promise<TvScreen> {
+  return apiPost<TvScreen>(`/api/admin/tv-screens${orgSuffix(organizationId)}`, payload)
+}
+
+export function deleteTvScreen(id: string, organizationId?: string): Promise<void> {
+  return apiDelete<void>(`/api/admin/tv-screens/${id}${orgSuffix(organizationId)}`)
 }
 
 export function getOwnOrganization(): Promise<Organization> {

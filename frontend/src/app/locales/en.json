@@ -161,6 +161,41 @@
       "allOrganizations": "All organizations",
       "allOrgsHint": "Choose an organization to also filter by queue."
     },
+    "saOrganizations": {
+      "title": "Organizations",
+      "create": "Create organization",
+      "empty": "No organizations yet.",
+      "columns": {
+        "name": "Name",
+        "slug": "Slug",
+        "plan": "Plan",
+        "status": "Status"
+      },
+      "plan": {
+        "trial": "Trial",
+        "basic": "Basic",
+        "pro": "Pro"
+      },
+      "form": {
+        "title": "New organization",
+        "name": "Name",
+        "slug": "Slug",
+        "slugPlaceholder": "auto-generated",
+        "cancel": "Cancel",
+        "save": "Create"
+      },
+      "adminForm": {
+        "title": "New organization admin",
+        "create": "Add admin"
+      },
+      "detail": {
+        "back": "← Back to organizations",
+        "analytics": "This organization's analytics",
+        "auditLogs": "This organization's audit log",
+        "admins": "Admins",
+        "adminsEmpty": "No admins yet."
+      }
+    },
     "errors": {
       "notFound": "Not found — it may have just changed. The list has been refreshed.",
       "conflict": "That already exists (e.g. the email is already in use).",

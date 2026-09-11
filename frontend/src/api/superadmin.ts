@@ -1,9 +1,50 @@
-import { apiGet } from './client'
-import type { Analytics, AuditLogPage, Organization } from './types'
+import { apiGet, apiPatch, apiPost } from './client'
+import type { Analytics, AuditLogPage, Organization, StaffUser } from './types'
 import type { AuditLogQuery } from './admin'
 
 export function getOrganizations(): Promise<Organization[]> {
   return apiGet<Organization[]>('/api/sa/organizations')
+}
+
+export function getOrganization(id: string): Promise<Organization> {
+  return apiGet<Organization>(`/api/sa/organizations/${id}`)
+}
+
+export interface OrganizationCreatePayload {
+  name: string
+  slug?: string
+}
+
+export function createOrganization(payload: OrganizationCreatePayload): Promise<Organization> {
+  return apiPost<Organization>('/api/sa/organizations', payload)
+}
+
+export function setOrganizationActive(id: string, isActive: boolean): Promise<Organization> {
+  return apiPatch<Organization>(`/api/sa/organizations/${id}`, { is_active: isActive })
+}
+
+export function listOrgAdmins(organizationId: string): Promise<StaffUser[]> {
+  return apiGet<StaffUser[]>(`/api/sa/organizations/${organizationId}/admins`)
+}
+
+export interface AdminCreatePayload {
+  email: string
+  password: string
+  full_name: string
+}
+
+export function createOrgAdmin(organizationId: string, payload: AdminCreatePayload): Promise<StaffUser> {
+  return apiPost<StaffUser>(`/api/sa/organizations/${organizationId}/admins`, payload)
+}
+
+export function setOrgAdminActive(
+  organizationId: string,
+  adminId: string,
+  isActive: boolean,
+): Promise<StaffUser> {
+  return apiPatch<StaffUser>(`/api/sa/organizations/${organizationId}/admins/${adminId}`, {
+    is_active: isActive,
+  })
 }
 
 export interface SaAnalyticsQuery {

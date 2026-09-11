@@ -18,6 +18,8 @@ import ScanPage from '../pages/scan/ScanPage'
 import SaAnalyticsPage from '../pages/superadmin/SaAnalyticsPage'
 import SaAuditLogPage from '../pages/superadmin/SaAuditLogPage'
 import SaLayout from '../pages/superadmin/SaLayout'
+import SaOrganizationDetailPage from '../pages/superadmin/SaOrganizationDetailPage'
+import SaOrganizationsPage from '../pages/superadmin/SaOrganizationsPage'
 import TicketPage from '../pages/ticket/TicketPage'
 import TvPage from '../pages/tv/TvPage'
 import TvPairPage from '../pages/tv/TvPairPage'
@@ -89,6 +91,8 @@ export default function AppRouter() {
           }
         >
           <Route index element={<Navigate to="/sa/analytics" replace />} />
+          <Route path="organizations" element={<SaOrganizationsPage />} />
+          <Route path="organizations/:id" element={<SaOrganizationDetailPage />} />
           <Route path="analytics" element={<SaAnalyticsPage />} />
           <Route path="audit-logs" element={<SaAuditLogPage />} />
         </Route>

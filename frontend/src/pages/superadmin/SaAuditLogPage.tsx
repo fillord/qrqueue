@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import { getOrganizations, getSaAuditLogs } from '../../api/superadmin'
 import type { AuditLogPage, Organization } from '../../api/types'
@@ -9,8 +10,9 @@ const PAGE_SIZE = 25
 
 export default function SaAuditLogPage() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [organizationId, setOrganizationId] = useState('')
+  const [organizationId, setOrganizationId] = useState(searchParams.get('organization_id') ?? '')
   const [action, setAction] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')

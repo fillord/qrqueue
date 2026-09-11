@@ -5,15 +5,16 @@ function linkClass({ isActive }: { isActive: boolean }): string {
   return isActive ? 'admin-layout__link admin-layout__link--active' : 'admin-layout__link'
 }
 
-/** Minimal tab nav for /sa/* — just the two pages this step adds. Org/admin
- * management (already reachable via the API from step 1/2) doesn't get a
- * frontend here, that's out of scope for this step. */
+// Sidebar for /sa/*.
 export default function SaLayout() {
   const { t } = useTranslation()
 
   return (
     <div className="admin-layout">
       <nav className="admin-layout__sidebar">
+        <NavLink to="/sa/organizations" className={linkClass}>
+          {t('admin.saOrganizations.title')}
+        </NavLink>
         <NavLink to="/sa/analytics" className={linkClass}>
           {t('admin.nav.analytics')}
         </NavLink>

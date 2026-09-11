@@ -6,11 +6,13 @@ import { createTvScreen, deleteTvScreen, getAdminQueues, getTvScreens } from '..
 import type { QueueSummary, TvScreen } from '../../api/types'
 
 /**
- * /admin/tv-screens — minimal, not the real admin panel (that's future
- * work): just enough to create a screen, see its pairing_code, and delete
- * it, for testing the /tv/pair -> /tv flow end to end.
+ * /admin/tv-screens (org_admin, own org) and, embedded with an explicit
+ * `organizationId`, the tv-screens section of /sa/organizations/:id
+ * (superadmin, any org) — same backend routes, `?organization_id=` is all
+ * that differs (see api/admin.ts), so one component covers both contexts
+ * instead of duplicating this CRUD UI.
  */
-export default function AdminTvScreensPage() {
+export default function AdminTvScreensPage({ organizationId }: { organizationId?: string }) {
   const { t } = useTranslation()
   const [screens, setScreens] = useState<TvScreen[] | null>(null)
   const [queues, setQueues] = useState<QueueSummary[]>([])
@@ -20,14 +22,17 @@ export default function AdminTvScreensPage() {
   const [error, setError] = useState(false)
 
   async function load() {
-    const [screenList, queueList] = await Promise.all([getTvScreens(), getAdminQueues()])
+    const [screenList, queueList] = await Promise.all([
+      getTvScreens(organizationId),
+      getAdminQueues(organizationId),
+    ])
     setScreens(screenList)
     setQueues(queueList)
   }
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [organizationId])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -35,7 +40,7 @@ export default function AdminTvScreensPage() {
     setSubmitting(true)
     setError(false)
     try {
-      await createTvScreen({ name: name.trim(), queue_id: queueId || null })
+      await createTvScreen({ name: name.trim(), queue_id: queueId || null }, organizationId)
       setName('')
       setQueueId('')
       await load()
@@ -47,7 +52,7 @@ export default function AdminTvScreensPage() {
   }
 
   async function handleDelete(id: string) {
-    await deleteTvScreen(id)
+    await deleteTvScreen(id, organizationId)
     await load()
   }
 

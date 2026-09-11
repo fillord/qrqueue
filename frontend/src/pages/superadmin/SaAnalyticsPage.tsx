@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import { getAdminQueues } from '../../api/admin'
 import { getOrganizations, getSaAnalytics } from '../../api/superadmin'
@@ -11,11 +12,12 @@ const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function SaAnalyticsPage() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const initial = defaultDateRange(7)
   const [from, setFrom] = useState(initial.from)
   const [to, setTo] = useState(initial.to)
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [organizationId, setOrganizationId] = useState('')
+  const [organizationId, setOrganizationId] = useState(searchParams.get('organization_id') ?? '')
   const [queues, setQueues] = useState<QueueSummary[]>([])
   const [queueId, setQueueId] = useState('')
   const [data, setData] = useState<Analytics | null>(null)

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { confirmTicket, getMyTickets, leaveTicket } from '../../api/public'
 import type { TicketDetail } from '../../api/types'
 import PushOptInBanner from '../../components/PushOptInBanner'
+import RatingForm from '../../components/RatingForm'
 import { useTicket } from '../../hooks/useTicket'
 import { forgetTicketId, rememberTicketId } from '../../lib/ticketStorage'
 
@@ -103,7 +104,7 @@ export default function TicketPage() {
 
       <div className="ticket-page__number">{ticket.display_number}</div>
 
-      <StatusBlock ticket={ticket} />
+      <StatusBlock ticket={ticket} onRated={setTicket} />
 
       {canLeave && (
         <div className="ticket-page__actions">
@@ -129,7 +130,13 @@ export default function TicketPage() {
   )
 }
 
-function StatusBlock({ ticket }: { ticket: TicketDetail }) {
+function StatusBlock({
+  ticket,
+  onRated,
+}: {
+  ticket: TicketDetail
+  onRated: (ticket: TicketDetail) => void
+}) {
   const { t } = useTranslation()
 
   if (ticket.status === 'waiting') {
@@ -164,6 +171,19 @@ function StatusBlock({ ticket }: { ticket: TicketDetail }) {
     return (
       <div className={`ticket-page__info ticket-page__info--${ticket.status}`}>
         <p className="ticket-page__called-message">{t(key, { label })}</p>
+      </div>
+    )
+  }
+
+  if (ticket.status === 'served') {
+    return (
+      <div className="ticket-page__info">
+        <p className="ticket-page__status">{t('ticket.status.served')}</p>
+        {ticket.rating == null ? (
+          <RatingForm ticketId={ticket.id} onSubmitted={onRated} />
+        ) : (
+          <p className="ticket-page__rating-thanks">{t('ticket.rating.thanks')}</p>
+        )}
       </div>
     )
   }

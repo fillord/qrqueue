@@ -1,5 +1,5 @@
 import QRCode from 'qrcode'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -7,7 +7,9 @@ import { useNavigate } from 'react-router-dom'
 import { getTvQrBatch } from '../../api/tv'
 import type { QrBatch, TvQueueState } from '../../api/types'
 import { useLiveQr } from '../../hooks/useLiveQr'
+import { useTvAnnouncer } from '../../hooks/useTvAnnouncer'
 import { useTvState } from '../../hooks/useTvState'
+import { isAnnouncementsEnabled, setAnnouncementsEnabled } from '../../lib/tvAnnouncements'
 import { forgetDeviceToken, getRememberedDeviceToken } from '../../lib/tvDevice'
 
 function LiveQrCode({ token }: { token: string | null }) {
@@ -90,6 +92,15 @@ export default function TvPage() {
     }
   }, [rejected, navigate])
 
+  const [announcementsEnabled, setAnnouncementsEnabledState] = useState(isAnnouncementsEnabled)
+  useTvAnnouncer(state, announcementsEnabled)
+
+  function toggleAnnouncements() {
+    const next = !announcementsEnabled
+    setAnnouncementsEnabledState(next)
+    setAnnouncementsEnabled(next)
+  }
+
   const singleQueue = state && state.queues.length === 1 ? state.queues[0] : null
 
   const fetchQrBatch = useCallback((): Promise<QrBatch> => {
@@ -126,7 +137,12 @@ export default function TvPage() {
         <MultiQueueView queues={state.queues} />
       )}
 
-      <footer className="tv-screen__footer">{t('tv.screen.footer')}</footer>
+      <footer className="tv-screen__footer">
+        <span>{t('tv.screen.footer')}</span>
+        <button type="button" className="tv-screen__announce-toggle" onClick={toggleAnnouncements}>
+          {t(announcementsEnabled ? 'tv.announce.toggleOn' : 'tv.announce.toggleOff')}
+        </button>
+      </footer>
     </div>
   )
 }

@@ -156,3 +156,104 @@ async def test_qr_batch_rejected_for_hall_screen_without_queue(
     resp = await client.get("/api/tv/qr-batch", headers={"X-Device-Token": device_token})
     assert resp.status_code == 409, resp.text
     assert resp.json()["detail"]["code"] == "tv_screen_has_no_queue"
+
+
+async def test_hall_screen_state_aggregates_all_organization_queues(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="TV Зал Организация")
+    org.logo_url = "https://example.com/logo.png"
+    org.brand_color = "#123456"
+    await db_session.commit()
+
+    queue_a = await _make_queue(db_session, org, name="Терапевт", ticket_prefix="A")
+    queue_b = await _make_queue(db_session, org, name="Хирург", ticket_prefix="B")
+    admin, password = await make_user(
+        email="tv-hall2-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+
+    await login(client, "tv-hall2-admin@example.com", password)
+    resp = await client.post(f"/api/admin/tv-screens?organization_id={org.id}", json={"name": "Табло зала"})
+    assert resp.status_code == 201, resp.text
+    pairing_code = resp.json()["pairing_code"]
+
+    resp = await client.post("/api/tv/pair", json={"code": pairing_code})
+    assert resp.status_code == 200, resp.text
+    device_token = resp.json()["device_token"]
+
+    resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
+    assert resp.status_code == 200, resp.text
+    state = resp.json()
+    assert state["logo_url"] == "https://example.com/logo.png"
+    assert state["brand_color"] == "#123456"
+    queue_ids = {q["queue_id"] for q in state["queues"]}
+    assert queue_ids == {str(queue_a.id), str(queue_b.id)}
+
+
+async def test_queue_bound_screen_state_has_only_its_queue(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="TV Одна Очередь Организация")
+    queue_a = await _make_queue(db_session, org, name="Терапевт", ticket_prefix="A")
+    await _make_queue(db_session, org, name="Хирург", ticket_prefix="B")
+    admin, password = await make_user(
+        email="tv-single-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+
+    await login(client, "tv-single-admin@example.com", password)
+    resp = await client.post(
+        f"/api/admin/tv-screens?organization_id={org.id}",
+        json={"name": "Табло 1", "queue_id": str(queue_a.id)},
+    )
+    assert resp.status_code == 201, resp.text
+    pairing_code = resp.json()["pairing_code"]
+
+    resp = await client.post("/api/tv/pair", json={"code": pairing_code})
+    device_token = resp.json()["device_token"]
+
+    resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
+    assert resp.status_code == 200, resp.text
+    state = resp.json()
+    assert [q["queue_id"] for q in state["queues"]] == [str(queue_a.id)]
+
+
+async def test_tv_state_brand_fields_are_null_when_unset(client, db_session, make_user, make_organization):
+    org = await make_organization(name="TV Без Брендинга Организация")
+    queue = await _make_queue(db_session, org)
+    admin, password = await make_user(
+        email="tv-nobrand-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+
+    await login(client, "tv-nobrand-admin@example.com", password)
+    resp = await client.post(
+        f"/api/admin/tv-screens?organization_id={org.id}",
+        json={"name": "Табло", "queue_id": str(queue.id)},
+    )
+    pairing_code = resp.json()["pairing_code"]
+    resp = await client.post("/api/tv/pair", json={"code": pairing_code})
+    device_token = resp.json()["device_token"]
+
+    resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
+    state = resp.json()
+    assert state["logo_url"] is None
+    assert state["brand_color"] is None
+
+
+async def test_tv_state_reflects_screen_language(client, db_session, make_user, make_organization):
+    org = await make_organization(name="TV Язык Организация")
+    queue = await _make_queue(db_session, org)
+    admin, password = await make_user(
+        email="tv-lang-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+
+    await login(client, "tv-lang-admin@example.com", password)
+    resp = await client.post(
+        f"/api/admin/tv-screens?organization_id={org.id}",
+        json={"name": "Табло", "queue_id": str(queue.id), "language": "kk"},
+    )
+    pairing_code = resp.json()["pairing_code"]
+    resp = await client.post("/api/tv/pair", json={"code": pairing_code})
+    device_token = resp.json()["device_token"]
+
+    resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
+    assert resp.json()["language"] == "kk"

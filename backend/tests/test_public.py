@@ -243,3 +243,64 @@ async def test_confirm_and_leave_on_served_ticket_returns_409(
     resp = await client.post(f"/api/public/tickets/{ticket_id}/leave")
     assert resp.status_code == 409, resp.text
     assert resp.json()["detail"]["code"] == "invalid_transition"
+
+
+async def _serve_ticket(client, db_session, make_user, org, queue, ticket_id) -> None:
+    cabinet = await _make_cabinet(db_session, org, queue, label=f"Каб {ticket_id}")
+    operator, op_password = await make_user(
+        email=f"rate-op-{ticket_id}@example.com", role=UserRole.operator, organization_id=org.id
+    )
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+
+    async with _second_client() as op_client:
+        await login(op_client, f"rate-op-{ticket_id}@example.com", op_password)
+        await op_client.post(f"/api/operator/cabinets/{cabinet.id}/select")
+        await op_client.post("/api/operator/call-next")
+        await op_client.post(f"/api/operator/tickets/{ticket_id}/start")
+        resp = await op_client.post(f"/api/operator/tickets/{ticket_id}/finish")
+        assert resp.status_code == 200, resp.text
+
+
+async def test_rate_served_ticket_succeeds_and_blocks_second_rating(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="Rate Организация")
+    queue = await _make_queue(db_session, org)
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    await _serve_ticket(client, db_session, make_user, org, queue, ticket_id)
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/rate", json={"rating": 5, "comment": "Отлично"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["rating"] == 5
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/rate", json={"rating": 4})
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"]["code"] == "already_rated"
+
+
+async def test_rate_non_served_ticket_returns_409(client, db_session, make_organization):
+    org = await make_organization(name="Rate Не Served Организация")
+    queue = await _make_queue(db_session, org)
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    resp = await client.post(f"/api/public/tickets/{ticket_id}/rate", json={"rating": 3})
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"]["code"] == "invalid_transition"
+
+
+async def test_rate_by_other_client_is_404(client, db_session, make_organization):
+    org = await make_organization(name="Rate Чужой Организация")
+    queue = await _make_queue(db_session, org)
+
+    resp = await client.post("/api/public/scan", json={"token": _scan_token(queue.id)})
+    ticket_id = resp.json()["id"]
+
+    async with _second_client() as client2:
+        resp2 = await client2.post(f"/api/public/tickets/{ticket_id}/rate", json={"rating": 2})
+        assert resp2.status_code == 404

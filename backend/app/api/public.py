@@ -15,6 +15,7 @@ from app.redis import get_redis
 from app.schemas.public import (
     PushSubscribeRequest,
     PushUnsubscribeRequest,
+    RateRequest,
     ScanRequest,
     TicketDetailOut,
     TicketSummaryOut,
@@ -26,6 +27,7 @@ from app.services.scan import scan as scan_service
 from app.services.tickets import build_ticket_detail
 from app.services.tickets import confirm as confirm_ticket
 from app.services.tickets import leave as leave_ticket
+from app.services.tickets import rate as rate_ticket
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -129,6 +131,24 @@ async def leave_ticket_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     ticket = await leave_ticket(db, redis, ticket=ticket, client=client)
+    detail = await build_ticket_detail(db, ticket)
+    await db.commit()
+    return detail
+
+
+@router.post("/tickets/{ticket_id}/rate", response_model=TicketDetailOut)
+async def rate_ticket_route(
+    ticket_id: uuid.UUID,
+    payload: RateRequest,
+    db: AsyncSession = Depends(get_db),
+    client: Client = Depends(current_client),
+) -> dict:
+    ticket = await db.get(Ticket, ticket_id)
+    if ticket is None or ticket.client_id != client.id:
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    ticket = await rate_ticket(db, ticket=ticket, client=client, rating=payload.rating, comment=payload.comment)
     detail = await build_ticket_detail(db, ticket)
     await db.commit()
     return detail

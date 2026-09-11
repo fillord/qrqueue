@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.enums import QueueStatus, TicketStatus
 
@@ -34,6 +34,12 @@ class TicketDetailOut(TicketSummaryOut):
     now_serving: str | None
     estimated_wait_seconds: int | None = None
     cabinet: CabinetInfo | None = None
+    rating: int | None = None
+
+
+class RateRequest(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = None
 
 
 class PushKeys(BaseModel):

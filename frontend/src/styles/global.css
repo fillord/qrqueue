@@ -215,6 +215,81 @@ button {
   margin: 0;
 }
 
+.ticket-page__rating-thanks {
+  color: var(--color-accent);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* --- rating form --- */
+
+.rating-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  width: 100%;
+  max-width: 360px;
+}
+
+.rating-form__title {
+  font-size: 1rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.rating-form__stars {
+  display: flex;
+  gap: 4px;
+}
+
+.rating-form__star {
+  border: none;
+  background: none;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--color-border);
+  cursor: pointer;
+  padding: 0;
+}
+
+.rating-form__star--filled {
+  color: #f59e0b;
+}
+
+.rating-form__comment {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.rating-form button[type='submit'] {
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  min-width: 220px;
+}
+
+.rating-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.rating-form__error {
+  color: var(--color-danger);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .landing-page__title {
   font-size: 2rem;
   font-weight: 700;
@@ -977,11 +1052,29 @@ button {
 }
 
 .tv-screen__footer {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
   padding: var(--spacing-1);
   color: var(--tv-muted);
   font-size: 0.85rem;
   border-top: 1px solid #1f2740;
+}
+
+.tv-screen__announce-toggle {
+  border: 1px solid #1f2740;
+  background: none;
+  color: var(--tv-muted);
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.tv-screen__announce-toggle:hover {
+  opacity: 1;
 }
 
 @media (max-width: 900px) {

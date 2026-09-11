@@ -483,6 +483,33 @@ async def leave(
     return ticket
 
 
+async def rate(
+    db: AsyncSession, *, ticket: Ticket, client: Client, rating: int, comment: str | None = None
+) -> Ticket:
+    """Client rates a served ticket — one rating per ticket, no realtime
+    event (not part of the ARCHITECTURE.md section 5 event set)."""
+    _require_status(ticket, TicketStatus.served)
+    if ticket.rating is not None:
+        raise ServiceError("already_rated", 409)
+
+    ticket.rating = rating
+    ticket.rating_comment = comment
+    await db.flush()
+
+    await log_action(
+        db,
+        actor_type=AuditActorType.client,
+        actor_id=client.id,
+        action="ticket.rated",
+        entity_type="ticket",
+        entity_id=ticket.id,
+        organization_id=ticket.organization_id,
+        payload={"rating": rating},
+    )
+    await db.commit()
+    return ticket
+
+
 async def get_position(db: AsyncSession, ticket: Ticket) -> int | None:
     if ticket.status != TicketStatus.waiting:
         return None
@@ -540,4 +567,5 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         "now_serving": now_serving,
         "estimated_wait_seconds": estimated_wait_seconds,
         "cabinet": cabinet,
+        "rating": ticket.rating,
     }

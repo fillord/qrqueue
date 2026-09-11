@@ -289,3 +289,56 @@ async def test_tv_ws_sends_snapshot_and_updates_on_call(ws_manager_running):
             assert update["queues"][0]["waiting_count"] == 0
             assert update["queues"][0]["now_serving"] is not None
             assert update["queues"][0]["now_serving_cabinet"] == cabinet_label
+
+
+async def test_tv_ws_hall_screen_aggregates_all_queues_and_updates(ws_manager_running):
+    run_id = uuid.uuid4().hex[:8]
+    email = f"ws-hall-{run_id}@example.com"
+    password = "test-pass-1234"
+    device_token = f"test-hall-device-token-{run_id}"
+
+    async with async_session_factory() as db:
+        org = await _make_organization_real(db, f"WS Зал {run_id}")
+        queue_a = await _make_queue(db, org, name=f"Терапевт {run_id}", ticket_prefix="A")
+        queue_b = await _make_queue(db, org, name=f"Хирург {run_id}", ticket_prefix="B")
+        cabinet_a = await _make_cabinet(db, org, queue_a, label=f"Каб А {run_id}")
+        operator = await _make_user_real(
+            db, email=email, role=UserRole.operator, organization_id=org.id, password=password
+        )
+        await _assign_operator(db, cabinet_a, operator)
+        await _make_ticket(db, org, queue_a)
+        await _make_ticket(db, org, queue_b)
+
+        screen = TVScreen(
+            organization_id=org.id,
+            queue_id=None,
+            name="Табло зала",
+            device_token=device_token,
+            language=Language.ru,
+        )
+        db.add(screen)
+        await db.commit()
+
+        cabinet_a_id, queue_a_id, queue_b_id = cabinet_a.id, queue_a.id, queue_b.id
+
+    async with ws_client() as client:
+        async with aconnect_ws(f"/ws/tv?device_token={device_token}", client) as ws:
+            snapshot = await asyncio.wait_for(ws.receive_json(), timeout=RECEIVE_TIMEOUT)
+            queue_ids = {q["queue_id"] for q in snapshot["queues"]}
+            assert queue_ids == {str(queue_a_id), str(queue_b_id)}
+            by_queue = {q["queue_id"]: q for q in snapshot["queues"]}
+            assert by_queue[str(queue_a_id)]["waiting_count"] == 1
+            assert by_queue[str(queue_b_id)]["waiting_count"] == 1
+
+            # Calling a ticket in just one of the aggregated queues must still
+            # reach the hall screen's socket (subscribed to every queue's channel).
+            await login(client, email, password)
+            await client.post(f"/api/operator/cabinets/{cabinet_a_id}/select")
+            resp = await client.post("/api/operator/call-next")
+            assert resp.status_code == 200, resp.text
+
+            update = await asyncio.wait_for(ws.receive_json(), timeout=RECEIVE_TIMEOUT)
+            by_queue = {q["queue_id"]: q for q in update["queues"]}
+            assert by_queue[str(queue_a_id)]["waiting_count"] == 0
+            assert by_queue[str(queue_a_id)]["now_serving"] is not None
+            assert by_queue[str(queue_b_id)]["waiting_count"] == 1

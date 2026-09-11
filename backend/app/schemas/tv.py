@@ -45,4 +45,5 @@ class TVStateOut(BaseModel):
     organization_name: str
     logo_url: str | None
     brand_color: str | None
+    language: Language
     queues: list[TVQueueState]

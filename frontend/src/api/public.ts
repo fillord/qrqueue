@@ -20,3 +20,7 @@ export function confirmTicket(id: string): Promise<TicketDetail> {
 export function leaveTicket(id: string): Promise<TicketDetail> {
   return apiPost<TicketDetail>(`/api/public/tickets/${id}/leave`)
 }
+
+export function rateTicket(id: string, rating: number, comment?: string): Promise<TicketDetail> {
+  return apiPost<TicketDetail>(`/api/public/tickets/${id}/rate`, { rating, comment })
+}

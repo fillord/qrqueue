@@ -33,6 +33,7 @@ export interface TicketDetail extends TicketSummary {
   now_serving: string | null
   estimated_wait_seconds: number | null
   cabinet: CabinetInfo | null
+  rating: number | null
 }
 
 export interface ScanRequest {
@@ -134,6 +135,7 @@ export interface TvState {
   organization_name: string
   logo_url: string | null
   brand_color: string | null
+  language: 'kk' | 'ru' | 'en'
   queues: TvQueueState[]
 }
 

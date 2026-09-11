@@ -74,5 +74,6 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
         "organization_name": organization.name if organization else "",
         "logo_url": organization.logo_url if organization else None,
         "brand_color": organization.brand_color if organization else None,
+        "language": screen.language,
         "queues": queues_out,
     }

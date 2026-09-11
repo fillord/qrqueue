@@ -53,6 +53,14 @@
       "prompt": "Turn on notifications so you don't have to wait by the door — we'll let you know when it's close.",
       "enable": "Turn on notifications",
       "dismiss": "Not now"
+    },
+    "rating": {
+      "title": "Rate your visit",
+      "starLabel": "{{value}} out of 5",
+      "commentPlaceholder": "Comment (optional)",
+      "submit": "Submit rating",
+      "thanks": "Thanks for rating!",
+      "error": "Couldn't submit your rating. Please try again."
     }
   },
   "auth": {
@@ -356,6 +364,12 @@
         "paused": "Intake is paused",
         "closed": "This queue is closed"
       }
+    },
+    "announce": {
+      "called": "Ticket {{number}}.",
+      "calledWithCabinet": "Ticket {{number}}. {{cabinet}}.",
+      "toggleOn": "Announcements: on",
+      "toggleOff": "Announcements: off"
     }
   },
   "registrar": {

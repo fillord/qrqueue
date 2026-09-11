@@ -152,6 +152,115 @@
       "organization": "Organization",
       "allOrganizations": "All organizations",
       "allOrgsHint": "Choose an organization to also filter by queue."
+    },
+    "errors": {
+      "notFound": "Not found — it may have just changed. The list has been refreshed.",
+      "conflict": "That already exists (e.g. the email is already in use).",
+      "invalid": "Please check what you entered.",
+      "unknown": "Couldn't complete the action. Please try again."
+    },
+    "queues": {
+      "title": "Queues",
+      "create": "Create queue",
+      "empty": "No queues yet.",
+      "edit": "Edit",
+      "schedule": "Schedule",
+      "columns": {
+        "name": "Name",
+        "prefix": "Prefix",
+        "status": "Status",
+        "waiting": "Waiting"
+      },
+      "status": {
+        "open": "Open",
+        "paused": "Paused",
+        "closed": "Closed"
+      },
+      "form": {
+        "createTitle": "New queue",
+        "editTitle": "Edit queue",
+        "name": "Name",
+        "ticketPrefix": "Ticket prefix",
+        "geoLegend": "Geofence (optional)",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "geoRadiusM": "Radius, m",
+        "geoError": "Fill in all three geofence fields, or leave all three empty.",
+        "presenceTimeoutMin": "Minutes for \"I'm here\"",
+        "presenceTimeoutMinPlaceholder": "default",
+        "dailyTicketLimit": "Daily ticket limit",
+        "dailyTicketLimitPlaceholder": "no limit",
+        "cancel": "Cancel",
+        "save": "Save"
+      }
+    },
+    "schedule": {
+      "back": "← Back to queues",
+      "title": "Schedule: {{name}}",
+      "save": "Save schedule",
+      "saved": "Schedule saved",
+      "columns": {
+        "day": "Day",
+        "open": "Open",
+        "opensAt": "Opens at",
+        "closesAt": "Closes at"
+      }
+    },
+    "cabinets": {
+      "title": "Counters",
+      "create": "Create counter",
+      "empty": "No counters yet.",
+      "manageOperators": "Operators",
+      "columns": {
+        "label": "Counter",
+        "queue": "Queue",
+        "status": "Status"
+      },
+      "form": {
+        "title": "New counter",
+        "label": "Counter name",
+        "queue": "Queue",
+        "autoCreateQueue": "Create a new queue automatically",
+        "existingQueue": "Use an existing queue",
+        "cancel": "Cancel",
+        "save": "Create"
+      },
+      "operatorsModal": {
+        "title": "Operators for \"{{label}}\"",
+        "empty": "No operators assigned.",
+        "remove": "Remove",
+        "selectOperator": "Choose an operator",
+        "add": "Add",
+        "close": "Close"
+      }
+    },
+    "users": {
+      "title": "Staff",
+      "create": "Add staff member",
+      "empty": "No staff yet.",
+      "active": "Active",
+      "inactive": "Deactivated",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "columns": {
+        "fullName": "Name",
+        "email": "Email",
+        "role": "Role",
+        "status": "Status"
+      },
+      "role": {
+        "operator": "Operator",
+        "registrar": "Registrar"
+      },
+      "form": {
+        "title": "New staff member",
+        "fullName": "Name",
+        "email": "Email",
+        "password": "Password",
+        "role": "Role",
+        "cancel": "Cancel",
+        "save": "Create"
+      }
     }
   },
   "operator": {

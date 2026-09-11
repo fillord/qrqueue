@@ -152,6 +152,115 @@
       "organization": "Ұйым",
       "allOrganizations": "Барлық ұйымдар",
       "allOrgsHint": "Кезек бойынша да сүзу үшін ұйымды таңдаңыз."
+    },
+    "errors": {
+      "notFound": "Жазба табылмады — мүмкін, ол жаңа өзгертілген. Тізім жаңартылды.",
+      "conflict": "Мұндай жазба бұрыннан бар (мысалы, email бос емес).",
+      "invalid": "Енгізілген деректерді тексеріңіз.",
+      "unknown": "Әрекетті орындау мүмкін болмады. Қайта көріңіз."
+    },
+    "queues": {
+      "title": "Кезектер",
+      "create": "Кезек құру",
+      "empty": "Әзірге кезектер жоқ.",
+      "edit": "Өзгерту",
+      "schedule": "Кесте",
+      "columns": {
+        "name": "Атауы",
+        "prefix": "Префикс",
+        "status": "Мәртебесі",
+        "waiting": "Күтіп тұр"
+      },
+      "status": {
+        "open": "Ашық",
+        "paused": "Кідіртілген",
+        "closed": "Жабық"
+      },
+      "form": {
+        "createTitle": "Жаңа кезек",
+        "editTitle": "Кезекті өзгерту",
+        "name": "Атауы",
+        "ticketPrefix": "Нөмір префиксі",
+        "geoLegend": "Геозона (міндетті емес)",
+        "latitude": "Ендік",
+        "longitude": "Бойлық",
+        "geoRadiusM": "Радиус, м",
+        "geoError": "Геозонаның үш өрісін де толтырыңыз немесе үшеуін де бос қалдырыңыз.",
+        "presenceTimeoutMin": "«Мен осындамын» үшін минут",
+        "presenceTimeoutMinPlaceholder": "әдепкі",
+        "dailyTicketLimit": "Күндік талон лимиті",
+        "dailyTicketLimitPlaceholder": "лимитсіз",
+        "cancel": "Бас тарту",
+        "save": "Сақтау"
+      }
+    },
+    "schedule": {
+      "back": "← Кезектерге",
+      "title": "Кесте: {{name}}",
+      "save": "Кестені сақтау",
+      "saved": "Кесте сақталды",
+      "columns": {
+        "day": "Күн",
+        "open": "Жұмыс күні",
+        "opensAt": "Ашылу уақыты",
+        "closesAt": "Жабылу уақыты"
+      }
+    },
+    "cabinets": {
+      "title": "Кабинеттер",
+      "create": "Кабинет құру",
+      "empty": "Әзірге кабинеттер жоқ.",
+      "manageOperators": "Операторлар",
+      "columns": {
+        "label": "Кабинет",
+        "queue": "Кезек",
+        "status": "Мәртебесі"
+      },
+      "form": {
+        "title": "Жаңа кабинет",
+        "label": "Кабинет атауы",
+        "queue": "Кезек",
+        "autoCreateQueue": "Жаңа кезекті автоматты түрде құру",
+        "existingQueue": "Бар кезекті пайдалану",
+        "cancel": "Бас тарту",
+        "save": "Құру"
+      },
+      "operatorsModal": {
+        "title": "«{{label}}» кабинетінің операторлары",
+        "empty": "Операторлар тағайындалмаған.",
+        "remove": "Алып тастау",
+        "selectOperator": "Операторды таңдаңыз",
+        "add": "Қосу",
+        "close": "Жабу"
+      }
+    },
+    "users": {
+      "title": "Персонал",
+      "create": "Қызметкер қосу",
+      "empty": "Әзірге қызметкерлер жоқ.",
+      "active": "Белсенді",
+      "inactive": "Деактивтелген",
+      "deactivate": "Деактивтеу",
+      "activate": "Белсендіру",
+      "columns": {
+        "fullName": "Аты-жөні",
+        "email": "Email",
+        "role": "Рөлі",
+        "status": "Мәртебесі"
+      },
+      "role": {
+        "operator": "Оператор",
+        "registrar": "Регистратор"
+      },
+      "form": {
+        "title": "Жаңа қызметкер",
+        "fullName": "Аты-жөні",
+        "email": "Email",
+        "password": "Құпия сөз",
+        "role": "Рөлі",
+        "cancel": "Бас тарту",
+        "save": "Құру"
+      }
     }
   },
   "operator": {

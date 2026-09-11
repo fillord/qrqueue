@@ -85,6 +85,42 @@ export interface QueueSummary {
   status: QueueStatus
 }
 
+export interface AdminQueue {
+  id: string
+  organization_id: string
+  name: string
+  ticket_prefix: string
+  status: QueueStatus
+  latitude: number | null
+  longitude: number | null
+  geo_radius_m: number | null
+  presence_timeout_min: number
+  daily_ticket_limit: number | null
+  last_ticket_number: number
+  counter_date: string
+  is_active: boolean
+  waiting_count: number
+}
+
+export interface ScheduleEntry {
+  weekday: number
+  opens_at: string
+  closes_at: string
+}
+
+export interface ScheduleEntryWithId extends ScheduleEntry {
+  id: string
+}
+
+export interface StaffUser {
+  id: string
+  email: string
+  full_name: string
+  role: UserRole
+  organization_id: string
+  is_active: boolean
+}
+
 export interface TvQueueState {
   queue_id: string
   queue_name: string

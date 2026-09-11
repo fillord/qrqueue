@@ -1,5 +1,9 @@
-from app.models.cabinet import Cabinet
-from app.models.enums import UserRole
+from datetime import date
+
+from app.models.cabinet import Cabinet, CabinetOperator
+from app.models.enums import QueueStatus, TicketSource, TicketStatus, UserRole
+from app.models.queue import Queue
+from app.models.ticket import Ticket
 from tests.utils import login
 
 
@@ -98,3 +102,129 @@ async def test_queue_create_partial_geo_fields_returns_422(
         json={"name": "Очередь 1", "ticket_prefix": "A", "latitude": 43.2, "longitude": 76.9},
     )
     assert resp.status_code == 422
+
+
+async def test_list_queues_includes_waiting_count(client, db_session, make_user, make_organization):
+    org = await make_organization(name="Организация Д")
+    _admin, password = await make_user(
+        email="admin5@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    queue = Queue(organization_id=org.id, name="Очередь", ticket_prefix="A", counter_date=date.today())
+    db_session.add(queue)
+    await db_session.commit()
+    await db_session.refresh(queue)
+
+    for n, status_ in enumerate([TicketStatus.waiting, TicketStatus.waiting, TicketStatus.served], start=1):
+        db_session.add(
+            Ticket(
+                organization_id=org.id,
+                queue_id=queue.id,
+                number=n,
+                display_number=f"A-{n:03d}",
+                source=TicketSource.qr,
+                status=status_,
+            )
+        )
+    await db_session.commit()
+
+    await login(client, "admin5@example.com", password)
+    resp = await client.get("/api/admin/queues")
+    assert resp.status_code == 200, resp.text
+    body = {q["id"]: q for q in resp.json()}
+    assert body[str(queue.id)]["waiting_count"] == 2
+
+
+async def test_admin_manual_pause_is_sticky_against_cabinet_resume(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="Организация Е")
+    admin, admin_password = await make_user(
+        email="admin6@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    operator, operator_password = await make_user(
+        email="operator6@example.com", role=UserRole.operator, organization_id=org.id
+    )
+
+    queue = Queue(organization_id=org.id, name="Очередь", ticket_prefix="A", counter_date=date.today())
+    db_session.add(queue)
+    await db_session.flush()
+    cabinet = Cabinet(organization_id=org.id, queue_id=queue.id, label="Окно 1")
+    db_session.add(cabinet)
+    await db_session.flush()
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+    await db_session.refresh(queue)
+
+    await login(client, "admin6@example.com", admin_password)
+    resp = await client.patch(f"/api/admin/queues/{queue.id}", json={"status": "paused"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "paused"
+
+    await client.post("/api/auth/logout")
+    await login(client, "operator6@example.com", operator_password)
+    await client.post(f"/api/operator/cabinets/{cabinet.id}/select")
+
+    resp = await client.post("/api/operator/cabinet/pause")
+    assert resp.status_code == 200, resp.text
+    resp = await client.post("/api/operator/cabinet/resume")
+    assert resp.status_code == 200, resp.text
+
+    await db_session.refresh(queue)
+    assert queue.status == QueueStatus.paused  # admin's manual pause must survive cabinet resume
+
+    await client.post("/api/auth/logout")
+    await login(client, "admin6@example.com", admin_password)
+    resp = await client.patch(f"/api/admin/queues/{queue.id}", json={"status": "open"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "open"
+
+
+async def test_queue_schedule_round_trip(client, db_session, make_user, make_organization):
+    org = await make_organization(name="Организация З")
+    _admin, password = await make_user(
+        email="admin8@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    await login(client, "admin8@example.com", password)
+
+    resp = await client.post("/api/admin/queues", json={"name": "Очередь", "ticket_prefix": "A"})
+    queue_id = resp.json()["id"]
+
+    resp = await client.get(f"/api/admin/queues/{queue_id}/schedule")
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == []
+
+    resp = await client.put(
+        f"/api/admin/queues/{queue_id}/schedule",
+        json={"schedule": [
+            {"weekday": 0, "opens_at": "09:00:00", "closes_at": "18:00:00"},
+            {"weekday": 1, "opens_at": "09:00:00", "closes_at": "18:00:00"},
+        ]},
+    )
+    assert resp.status_code == 204, resp.text
+
+    resp = await client.get(f"/api/admin/queues/{queue_id}/schedule")
+    assert resp.status_code == 200, resp.text
+    entries = resp.json()
+    assert len(entries) == 2
+    assert {e["weekday"] for e in entries} == {0, 1}
+
+
+async def test_list_cabinet_operators(client, db_session, make_user, make_organization):
+    org = await make_organization(name="Организация Ж")
+    _admin, password = await make_user(
+        email="admin7@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    operator, _ = await make_user(
+        email="operator7@example.com", role=UserRole.operator, organization_id=org.id
+    )
+    cabinet = Cabinet(organization_id=org.id, label="Окно 1")
+    db_session.add(cabinet)
+    await db_session.flush()
+    db_session.add(CabinetOperator(cabinet_id=cabinet.id, user_id=operator.id))
+    await db_session.commit()
+
+    await login(client, "admin7@example.com", password)
+    resp = await client.get(f"/api/admin/cabinets/{cabinet.id}/operators")
+    assert resp.status_code == 200, resp.text
+    emails = [u["email"] for u in resp.json()]
+    assert emails == ["operator7@example.com"]

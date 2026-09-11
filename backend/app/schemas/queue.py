@@ -56,6 +56,7 @@ class QueueOut(BaseModel):
     last_ticket_number: int
     counter_date: date
     is_active: bool
+    waiting_count: int = 0
 
     model_config = {"from_attributes": True}
 

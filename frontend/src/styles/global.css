@@ -1267,6 +1267,181 @@ button {
   cursor: default;
 }
 
+/* --- admin: queues / cabinets / users, shared bits --- */
+
+.admin-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+
+.admin-page__header button {
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-page__back {
+  display: inline-block;
+  margin-bottom: var(--spacing-1);
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.admin-page__actions {
+  margin-top: var(--spacing-2);
+}
+
+.admin-page__actions button,
+.admin-table__actions button {
+  border: 1px solid var(--color-border);
+  background: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.admin-table__actions {
+  display: flex;
+  gap: var(--spacing-1);
+  align-items: center;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--color-border);
+  color: var(--color-muted);
+}
+
+.status-badge--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.status-badge--danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.status-badge--neutral {
+  background: var(--color-border);
+  color: var(--color-muted);
+}
+
+.admin-queues__status-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.admin-queues__status-cell select {
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.modal__field select {
+  font-size: 1rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.modal-form__fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-1) var(--spacing-2) var(--spacing-2);
+}
+
+.modal-form__fieldset legend {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  padding: 0 4px;
+}
+
+.modal-form__error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.admin-schedule__table td {
+  vertical-align: middle;
+}
+
+.admin-schedule__table input[type='time'] {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.admin-cabinets__operator-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-1);
+  padding: 6px 4px;
+}
+
+.admin-cabinets__operator-row button {
+  border: 1px solid var(--color-border);
+  background: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.admin-cabinets__operator-add {
+  display: flex;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+}
+
+.admin-cabinets__operator-add select {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.admin-cabinets__operator-add button {
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-cabinets__operator-add button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* --- registrar --- */
 
 .registrar-page {

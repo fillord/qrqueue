@@ -18,15 +18,27 @@ from app.schemas.audit import AuditLogPageOut
 from app.schemas.cabinet import CabinetCreate, CabinetOut, CabinetUpdate
 from app.schemas.organization import OrganizationOut, OrganizationSelfUpdate
 from app.schemas.qr import QRBatchOut
-from app.schemas.queue import QueueCreate, QueueOut, QueueUpdate, ScheduleReplace
+from app.schemas.queue import QueueCreate, QueueOut, QueueUpdate, ScheduleEntryOut, ScheduleReplace
 from app.schemas.staff import StaffCreate, StaffOut, StaffUpdate
 from app.schemas.tv import TVScreenCreate, TVScreenOut
 from app.services.analytics import get_analytics
 from app.services.audit_query import list_audit_logs
-from app.services.cabinets import assign_operator, create_cabinet, unassign_operator, update_cabinet
+from app.services.cabinets import (
+    assign_operator,
+    create_cabinet,
+    list_cabinet_operators,
+    unassign_operator,
+    update_cabinet,
+)
 from app.services.organizations import update_organization
 from app.services.qr_tokens import issue_batch
-from app.services.queues import create_queue, replace_schedule, update_queue
+from app.services.queues import (
+    create_queue,
+    get_schedule,
+    list_queues_with_waiting_counts,
+    replace_schedule,
+    update_queue,
+)
 from app.services.staff import create_org_user, update_org_user
 from app.services.tv_screens import create_tv_screen, delete_tv_screen
 
@@ -89,10 +101,12 @@ async def list_queues_route(
     actor: User = Depends(current_admin),
     organization_id: uuid.UUID = Depends(current_organization_id),
 ) -> list[Queue]:
-    result = await db.execute(
-        select(Queue).where(Queue.organization_id == organization_id).order_by(Queue.name)
-    )
-    return list(result.scalars().all())
+    pairs = await list_queues_with_waiting_counts(db, organization_id)
+    queues = []
+    for queue, waiting_count in pairs:
+        queue.waiting_count = waiting_count
+        queues.append(queue)
+    return queues
 
 
 @router.get("/queues/{queue_id}", response_model=QueueOut)
@@ -129,6 +143,17 @@ async def get_queue_qr_batch_route(
     """Preview/debug endpoint — the TV-facing /api/tv/qr-batch (step 5) reuses issue_batch()."""
     queue = await get_in_org_or_404(db, Queue, queue_id, organization_id)
     return issue_batch(queue.id)
+
+
+@router.get("/queues/{queue_id}/schedule", response_model=list[ScheduleEntryOut])
+async def get_queue_schedule_route(
+    queue_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> list:
+    queue = await get_in_org_or_404(db, Queue, queue_id, organization_id)
+    return await get_schedule(db, queue)
 
 
 @router.put("/queues/{queue_id}/schedule", status_code=status.HTTP_204_NO_CONTENT)
@@ -194,6 +219,17 @@ async def update_cabinet_route(
     cabinet = await update_cabinet(db, cabinet, payload, actor)
     await db.commit()
     return cabinet
+
+
+@router.get("/cabinets/{cabinet_id}/operators", response_model=list[StaffOut])
+async def list_cabinet_operators_route(
+    cabinet_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> list[User]:
+    cabinet = await get_in_org_or_404(db, Cabinet, cabinet_id, organization_id)
+    return await list_cabinet_operators(db, cabinet)
 
 
 @router.post("/cabinets/{cabinet_id}/operators/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

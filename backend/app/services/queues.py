@@ -1,12 +1,15 @@
+import uuid
+
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import local_date
-from app.models.enums import AuditActorType
+from app.models.enums import AuditActorType, QueueStatus, TicketStatus
 from app.models.organization import Organization
 from app.models.queue import Queue, QueueSchedule
+from app.models.ticket import Ticket
 from app.models.user import User
 from app.schemas.queue import QueueCreate, QueueUpdate, ScheduleEntry, validate_geo_fields
 from app.services.audit import log_action
@@ -35,6 +38,7 @@ async def create_queue_record(
         geo_radius_m=geo_radius_m,
         daily_ticket_limit=daily_ticket_limit,
         counter_date=local_date(organization.timezone),
+        manually_paused=status_ == "paused",
     )
     if presence_timeout_min is not None:
         kwargs["presence_timeout_min"] = presence_timeout_min
@@ -87,6 +91,8 @@ async def update_queue(db: AsyncSession, queue: Queue, payload: QueueUpdate, act
 
     for field, value in changes.items():
         setattr(queue, field, value)
+    if "status" in changes:
+        queue.manually_paused = changes["status"] == QueueStatus.paused
     await db.flush()
 
     await log_action(
@@ -100,6 +106,32 @@ async def update_queue(db: AsyncSession, queue: Queue, payload: QueueUpdate, act
         payload=jsonable_encoder(changes),
     )
     return queue
+
+
+async def list_queues_with_waiting_counts(
+    db: AsyncSession, organization_id: uuid.UUID
+) -> list[tuple[Queue, int]]:
+    """One GROUP BY pass, not N+1 — waiting_count per queue for the admin queues list."""
+    waiting_counts = (
+        select(Ticket.queue_id, func.count().label("cnt"))
+        .where(Ticket.status == TicketStatus.waiting)
+        .group_by(Ticket.queue_id)
+        .subquery()
+    )
+    result = await db.execute(
+        select(Queue, func.coalesce(waiting_counts.c.cnt, 0))
+        .outerjoin(waiting_counts, waiting_counts.c.queue_id == Queue.id)
+        .where(Queue.organization_id == organization_id)
+        .order_by(Queue.name)
+    )
+    return [(queue, int(count)) for queue, count in result.all()]
+
+
+async def get_schedule(db: AsyncSession, queue: Queue) -> list[QueueSchedule]:
+    result = await db.execute(
+        select(QueueSchedule).where(QueueSchedule.queue_id == queue.id).order_by(QueueSchedule.weekday)
+    )
+    return list(result.scalars().all())
 
 
 async def replace_schedule(

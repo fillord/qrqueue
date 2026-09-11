@@ -5,12 +5,7 @@ function linkClass({ isActive }: { isActive: boolean }): string {
   return isActive ? 'admin-layout__link admin-layout__link--active' : 'admin-layout__link'
 }
 
-/**
- * Shared sidebar for /admin/* — the real admin panel this step introduces.
- * Queues/Cabinets/Staff aren't built yet (step 9), so those links point at
- * the generic placeholder for now; they're wired in already so the nav
- * doesn't need to change shape when that work lands.
- */
+// Shared sidebar for /admin/*.
 export default function AdminLayout() {
   const { t } = useTranslation()
 
@@ -32,7 +27,7 @@ export default function AdminLayout() {
         <NavLink to="/admin/cabinets" className={linkClass}>
           {t('admin.nav.cabinets')}
         </NavLink>
-        <NavLink to="/admin/staff" className={linkClass}>
+        <NavLink to="/admin/users" className={linkClass}>
           {t('admin.nav.staff')}
         </NavLink>
         <NavLink to="/admin/tv-screens" className={linkClass}>

@@ -33,6 +33,9 @@ class Queue(UUIDPkMixin, Base):
     last_ticket_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     counter_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # True only when an admin paused the queue directly (not via cabinet-pause cascade) —
+    # blocks the cascade from auto-reopening it when a cabinet resumes.
+    manually_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class QueueSchedule(UUIDPkMixin, Base):

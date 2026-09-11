@@ -147,6 +147,16 @@ async def unassign_operator(
     )
 
 
+async def list_cabinet_operators(db: AsyncSession, cabinet: Cabinet) -> list[User]:
+    result = await db.execute(
+        select(User)
+        .join(CabinetOperator, CabinetOperator.user_id == User.id)
+        .where(CabinetOperator.cabinet_id == cabinet.id)
+        .order_by(User.full_name)
+    )
+    return list(result.scalars().all())
+
+
 def _operator_cabinet_key(operator_id: uuid.UUID) -> str:
     return f"operator:{operator_id}:cabinet"
 
@@ -190,7 +200,7 @@ async def _sync_queue_status_after_cabinet_change(
         queue.status = QueueStatus.paused
         await db.flush()
         await publish_event(redis, queue.id, "queue.status", status=queue.status.value)
-    elif not all_paused and queue.status == QueueStatus.paused:
+    elif not all_paused and queue.status == QueueStatus.paused and not queue.manually_paused:
         queue.status = QueueStatus.open
         await db.flush()
         await publish_event(redis, queue.id, "queue.status", status=queue.status.value)

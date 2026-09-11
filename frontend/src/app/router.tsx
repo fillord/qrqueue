@@ -1,16 +1,18 @@
-import { useTranslation } from 'react-i18next'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import AdminAnalyticsPage from '../pages/admin/AdminAnalyticsPage'
 import AdminAuditLogPage from '../pages/admin/AdminAuditLogPage'
+import AdminCabinetsPage from '../pages/admin/AdminCabinetsPage'
 import AdminLayout from '../pages/admin/AdminLayout'
 import AdminOrganizationPage from '../pages/admin/AdminOrganizationPage'
+import AdminQueueSchedulePage from '../pages/admin/AdminQueueSchedulePage'
+import AdminQueuesPage from '../pages/admin/AdminQueuesPage'
 import AdminTvScreensPage from '../pages/admin/AdminTvScreensPage'
+import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import LandingPage from '../pages/landing/LandingPage'
 import LoginPage from '../pages/login/LoginPage'
 import CabinetSelectPage from '../pages/operator/CabinetSelectPage'
 import OperatorQueuePage from '../pages/operator/OperatorQueuePage'
-import InDevelopmentPage from '../pages/placeholder/InDevelopmentPage'
 import RegistrarPage from '../pages/registrar/RegistrarPage'
 import ScanPage from '../pages/scan/ScanPage'
 import SaAnalyticsPage from '../pages/superadmin/SaAnalyticsPage'
@@ -23,8 +25,6 @@ import Layout from './Layout'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function AppRouter() {
-  const { t } = useTranslation()
-
   return (
     <Routes>
       {/* TV screens run fullscreen, chrome-free — no shared app header. */}
@@ -73,9 +73,10 @@ export default function AppRouter() {
           <Route path="analytics" element={<AdminAnalyticsPage />} />
           <Route path="audit-logs" element={<AdminAuditLogPage />} />
           <Route path="organization" element={<AdminOrganizationPage />} />
-          <Route path="queues" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
-          <Route path="cabinets" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
-          <Route path="staff" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
+          <Route path="queues" element={<AdminQueuesPage />} />
+          <Route path="queues/:id/schedule" element={<AdminQueueSchedulePage />} />
+          <Route path="cabinets" element={<AdminCabinetsPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
           <Route path="tv-screens" element={<AdminTvScreensPage />} />
         </Route>
 

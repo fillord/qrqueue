@@ -161,7 +161,10 @@ async def test_sa_analytics_scoping(client, db_session, make_user, make_organiza
     queue_a = await _make_queue(db_session, org_a)
     queue_b = await _make_queue(db_session, org_b)
 
-    now = datetime.now(timezone.utc)
+    # Fixed past date, not "today" — the unfiltered (all-organizations) query below has no way
+    # to scope itself to this test's own data, so it must rely on a date range nothing else in
+    # this shared dev database would ever fall into, rather than on an exact row count for "today".
+    now = datetime(2001, 6, 15, 9, 0, tzinfo=timezone.utc)
     await _make_ticket(
         db_session, org_a, queue_a, number=1, status=TicketStatus.served,
         created_at=now, called_at=now + timedelta(seconds=50),
@@ -177,7 +180,7 @@ async def test_sa_analytics_scoping(client, db_session, make_user, make_organiza
         email="analytics-sa@example.com", role=UserRole.superadmin, organization_id=None
     )
     await login(client, "analytics-sa@example.com", sa_password)
-    today = date.today()
+    today = now.date()
     tomorrow = today + timedelta(days=1)
 
     resp = await client.get(f"/api/sa/analytics?from={today}&to={tomorrow}&organization_id={org_a.id}")

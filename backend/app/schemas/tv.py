@@ -46,4 +46,5 @@ class TVStateOut(BaseModel):
     logo_url: str | None
     brand_color: str | None
     language: Language
+    is_hall_screen: bool
     queues: list[TVQueueState]

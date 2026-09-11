@@ -75,5 +75,11 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
         "logo_url": organization.logo_url if organization else None,
         "brand_color": organization.brand_color if organization else None,
         "language": screen.language,
+        # True signal for "can this screen show a QR at all" — deliberately
+        # not derived from len(queues_out), which can be 1 for a hall screen
+        # that currently has only one active queue and would otherwise look
+        # just like a real queue-bound screen (that mixup is what caused the
+        # /tv/qr-batch 409 loop this field exists to fix).
+        "is_hall_screen": screen.queue_id is None,
         "queues": queues_out,
     }

@@ -136,6 +136,7 @@ export interface TvState {
   logo_url: string | null
   brand_color: string | null
   language: 'kk' | 'ru' | 'en'
+  is_hall_screen: boolean
   queues: TvQueueState[]
 }
 

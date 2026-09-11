@@ -158,6 +158,40 @@ async def test_qr_batch_rejected_for_hall_screen_without_queue(
     assert resp.json()["detail"]["code"] == "tv_screen_has_no_queue"
 
 
+async def test_hall_screen_with_exactly_one_active_queue_is_still_marked_as_hall(
+    client, db_session, make_user, make_organization
+):
+    """Regression test: a hall screen (queue_id=null) whose organization
+    currently has exactly one active queue must NOT look like a queue-bound
+    screen — `queues` having length 1 in both cases is exactly what used to
+    fool the frontend into calling /tv/qr-batch for a hall screen and
+    getting a 409 loop. `is_hall_screen` must stay true regardless of how
+    many queues happen to be active."""
+    org = await make_organization(name="TV Зал Одна Очередь Организация")
+    await _make_queue(db_session, org, name="Единственная очередь", ticket_prefix="A")
+    admin, password = await make_user(
+        email="tv-hall-one-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+
+    await login(client, "tv-hall-one-admin@example.com", password)
+    resp = await client.post(f"/api/admin/tv-screens?organization_id={org.id}", json={"name": "Табло зала"})
+    assert resp.status_code == 201, resp.text
+    pairing_code = resp.json()["pairing_code"]
+
+    resp = await client.post("/api/tv/pair", json={"code": pairing_code})
+    device_token = resp.json()["device_token"]
+
+    resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
+    assert resp.status_code == 200, resp.text
+    state = resp.json()
+    assert len(state["queues"]) == 1
+    assert state["is_hall_screen"] is True
+
+    resp = await client.get("/api/tv/qr-batch", headers={"X-Device-Token": device_token})
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["detail"]["code"] == "tv_screen_has_no_queue"
+
+
 async def test_hall_screen_state_aggregates_all_organization_queues(
     client, db_session, make_user, make_organization
 ):
@@ -186,6 +220,7 @@ async def test_hall_screen_state_aggregates_all_organization_queues(
     state = resp.json()
     assert state["logo_url"] == "https://example.com/logo.png"
     assert state["brand_color"] == "#123456"
+    assert state["is_hall_screen"] is True
     queue_ids = {q["queue_id"] for q in state["queues"]}
     assert queue_ids == {str(queue_a.id), str(queue_b.id)}
 
@@ -214,6 +249,7 @@ async def test_queue_bound_screen_state_has_only_its_queue(
     resp = await client.get("/api/tv/state", headers={"X-Device-Token": device_token})
     assert resp.status_code == 200, resp.text
     state = resp.json()
+    assert state["is_hall_screen"] is False
     assert [q["queue_id"] for q in state["queues"]] == [str(queue_a.id)]
 
 

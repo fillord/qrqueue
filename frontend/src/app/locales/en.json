@@ -1,8 +1,96 @@
 {
   "app": { "title": "Online Queue" },
   "landing": {
-    "title": "Online Queue",
-    "subtitle": "Scan the QR code at the counter to join the queue."
+    "hero": {
+      "title": "No crowd waiting at the door",
+      "subtitle": "Visitors scan a QR code to join the queue and get notified when they're called. No paper tickets, no queue-jumping.",
+      "ctaPrimary": "Submit a request",
+      "ctaSecondary": "How it works",
+      "visual": {
+        "qrLabel": "QR at the counter",
+        "ticketLabel": "Your number",
+        "callLabel": "Calling: counter 3"
+      }
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "steps": {
+        "qr": {
+          "title": "QR at the counter",
+          "description": "Each counter or window has its own QR code. It refreshes automatically, so it can't be reused or faked."
+        },
+        "scan": {
+          "title": "Scan",
+          "description": "The visitor points their phone camera at the code and joins the queue instantly, no app required."
+        },
+        "wait": {
+          "title": "Ticket and position",
+          "description": "The number, position, and estimated wait time show on the visitor's phone and update on their own."
+        },
+        "call": {
+          "title": "Call",
+          "description": "When it's their turn, the visitor's phone notifies them and their number appears on the hall screen."
+        }
+      }
+    },
+    "segments": {
+      "title": "Who it's for",
+      "items": {
+        "clinics": {
+          "title": "Clinics and hospitals",
+          "description": "Patients wait in the hallway or outside, not crowded around the doctor's door."
+        },
+        "gov": {
+          "title": "Public service centers",
+          "description": "Several windows serving the same request share one queue and one ticket counter."
+        },
+        "banks": {
+          "title": "Banks",
+          "description": "Each type of transaction gets its own queue, and every counter's load is visible in real time."
+        },
+        "universities": {
+          "title": "Universities",
+          "description": "Admissions and the registrar's office handle applicants and students through the same queue system."
+        }
+      }
+    },
+    "benefits": {
+      "title": "What you get",
+      "items": {
+        "antiFraud": {
+          "title": "Protection against queue fraud",
+          "description": "The QR code on screen refreshes every few minutes, so an old screenshot can't hold a spot."
+        },
+        "realtime": {
+          "title": "Real time",
+          "description": "Queue position, counter status, and calls update instantly, without refreshing the page."
+        },
+        "analytics": {
+          "title": "Analytics",
+          "description": "Average wait and service time, no-show rate, and load by hour all land in one report."
+        }
+      }
+    },
+    "cta": {
+      "title": "Bring your organization online",
+      "subtitle": "Send us a request and we'll help set up the queue for your counters and services.",
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "How should we address you",
+        "organization": "Organization",
+        "organizationPlaceholder": "Name and city",
+        "contact": "Phone or email",
+        "contactPlaceholder": "How to reach you",
+        "submit": "Send request",
+        "submitting": "Sending…",
+        "success": "Request sent. We'll be in touch shortly.",
+        "error": "Please fill in your name and contact details."
+      }
+    },
+    "footer": {
+      "rights": "© {{year}} Online Queue",
+      "staffLogin": "Staff sign in"
+    }
   },
   "scan": {
     "joining": "Joining the queue…",
@@ -391,9 +479,11 @@
     },
     "screen": {
       "nowServing": "Now serving",
+      "noOneCalled": "No one has been called yet",
       "cabinet": "Counter: {{label}}",
       "waiting": "Waiting: {{count}}",
       "scanHint": "Scan to join the queue",
+      "hallScanHint": "Scan the QR code at the counter you need",
       "footer": "Online Queue",
       "queueStatus": {
         "paused": "Intake is paused",

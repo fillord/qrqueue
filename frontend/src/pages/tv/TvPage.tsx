@@ -24,7 +24,15 @@ function LiveQrCode({ token }: { token: string | null }) {
   return <canvas ref={canvasRef} className="tv-screen__qr-canvas" />
 }
 
-function SingleQueueView({ queue, qrToken }: { queue: TvQueueState; qrToken: string | null }) {
+function SingleQueueView({
+  queue,
+  qrToken,
+  showQr,
+}: {
+  queue: TvQueueState
+  qrToken: string | null
+  showQr: boolean
+}) {
   const { t } = useTranslation()
   const paused = queue.queue_status !== 'open'
 
@@ -32,7 +40,11 @@ function SingleQueueView({ queue, qrToken }: { queue: TvQueueState; qrToken: str
     <div className="tv-screen__body">
       <div className="tv-screen__main">
         <div className="tv-screen__now-serving-label">{t('tv.screen.nowServing')}</div>
-        <div className="tv-screen__number">{queue.now_serving ?? '—'}</div>
+        {queue.now_serving ? (
+          <div className="tv-screen__number">{queue.now_serving}</div>
+        ) : (
+          <p className="tv-screen__no-calls">{t('tv.screen.noOneCalled')}</p>
+        )}
         {queue.now_serving_cabinet && (
           <div className="tv-screen__cabinet">
             {t('tv.screen.cabinet', { label: queue.now_serving_cabinet })}
@@ -45,10 +57,16 @@ function SingleQueueView({ queue, qrToken }: { queue: TvQueueState; qrToken: str
           </div>
         )}
       </div>
-      <div className="tv-screen__qr">
-        <LiveQrCode token={qrToken} />
-        <p className="tv-screen__qr-hint">{t('tv.screen.scanHint')}</p>
-      </div>
+      {showQr ? (
+        <div className="tv-screen__qr">
+          <LiveQrCode token={qrToken} />
+          <p className="tv-screen__qr-hint">{t('tv.screen.scanHint')}</p>
+        </div>
+      ) : (
+        <div className="tv-screen__qr tv-screen__qr--instructions">
+          <p className="tv-screen__qr-hint">{t('tv.screen.hallScanHint')}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -102,13 +120,20 @@ export default function TvPage() {
   }
 
   const singleQueue = state && state.queues.length === 1 ? state.queues[0] : null
+  // A hall screen (tv_screens.queue_id = null) can have exactly one active
+  // queue right now and still look like a single-queue screen by `queues`
+  // alone — `is_hall_screen` is the only true signal for whether /tv/qr-batch
+  // will actually return a QR (it 409s for any hall screen, regardless of
+  // queue count). Gating on that, not on `singleQueue`, is what stops the
+  // repeated-409 loop.
+  const showQr = state != null && !state.is_hall_screen
 
   const fetchQrBatch = useCallback((): Promise<QrBatch> => {
-    if (!deviceToken || !singleQueue) {
-      return Promise.reject(new Error('no single queue to show a QR for'))
+    if (!deviceToken || !showQr) {
+      return Promise.reject(new Error('this screen has no queue to show a QR for'))
     }
     return getTvQrBatch(deviceToken)
-  }, [deviceToken, singleQueue])
+  }, [deviceToken, showQr])
 
   const { token: qrToken } = useLiveQr(fetchQrBatch)
 
@@ -132,7 +157,7 @@ export default function TvPage() {
       </header>
 
       {singleQueue ? (
-        <SingleQueueView queue={singleQueue} qrToken={qrToken} />
+        <SingleQueueView queue={singleQueue} qrToken={qrToken} showQr={showQr} />
       ) : (
         <MultiQueueView queues={state.queues} />
       )}

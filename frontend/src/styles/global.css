@@ -340,6 +340,11 @@ button {
   color: var(--color-muted);
 }
 
+.placeholder-page__note {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
 /* --- operator: cabinet select --- */
 
 .operator-select {
@@ -1054,6 +1059,212 @@ button {
   padding: 2px 8px;
   border-radius: 6px;
   letter-spacing: 0.15em;
+}
+
+/* --- admin: layout --- */
+
+.admin-layout {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.admin-layout__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  flex-shrink: 0;
+  padding: var(--spacing-2);
+  border-right: 1px solid var(--color-border);
+}
+
+.admin-layout__link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.admin-layout__link:hover {
+  background: var(--color-border);
+}
+
+.admin-layout__link--active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.admin-layout__content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- admin: pages (analytics, audit log, organization) --- */
+
+.admin-page {
+  padding: var(--spacing-3);
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.admin-page__empty,
+.admin-page__hint {
+  color: var(--color-muted);
+}
+
+.admin-page__error {
+  color: var(--color-danger);
+}
+
+.admin-filters {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  margin: var(--spacing-2) 0;
+}
+
+.admin-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.admin-filters input,
+.admin-filters select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.admin-organization__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  max-width: 480px;
+}
+
+.admin-organization__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-organization__form input[type='text'],
+.admin-organization__form select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 1rem;
+}
+
+.admin-organization__checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+}
+
+.admin-organization__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.admin-organization__actions button {
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-organization__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-organization__saved {
+  color: var(--color-accent);
+}
+
+.admin-organization__error {
+  color: var(--color-danger);
+}
+
+.admin-analytics__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-2);
+  margin: var(--spacing-2) 0;
+}
+
+.admin-analytics__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--spacing-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.admin-analytics__card-label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.admin-analytics__card-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.admin-analytics__section {
+  margin: var(--spacing-3) 0;
+}
+
+.bar-chart {
+  width: 100%;
+  display: block;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--spacing-1);
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.admin-pagination button {
+  border: 1px solid var(--color-border);
+  background: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.admin-pagination button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* --- registrar --- */

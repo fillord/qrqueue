@@ -7,8 +7,8 @@ export function roleHome(role: UserRole): string {
     case 'registrar':
       return '/registrar'
     case 'org_admin':
-      return '/admin'
+      return '/admin/analytics'
     case 'superadmin':
-      return '/sa'
+      return '/sa/analytics'
   }
 }

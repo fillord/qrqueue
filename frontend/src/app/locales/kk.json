@@ -72,7 +72,87 @@
   },
   "placeholder": {
     "title": "Бөлім әзірленуде",
-    "message": "Интерфейстің бұл бөлігі әлі дайын емес."
+    "message": "Интерфейстің бұл бөлігі әлі дайын емес.",
+    "stepNote": "{{step}}-қадамда қосылады."
+  },
+  "admin": {
+    "nav": {
+      "analytics": "Аналитика",
+      "auditLogs": "Журнал",
+      "organization": "Ұйым",
+      "queues": "Кезектер",
+      "cabinets": "Кабинеттер",
+      "staff": "Персонал",
+      "tvScreens": "Экрандар (ТВ)"
+    },
+    "organization": {
+      "title": "Ұйым",
+      "name": "Атауы",
+      "logoUrl": "Логотип сілтемесі",
+      "brandColor": "Бренд түсі",
+      "defaultLanguage": "Әдепкі тіл",
+      "timezone": "Уақыт белдеуі",
+      "oneTicketPerOrg": "Ұйым бойынша келушіге бір белсенді талон",
+      "save": "Сақтау",
+      "saved": "Сақталды",
+      "error": "Сақтау мүмкін болмады. Қайта көріңіз."
+    },
+    "analytics": {
+      "title": "Аналитика",
+      "from": "Бастап",
+      "to": "Дейін",
+      "queue": "Кезек",
+      "allQueues": "Барлық кезектер",
+      "error": "Аналитиканы жүктеу мүмкін болмады.",
+      "avgWait": "Орташа күту уақыты",
+      "avgServing": "Орташа қабылдау уақыты",
+      "noShowRate": "Келмеу үлесі",
+      "avgRating": "Орташа баға",
+      "ratingValue": "{{rating}} ({{count}})",
+      "peaksByHour": "Тәулік сағаттары бойынша шыңдар",
+      "peaksByWeekday": "Апта күндері бойынша шыңдар",
+      "byOperator": "Операторлар бойынша",
+      "noData": "Деректер жоқ",
+      "minutes": "{{minutes}} мин",
+      "columns": {
+        "operator": "Оператор",
+        "served": "Қабылданды",
+        "avgServing": "Орташа қабылдау уақыты"
+      },
+      "weekdays": {
+        "mon": "Дс",
+        "tue": "Сс",
+        "wed": "Ср",
+        "thu": "Бс",
+        "fri": "Жм",
+        "sat": "Сб",
+        "sun": "Жс"
+      }
+    },
+    "auditLog": {
+      "title": "Әрекеттер журналы",
+      "action": "Әрекет",
+      "empty": "Жазбалар жоқ.",
+      "prev": "Артқа",
+      "next": "Келесі",
+      "pageInfo": "{{from}}–{{to}} / {{total}}",
+      "columns": {
+        "time": "Уақыты",
+        "actor": "Кім",
+        "action": "Әрекет",
+        "entity": "Нысан"
+      },
+      "actorType": {
+        "user": "Қызметкер",
+        "client": "Келуші",
+        "system": "Жүйе"
+      }
+    },
+    "saAnalytics": {
+      "organization": "Ұйым",
+      "allOrganizations": "Барлық ұйымдар",
+      "allOrgsHint": "Кезек бойынша да сүзу үшін ұйымды таңдаңыз."
+    }
   },
   "operator": {
     "cabinetSelect": {

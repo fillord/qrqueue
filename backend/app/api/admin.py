@@ -1,6 +1,7 @@
 import uuid
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,12 +13,16 @@ from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.tv_screen import TVScreen
 from app.models.user import User
+from app.schemas.analytics import AnalyticsOut
+from app.schemas.audit import AuditLogPageOut
 from app.schemas.cabinet import CabinetCreate, CabinetOut, CabinetUpdate
 from app.schemas.organization import OrganizationOut, OrganizationSelfUpdate
 from app.schemas.qr import QRBatchOut
 from app.schemas.queue import QueueCreate, QueueOut, QueueUpdate, ScheduleReplace
 from app.schemas.staff import StaffCreate, StaffOut, StaffUpdate
 from app.schemas.tv import TVScreenCreate, TVScreenOut
+from app.services.analytics import get_analytics
+from app.services.audit_query import list_audit_logs
 from app.services.cabinets import assign_operator, create_cabinet, unassign_operator, update_cabinet
 from app.services.organizations import update_organization
 from app.services.qr_tokens import issue_batch
@@ -36,6 +41,17 @@ async def _get_organization(db: AsyncSession, organization_id: uuid.UUID) -> Org
 
 
 # --- organization ---------------------------------------------------------
+
+
+@router.get("/organization", response_model=OrganizationOut)
+async def get_own_organization_route(
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> Organization:
+    """Not explicitly requested, but the settings form built on top of the
+    existing PATCH needs something to read current values from first."""
+    return await _get_organization(db, organization_id)
 
 
 @router.patch("/organization", response_model=OrganizationOut)
@@ -320,3 +336,52 @@ async def delete_tv_screen_route(
     screen = await get_in_org_or_404(db, TVScreen, screen_id, organization_id)
     await delete_tv_screen(db, screen, actor)
     await db.commit()
+
+
+# --- analytics / audit log ---------------------------------------------------
+
+
+@router.get("/analytics", response_model=AnalyticsOut)
+async def get_analytics_route(
+    date_from: date = Query(alias="from"),
+    date_to: date = Query(alias="to"),
+    queue_id: uuid.UUID | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    organization = await _get_organization(db, organization_id)
+    if queue_id is not None:
+        await get_in_org_or_404(db, Queue, queue_id, organization_id)
+
+    return await get_analytics(
+        db,
+        organization_id=organization_id,
+        timezone_name=organization.timezone,
+        date_from=date_from,
+        date_to=date_to,
+        queue_id=queue_id,
+    )
+
+
+@router.get("/audit-logs", response_model=AuditLogPageOut)
+async def list_audit_logs_route(
+    date_from: date | None = Query(default=None, alias="from"),
+    date_to: date | None = Query(default=None, alias="to"),
+    action: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    items, total = await list_audit_logs(
+        db,
+        organization_id=organization_id,
+        date_from=date_from,
+        date_to=date_to,
+        action=action,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items, "total": total, "limit": limit, "offset": offset}

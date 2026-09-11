@@ -72,7 +72,87 @@
   },
   "placeholder": {
     "title": "Coming soon",
-    "message": "This part of the interface isn't built yet."
+    "message": "This part of the interface isn't built yet.",
+    "stepNote": "Coming in step {{step}}."
+  },
+  "admin": {
+    "nav": {
+      "analytics": "Analytics",
+      "auditLogs": "Audit log",
+      "organization": "Organization",
+      "queues": "Queues",
+      "cabinets": "Counters",
+      "staff": "Staff",
+      "tvScreens": "TV screens"
+    },
+    "organization": {
+      "title": "Organization",
+      "name": "Name",
+      "logoUrl": "Logo URL",
+      "brandColor": "Brand color",
+      "defaultLanguage": "Default language",
+      "timezone": "Timezone",
+      "oneTicketPerOrg": "One active ticket per visitor across the organization",
+      "save": "Save",
+      "saved": "Saved",
+      "error": "Couldn't save. Please try again."
+    },
+    "analytics": {
+      "title": "Analytics",
+      "from": "From",
+      "to": "To",
+      "queue": "Queue",
+      "allQueues": "All queues",
+      "error": "Couldn't load analytics.",
+      "avgWait": "Average wait time",
+      "avgServing": "Average serving time",
+      "noShowRate": "No-show rate",
+      "avgRating": "Average rating",
+      "ratingValue": "{{rating}} ({{count}})",
+      "peaksByHour": "Peaks by hour of day",
+      "peaksByWeekday": "Peaks by day of week",
+      "byOperator": "By operator",
+      "noData": "No data",
+      "minutes": "{{minutes}} min",
+      "columns": {
+        "operator": "Operator",
+        "served": "Served",
+        "avgServing": "Average serving time"
+      },
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
+    },
+    "auditLog": {
+      "title": "Audit log",
+      "action": "Action",
+      "empty": "No entries.",
+      "prev": "Previous",
+      "next": "Next",
+      "pageInfo": "{{from}}–{{to}} of {{total}}",
+      "columns": {
+        "time": "Time",
+        "actor": "Actor",
+        "action": "Action",
+        "entity": "Entity"
+      },
+      "actorType": {
+        "user": "Staff",
+        "client": "Visitor",
+        "system": "System"
+      }
+    },
+    "saAnalytics": {
+      "organization": "Organization",
+      "allOrganizations": "All organizations",
+      "allOrgsHint": "Choose an organization to also filter by queue."
+    }
   },
   "operator": {
     "cabinetSelect": {

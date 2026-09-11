@@ -1,6 +1,7 @@
 import uuid
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,9 +9,14 @@ from app.api.deps import require_role
 from app.db import get_db
 from app.models.enums import UserRole
 from app.models.organization import Organization
+from app.models.queue import Queue
 from app.models.user import User
 from app.schemas.admin_user import AdminCreate, AdminOut, AdminUpdate
+from app.schemas.analytics import AnalyticsOut
+from app.schemas.audit import AuditLogPageOut
 from app.schemas.organization import OrganizationCreate, OrganizationOut, OrganizationUpdate
+from app.services.analytics import get_analytics
+from app.services.audit_query import list_audit_logs
 from app.services.organizations import create_organization, list_organizations, update_organization
 from app.services.staff import create_org_user, update_org_user
 
@@ -133,3 +139,60 @@ async def update_admin_route(
     admin = await update_org_user(db, admin, changes=payload.model_dump(exclude_unset=True), actor=actor)
     await db.commit()
     return admin
+
+
+# --- analytics / audit log (no organization_id = every organization) -------
+
+
+@router.get("/analytics", response_model=AnalyticsOut)
+async def get_sa_analytics_route(
+    date_from: date = Query(alias="from"),
+    date_to: date = Query(alias="to"),
+    organization_id: uuid.UUID | None = Query(default=None),
+    queue_id: uuid.UUID | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_superadmin),
+) -> dict:
+    timezone_name = "UTC"
+    if organization_id is not None:
+        organization = await _get_org_or_404(db, organization_id)
+        timezone_name = organization.timezone
+    if queue_id is not None:
+        queue = await db.get(Queue, queue_id)
+        if queue is None or (organization_id is not None and queue.organization_id != organization_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    return await get_analytics(
+        db,
+        organization_id=organization_id,
+        timezone_name=timezone_name,
+        date_from=date_from,
+        date_to=date_to,
+        queue_id=queue_id,
+    )
+
+
+@router.get("/audit-logs", response_model=AuditLogPageOut)
+async def list_sa_audit_logs_route(
+    date_from: date | None = Query(default=None, alias="from"),
+    date_to: date | None = Query(default=None, alias="to"),
+    action: str | None = Query(default=None),
+    organization_id: uuid.UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_superadmin),
+) -> dict:
+    if organization_id is not None:
+        await _get_org_or_404(db, organization_id)
+
+    items, total = await list_audit_logs(
+        db,
+        organization_id=organization_id,
+        date_from=date_from,
+        date_to=date_to,
+        action=action,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items, "total": total, "limit": limit, "offset": offset}

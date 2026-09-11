@@ -72,7 +72,87 @@
   },
   "placeholder": {
     "title": "Раздел в разработке",
-    "message": "Эта часть интерфейса ещё не реализована."
+    "message": "Эта часть интерфейса ещё не реализована.",
+    "stepNote": "Появится на шаге {{step}}."
+  },
+  "admin": {
+    "nav": {
+      "analytics": "Аналитика",
+      "auditLogs": "Журнал",
+      "organization": "Организация",
+      "queues": "Очереди",
+      "cabinets": "Кабинеты",
+      "staff": "Персонал",
+      "tvScreens": "Экраны (ТВ)"
+    },
+    "organization": {
+      "title": "Организация",
+      "name": "Название",
+      "logoUrl": "Ссылка на логотип",
+      "brandColor": "Цвет бренда",
+      "defaultLanguage": "Язык по умолчанию",
+      "timezone": "Часовой пояс",
+      "oneTicketPerOrg": "Один активный талон на посетителя в рамках организации",
+      "save": "Сохранить",
+      "saved": "Сохранено",
+      "error": "Не удалось сохранить. Попробуйте ещё раз."
+    },
+    "analytics": {
+      "title": "Аналитика",
+      "from": "С",
+      "to": "По",
+      "queue": "Очередь",
+      "allQueues": "Все очереди",
+      "error": "Не удалось загрузить аналитику.",
+      "avgWait": "Среднее время ожидания",
+      "avgServing": "Среднее время приёма",
+      "noShowRate": "Доля неявок",
+      "avgRating": "Средняя оценка",
+      "ratingValue": "{{rating}} ({{count}})",
+      "peaksByHour": "Пики по часам суток",
+      "peaksByWeekday": "Пики по дням недели",
+      "byOperator": "По операторам",
+      "noData": "Данных нет",
+      "minutes": "{{minutes}} мин",
+      "columns": {
+        "operator": "Оператор",
+        "served": "Принято",
+        "avgServing": "Среднее время приёма"
+      },
+      "weekdays": {
+        "mon": "Пн",
+        "tue": "Вт",
+        "wed": "Ср",
+        "thu": "Чт",
+        "fri": "Пт",
+        "sat": "Сб",
+        "sun": "Вс"
+      }
+    },
+    "auditLog": {
+      "title": "Журнал действий",
+      "action": "Действие",
+      "empty": "Записей нет.",
+      "prev": "Назад",
+      "next": "Далее",
+      "pageInfo": "{{from}}–{{to}} из {{total}}",
+      "columns": {
+        "time": "Время",
+        "actor": "Кто",
+        "action": "Действие",
+        "entity": "Объект"
+      },
+      "actorType": {
+        "user": "Сотрудник",
+        "client": "Посетитель",
+        "system": "Система"
+      }
+    },
+    "saAnalytics": {
+      "organization": "Организация",
+      "allOrganizations": "Все организации",
+      "allOrgsHint": "Выберите организацию, чтобы также отфильтровать по очереди."
+    }
   },
   "operator": {
     "cabinetSelect": {

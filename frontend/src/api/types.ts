@@ -121,3 +121,73 @@ export interface TvScreen {
   language: 'kk' | 'ru' | 'en'
   last_seen_at: string | null
 }
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  timezone: string
+  default_language: 'kk' | 'ru' | 'en'
+  logo_url: string | null
+  brand_color: string | null
+  plan: 'trial' | 'basic' | 'pro'
+  trial_ends_at: string | null
+  one_ticket_per_org: boolean
+  is_active: boolean
+}
+
+export interface OperatorStat {
+  operator_id: string
+  full_name: string
+  served_count: number
+  avg_serving_seconds: number | null
+}
+
+export interface HourlyPeak {
+  hour: number
+  count: number
+}
+
+export interface WeekdayPeak {
+  weekday: number
+  count: number
+}
+
+export interface Analytics {
+  date_from: string
+  date_to: string
+  avg_wait_seconds: number | null
+  avg_serving_seconds: number | null
+  no_show_rate: number | null
+  avg_rating: number | null
+  ratings_count: number
+  served_count: number
+  no_show_count: number
+  left_count: number
+  by_operator: OperatorStat[]
+  peaks_by_hour: HourlyPeak[]
+  peaks_by_weekday: WeekdayPeak[]
+}
+
+export type AuditActorType = 'user' | 'client' | 'system'
+
+export interface AuditLogItem {
+  id: number
+  organization_id: string | null
+  actor_type: AuditActorType
+  actor_id: string | null
+  actor_name: string | null
+  action: string
+  entity_type: string
+  entity_id: string
+  payload: Record<string, unknown>
+  ip: string | null
+  created_at: string
+}
+
+export interface AuditLogPage {
+  items: AuditLogItem[]
+  total: number
+  limit: number
+  offset: number
+}

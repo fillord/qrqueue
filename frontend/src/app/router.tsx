@@ -1,5 +1,10 @@
-import { Route, Routes } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
+import AdminAnalyticsPage from '../pages/admin/AdminAnalyticsPage'
+import AdminAuditLogPage from '../pages/admin/AdminAuditLogPage'
+import AdminLayout from '../pages/admin/AdminLayout'
+import AdminOrganizationPage from '../pages/admin/AdminOrganizationPage'
 import AdminTvScreensPage from '../pages/admin/AdminTvScreensPage'
 import LandingPage from '../pages/landing/LandingPage'
 import LoginPage from '../pages/login/LoginPage'
@@ -8,6 +13,9 @@ import OperatorQueuePage from '../pages/operator/OperatorQueuePage'
 import InDevelopmentPage from '../pages/placeholder/InDevelopmentPage'
 import RegistrarPage from '../pages/registrar/RegistrarPage'
 import ScanPage from '../pages/scan/ScanPage'
+import SaAnalyticsPage from '../pages/superadmin/SaAnalyticsPage'
+import SaAuditLogPage from '../pages/superadmin/SaAuditLogPage'
+import SaLayout from '../pages/superadmin/SaLayout'
 import TicketPage from '../pages/ticket/TicketPage'
 import TvPage from '../pages/tv/TvPage'
 import TvPairPage from '../pages/tv/TvPairPage'
@@ -15,6 +23,8 @@ import Layout from './Layout'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function AppRouter() {
+  const { t } = useTranslation()
+
   return (
     <Routes>
       {/* TV screens run fullscreen, chrome-free — no shared app header. */}
@@ -50,30 +60,37 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin"
           element={
             <ProtectedRoute role="org_admin">
-              <InDevelopmentPage />
+              <AdminLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/admin/tv-screens"
-          element={
-            <ProtectedRoute role="org_admin">
-              <AdminTvScreensPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<Navigate to="/admin/analytics" replace />} />
+          <Route path="analytics" element={<AdminAnalyticsPage />} />
+          <Route path="audit-logs" element={<AdminAuditLogPage />} />
+          <Route path="organization" element={<AdminOrganizationPage />} />
+          <Route path="queues" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
+          <Route path="cabinets" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
+          <Route path="staff" element={<InDevelopmentPage note={t('placeholder.stepNote', { step: 9 })} />} />
+          <Route path="tv-screens" element={<AdminTvScreensPage />} />
+        </Route>
+
         <Route
           path="/sa"
           element={
             <ProtectedRoute role="superadmin">
-              <InDevelopmentPage />
+              <SaLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="/sa/analytics" replace />} />
+          <Route path="analytics" element={<SaAnalyticsPage />} />
+          <Route path="audit-logs" element={<SaAuditLogPage />} />
+        </Route>
       </Route>
     </Routes>
   )

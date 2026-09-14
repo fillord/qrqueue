@@ -73,14 +73,14 @@ async def test_start_is_idempotent_and_stop_cancels_listener():
     started = asyncio.Event()
 
     class _FakePubSub:
-        async def psubscribe(self, _pattern):
+        async def psubscribe(self, *_patterns):
             started.set()
 
         async def listen(self):
             await asyncio.Event().wait()  # blocks forever — only cancellation ends this
             yield  # pragma: no cover - unreachable, makes this an async generator
 
-        async def punsubscribe(self, _pattern):
+        async def punsubscribe(self, *_patterns):
             pass
 
         async def aclose(self):

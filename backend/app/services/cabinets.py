@@ -16,7 +16,7 @@ from app.schemas.cabinet import CabinetCreate, CabinetUpdate
 from app.services.audit import log_action
 from app.services.errors import ServiceError
 from app.services.queues import create_queue_record
-from app.services.realtime import publish_event
+from app.services.realtime import defer_event, publish_event, queue_channel
 
 OPERATOR_CABINET_TTL_SECONDS = 12 * 60 * 60
 
@@ -205,11 +205,23 @@ async def _sync_queue_status_after_cabinet_change(
     if all_paused and queue.status != QueueStatus.paused:
         queue.status = QueueStatus.paused
         await db.flush()
-        await publish_event(redis, queue.id, "queue.status", status=queue.status.value)
+        defer_event(db, queue_channel(queue.id), "queue.status", status=queue.status.value)
     elif not all_paused and queue.status == QueueStatus.paused and not queue.manually_paused:
         queue.status = QueueStatus.open
         await db.flush()
-        await publish_event(redis, queue.id, "queue.status", status=queue.status.value)
+        defer_event(db, queue_channel(queue.id), "queue.status", status=queue.status.value)
+
+
+async def _lock_cabinet(db: AsyncSession, cabinet: Cabinet) -> None:
+    """Same lock order as services/tickets.call_next (queue row, then the
+    cabinet row) so a pause racing a call-next sees the other's outcome
+    instead of overwriting it."""
+    if cabinet.queue_id is not None:
+        await db.execute(
+            select(Queue).where(Queue.id == cabinet.queue_id)
+            .with_for_update().execution_options(populate_existing=True)
+        )
+    await db.refresh(cabinet, with_for_update=True)
 
 
 async def pause_cabinet(
@@ -221,7 +233,8 @@ async def pause_cabinet(
     reason: str | None = None,
     now: datetime | None = None,
 ) -> Cabinet:
-    if cabinet.status == CabinetStatus.busy:
+    await _lock_cabinet(db, cabinet)
+    if cabinet.status == CabinetStatus.busy or cabinet.current_ticket_id is not None:
         raise ServiceError("active_ticket", 409)
 
     cabinet.status = CabinetStatus.paused
@@ -245,6 +258,7 @@ async def pause_cabinet(
 async def resume_cabinet(
     db: AsyncSession, redis: Redis, *, cabinet: Cabinet, operator: User, now: datetime | None = None
 ) -> Cabinet:
+    await _lock_cabinet(db, cabinet)
     if cabinet.status != CabinetStatus.paused:
         raise ServiceError("cabinet_not_paused", 409, status=cabinet.status.value)
 

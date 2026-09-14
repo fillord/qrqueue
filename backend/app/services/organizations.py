@@ -4,9 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import AuditActorType
 from app.models.organization import Organization
+from app.models.queue import Queue
 from app.models.user import User
 from app.schemas.organization import OrganizationCreate, OrganizationSelfUpdate, OrganizationUpdate
 from app.services.audit import log_action
+from app.services.realtime import defer_event, organization_channel, queue_channel
 from app.services.slug import generate_unique_slug
 
 
@@ -57,6 +59,12 @@ async def update_organization(
     for field, value in changes.items():
         setattr(org, field, value)
     await db.flush()
+
+    if changes:
+        defer_event(db, organization_channel(org.id), "organization.updated")
+        queue_ids = (await db.execute(select(Queue.id).where(Queue.organization_id == org.id))).scalars().all()
+        for queue_id in queue_ids:
+            defer_event(db, queue_channel(queue_id), "organization.updated")
 
     action = "organization.deactivated" if changes.get("is_active") is False else "organization.updated"
     await log_action(

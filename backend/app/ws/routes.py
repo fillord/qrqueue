@@ -21,6 +21,7 @@ from app.schemas.operator import OperatorQueueOut
 from app.schemas.public import TicketDetailOut
 from app.schemas.tv import TVStateOut
 from app.services.errors import ServiceError
+from app.services.realtime import organization_channel, queue_channel
 from app.services.operator_queue import build_operator_queue_snapshot
 from app.services.tickets import build_ticket_detail
 from app.services.tv_screens import get_screen_by_device_token
@@ -39,21 +40,39 @@ class AccessRevoked(Exception):
 
 
 BuildMessage = Callable[[dict], Awaitable[dict | None]]
+ResolveChannels = Callable[[], Awaitable[list[str]]]
 
 # Every route below takes `db: AsyncSession = Depends(get_db)` — the same
-# dependency the REST routes use — and keeps using that one session for the
+# dependency the REST routes use — and keeps that one session for the
 # connection's whole lifetime (auth check, initial snapshot, every later
-# push), rather than opening a fresh one per push. That's what lets tests
-# override get_db and see their fixture data from inside a WS handler; the
-# cost is that a long-lived session's identity map goes stale as other
-# requests change the same rows, which is why every recompute below starts
-# with `db.expire_all()` to force a real re-read instead of a cached one.
+# push). That's what lets tests override get_db and see their fixture data
+# from inside a WS handler. Two costs are paid for explicitly: the identity
+# map goes stale as other requests change the same rows, so every recompute
+# starts with `db.expire_all()`; and an idle session must not pin a pooled
+# connection while it waits for the next event, so `_release(db)` ends the
+# read transaction after every snapshot (see ARCHITECTURE.md section 5 —
+# a hall of visitors on /ws/ticket must never starve REST of connections).
 
 
-async def _pump(websocket: WebSocket, channels: list[str], build_message: BuildMessage) -> None:
+async def _release(db: AsyncSession) -> None:
+    await db.commit()
+
+
+async def _pump(
+    websocket: WebSocket,
+    channels: list[str],
+    build_message: BuildMessage,
+    db: AsyncSession,
+    resolve_channels: ResolveChannels | None = None,
+) -> None:
     """Sits on `channels` (manager.subscribe) and, for every event fanned out
     to any of them, sends whatever `build_message` computes for it — skipping
-    the send when it returns None. Runs until the client disconnects.
+    the send when it returns None. Runs until the client disconnects, or
+    build_message raises AccessRevoked.
+
+    `resolve_channels`, when given, is re-run after every event so a hall
+    screen picks up queues created after it connected (and drops removed
+    ones) without reconnecting.
 
     A concurrent receive_text() is what detects that disconnect (clients
     otherwise never send anything on these one-way channels); it's raced
@@ -79,7 +98,19 @@ async def _pump(websocket: WebSocket, channels: list[str], build_message: BuildM
                 if task is receive_task:
                     continue
                 event = task.result()
-                message = await build_message(event)
+                try:
+                    message = await build_message(event)
+                    if resolve_channels is not None:
+                        # Re-subscribe before the client sees this snapshot, so
+                        # anything it does next on a newly listed queue is heard.
+                        wanted = set(await resolve_channels())
+                        for channel in list(queues):
+                            if channel not in wanted:
+                                manager.unsubscribe(channel, queues.pop(channel))
+                        for channel in wanted - queues.keys():
+                            queues[channel] = manager.subscribe(channel)
+                finally:
+                    await _release(db)
                 if message is not None:
                     await websocket.send_json(message)
     except WebSocketDisconnect:
@@ -127,6 +158,7 @@ async def ws_ticket(
     snapshot = TicketDetailOut.model_validate(await build_ticket_detail(db, ticket)).model_dump(
         mode="json"
     )
+    await _release(db)
 
     await websocket.accept()
     await websocket.send_json(snapshot)
@@ -139,7 +171,7 @@ async def ws_ticket(
         detail = await build_ticket_detail(db, current)
         return TicketDetailOut.model_validate(detail).model_dump(mode="json")
 
-    await _pump(websocket, [f"queue:{queue_id}"], build_message)
+    await _pump(websocket, [queue_channel(queue_id)], build_message, db)
 
 
 @router.websocket("/ws/operator")
@@ -171,10 +203,16 @@ async def ws_operator(websocket: WebSocket, db: AsyncSession = Depends(get_db)) 
 
     await websocket.accept()
     initial = await build_message({})
+    await _release(db)
     if initial is not None:
         await websocket.send_json(initial)
 
-    await _pump(websocket, [f"queue:{queue_id}"], build_message)
+    await _pump(
+        websocket,
+        [queue_channel(queue_id), organization_channel(cabinet.organization_id)],
+        build_message,
+        db,
+    )
 
 
 @router.websocket("/ws/tv")
@@ -198,13 +236,19 @@ async def ws_tv(
     screen_id = screen.id
     snapshot = TVStateOut.model_validate(await build_tv_state(db, screen)).model_dump(mode="json")
 
-    if queue_id is not None:
-        channels = [f"queue:{queue_id}"]
-    else:
+    async def resolve_channels() -> list[str]:
+        # The organization channel carries branding edits and, for a hall
+        # screen, "a queue was created" — after which the queue list is
+        # re-resolved so the new queue's own events reach this socket too.
+        if queue_id is not None:
+            return [queue_channel(queue_id), organization_channel(organization_id)]
         result = await db.execute(
             select(Queue.id).where(Queue.organization_id == organization_id, Queue.is_active.is_(True))
         )
-        channels = [f"queue:{row[0]}" for row in result.all()]
+        return [queue_channel(row[0]) for row in result.all()] + [organization_channel(organization_id)]
+
+    channels = await resolve_channels()
+    await _release(db)
 
     await websocket.accept()
     await websocket.send_json(snapshot)
@@ -218,4 +262,4 @@ async def ws_tv(
             mode="json"
         )
 
-    await _pump(websocket, channels, build_message)
+    await _pump(websocket, channels, build_message, db, resolve_channels if queue_id is None else None)

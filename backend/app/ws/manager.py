@@ -8,15 +8,15 @@ from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
-_CHANNEL_PATTERN = "queue:*"
+_CHANNEL_PATTERNS = ("queue:*", "org:*")
 
 
 class ConnectionManager:
-    """Fans out queue:{queue_id} events to local subscribers.
+    """Fans out queue:{queue_id} and org:{organization_id} events to local subscribers.
 
     Exactly one Redis pub/sub subscription exists per process (a single
     PSUBSCRIBE on "queue:*", started once via `start()`) — independent of how
-    many local subscribers come and go. A subscriber is just an asyncio.Queue
+    many local subscribers come and go (one PSUBSCRIBE per pattern). A subscriber is just an asyncio.Queue
     registered under a channel name; `disconnect`/`unsubscribe` only removes
     that one queue from the local registry, so one client reconnecting (or
     dropping) never touches the shared Redis subscription or any other
@@ -53,7 +53,7 @@ class ConnectionManager:
 
     async def _redis_listen_loop(self, redis: Redis) -> None:
         pubsub = redis.pubsub()
-        await pubsub.psubscribe(_CHANNEL_PATTERN)
+        await pubsub.psubscribe(*_CHANNEL_PATTERNS)
         try:
             async for raw in pubsub.listen():
                 if raw["type"] != "pmessage":
@@ -66,7 +66,7 @@ class ConnectionManager:
                 await self.publish_local(raw["channel"], data)
         finally:
             with contextlib.suppress(Exception):
-                await pubsub.punsubscribe(_CHANNEL_PATTERN)
+                await pubsub.punsubscribe(*_CHANNEL_PATTERNS)
                 await pubsub.aclose()
 
     def start(self, redis: Redis) -> None:

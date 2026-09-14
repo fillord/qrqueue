@@ -13,6 +13,7 @@ from app.models.ticket import Ticket
 from app.models.user import User
 from app.schemas.queue import QueueCreate, QueueUpdate, ScheduleEntry, validate_geo_fields
 from app.services.audit import log_action
+from app.services.realtime import defer_event, organization_channel, queue_channel
 
 
 async def create_queue_record(
@@ -75,6 +76,7 @@ async def create_queue(
         organization_id=organization.id,
         payload=jsonable_encoder(payload.model_dump()),
     )
+    defer_event(db, organization_channel(organization.id), "queue.created", queue_id=str(queue.id))
     return queue
 
 
@@ -94,6 +96,15 @@ async def update_queue(db: AsyncSession, queue: Queue, payload: QueueUpdate, act
     if "status" in changes:
         queue.manually_paused = changes["status"] == QueueStatus.paused
     await db.flush()
+
+    # Live screens re-read their snapshot on any event: status changes go to
+    # the queue's own channel, everything else (rename, deactivation) to the
+    # organization channel so hall screens re-resolve which queues to show.
+    if "status" in changes:
+        defer_event(db, queue_channel(queue.id), "queue.status", status=queue.status.value)
+    if changes:
+        defer_event(db, queue_channel(queue.id), "queue.updated", queue_id=str(queue.id))
+        defer_event(db, organization_channel(queue.organization_id), "queue.updated", queue_id=str(queue.id))
 
     await log_action(
         db,

@@ -23,6 +23,7 @@ from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.models.user import User
 from app.services import tickets
+from app.services.cabinets import pause_cabinet
 from app.services.errors import ServiceError
 from app.services.numbering import next_number
 from app.services.tv_state import _now_serving
@@ -239,3 +240,47 @@ async def test_return_rejects_duplicate_active_ticket(scenario):
             await tickets.return_to_queue(db, AsyncMock(), ticket=await db.get(Ticket, returning_id), operator=await db.get(User, scenario['operator']))
         await db.commit()
         assert (await db.get(Ticket, returning_id)).status == TicketStatus.no_show
+
+
+async def test_parallel_call_next_and_pause_never_both_succeed(scenario):
+    ticket_id = await seed_ticket(scenario)
+    barrier = asyncio.Barrier(2)
+
+    async def call():
+        async with async_session_factory() as db:
+            queue = await db.get(Queue, scenario['queues'][0])
+            cabinet = await db.get(Cabinet, scenario['cabinets'][0])
+            operator = await db.get(User, scenario['operator'])
+            await barrier.wait()
+            try:
+                await tickets.call_next(db, AsyncMock(), queue=queue, cabinet=cabinet, operator=operator)
+                await db.commit()
+                return 'called'
+            except ServiceError as exc:
+                await db.rollback()
+                return exc.code
+
+    async def pause():
+        async with async_session_factory() as db:
+            cabinet = await db.get(Cabinet, scenario['cabinets'][0])
+            operator = await db.get(User, scenario['operator'])
+            await barrier.wait()
+            try:
+                await pause_cabinet(db, AsyncMock(), cabinet=cabinet, operator=operator)
+                await db.commit()
+                return 'paused'
+            except ServiceError as exc:
+                await db.rollback()
+                return exc.code
+
+    outcomes = await asyncio.wait_for(asyncio.gather(call(), pause()), timeout=10)
+    assert sorted(outcomes) in (['active_ticket', 'called'], ['cabinet_busy', 'paused'])
+    async with async_session_factory() as db:
+        cabinet = await db.get(Cabinet, scenario['cabinets'][0])
+        ticket = await db.get(Ticket, ticket_id)
+        if 'called' in outcomes:
+            assert cabinet.status == CabinetStatus.busy and cabinet.current_ticket_id == ticket.id
+            assert ticket.status == TicketStatus.called
+        else:
+            assert cabinet.status == CabinetStatus.paused and cabinet.current_ticket_id is None
+            assert ticket.status == TicketStatus.waiting

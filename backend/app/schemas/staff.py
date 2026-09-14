@@ -19,6 +19,7 @@ class StaffCreate(BaseModel):
 
 
 class StaffUpdate(BaseModel):
+    reset_totp: bool | None = None
     full_name: str | None = None
     password: str | None = None
     role: StaffRole | None = None
@@ -32,5 +33,6 @@ class StaffOut(BaseModel):
     role: UserRole
     organization_id: uuid.UUID
     is_active: bool
+    totp_enabled: bool = False
 
     model_config = {"from_attributes": True}

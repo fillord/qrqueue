@@ -62,8 +62,13 @@ async def update_org_user(
             user.password_hash = hash_password(password)
             changes["password"] = "***"
 
+    if changes.pop("reset_totp", None):
+        # Lost authenticator: next login re-enrolls (mandatory roles) or skips 2FA.
+        user.totp_secret = None
+        changes["reset_totp"] = True
+
     for field, value in changes.items():
-        if field == "password":
+        if field in ("password", "reset_totp"):
             continue
         setattr(user, field, value)
     await db.flush()

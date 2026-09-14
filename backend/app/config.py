@@ -22,6 +22,18 @@ class Settings(BaseSettings):
 
     cookie_secure: bool = False
 
+    # Roles that must enroll a TOTP authenticator on first login (ARCHITECTURE.md
+    # section 2, users.totp_secret). Other roles use 2FA only if enrolled.
+    totp_required_roles: str = "superadmin,org_admin"
+    totp_issuer: str = "Online Queue"
+
+    # Redis-backed limits from ARCHITECTURE.md section 6; the disposable-DB
+    # test runner turns them off so unrelated tests don't trip them.
+    rate_limit_enabled: bool = True
+    rate_limit_scan_per_minute: int = 10
+    rate_limit_login_per_minute: int = 5
+    rate_limit_tv_pair_per_minute: int = 5
+
     qr_token_secret: str
     qr_token_ttl_seconds: int = 45
     qr_token_batch_minutes: int = 15
@@ -34,6 +46,11 @@ class Settings(BaseSettings):
     vapid_public_key: str | None = None
     vapid_private_key: str | None = None
     vapid_subject: str | None = None
+
+
+    @property
+    def totp_required_role_set(self) -> frozenset[str]:
+        return frozenset(r.strip() for r in self.totp_required_roles.split(",") if r.strip())
 
 
 @lru_cache

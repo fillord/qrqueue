@@ -1,5 +1,7 @@
 {
-  "app": { "title": "Online Queue" },
+  "app": {
+    "title": "Online Queue"
+  },
   "landing": {
     "hero": {
       "title": "No crowd waiting at the door",
@@ -94,7 +96,9 @@
   },
   "scan": {
     "joining": "Joining the queue…",
-    "hints": { "rescan": "Please scan the code on the screen again." },
+    "hints": {
+      "rescan": "Please scan the code on the screen again."
+    },
     "errors": {
       "token_invalid": "This code is invalid. Please scan the QR code again.",
       "token_expired": "This code has expired.",
@@ -105,7 +109,8 @@
       "daily_limit_reached": "Today's ticket limit has been reached.",
       "geo_required": "We couldn't determine your location. Please allow location access and try again.",
       "geo_out_of_range": "You're too far from the service location.",
-      "unknown_error": "Couldn't join the queue. Please try again."
+      "unknown_error": "Couldn't join the queue. Please try again.",
+      "rate_limited": "Too many attempts from your address. Wait a minute."
     }
   },
   "ticket": {
@@ -162,8 +167,20 @@
     "submitting": "Signing in…",
     "errors": {
       "invalid_credentials": "Incorrect email or password.",
-      "totp_not_supported": "Two-factor authentication isn't supported in this interface yet.",
+      "organization_inactive": "This organization is deactivated. Contact the service administrator.",
+      "rate_limited": "Too many attempts. Wait a minute and try again.",
+      "invalid_totp": "Wrong code. Check the time on your phone and enter a fresh code.",
+      "totp_expired": "The confirmation window has expired. Sign in again.",
       "unknown_error": "Couldn't sign in. Please try again."
+    },
+    "totp": {
+      "title": "Verification code",
+      "setupTitle": "Set up two-factor authentication",
+      "setupHint": "Scan the QR code in an authenticator app (Google Authenticator, Aegis, 1Password) or enter the key by hand, then type the code from the app.",
+      "secret": "Key for manual entry",
+      "code": "Code from the app",
+      "submit": "Confirm",
+      "back": "Back to sign in"
     }
   },
   "placeholder": {
@@ -391,7 +408,9 @@
         "role": "Role",
         "cancel": "Cancel",
         "save": "Create"
-      }
+      },
+      "resetTotp": "Reset 2FA",
+      "resetTotpConfirm": "Reset two-factor authentication for {{name}}? They will have to link their app again at the next sign-in."
     }
   },
   "operator": {
@@ -478,7 +497,8 @@
       "hint": "Enter the 6-digit code shown on this screen.",
       "submit": "Connect",
       "submitting": "Connecting…",
-      "error": "That code is wrong or already used. Please try again."
+      "error": "That code is wrong or already used. Please try again.",
+      "rateLimited": "Too many attempts. Wait a minute and try again."
     },
     "screen": {
       "nowServing": "Now serving",
@@ -538,5 +558,9 @@
       "pairingCode": "Pairing code"
     }
   },
-  "language": { "kk": "Қазақша", "ru": "Русский", "en": "English" }
+  "language": {
+    "kk": "Қазақша",
+    "ru": "Русский",
+    "en": "English"
+  }
 }

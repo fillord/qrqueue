@@ -13,6 +13,7 @@ export interface StaffUpdatePayload {
   password?: string
   role?: 'operator' | 'registrar'
   is_active?: boolean
+  reset_totp?: boolean
 }
 
 export function listStaff(): Promise<StaffUser[]> {

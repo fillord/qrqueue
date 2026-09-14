@@ -47,6 +47,12 @@ export function setOrgAdminActive(
   })
 }
 
+export function resetOrgAdminTotp(organizationId: string, adminId: string): Promise<StaffUser> {
+  return apiPatch<StaffUser>(`/api/sa/organizations/${organizationId}/admins/${adminId}`, {
+    reset_totp: true,
+  })
+}
+
 export interface SaAnalyticsQuery {
   from: string
   to: string

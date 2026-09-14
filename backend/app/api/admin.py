@@ -3,10 +3,12 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_admin, current_organization_id, get_in_org_or_404
 from app.db import get_db
+from app.redis import get_redis
 from app.models.cabinet import Cabinet
 from app.models.enums import UserRole
 from app.models.organization import Organization
@@ -250,11 +252,12 @@ async def unassign_operator_route(
     cabinet_id: uuid.UUID,
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     actor: User = Depends(current_admin),
     organization_id: uuid.UUID = Depends(current_organization_id),
 ) -> None:
     cabinet = await get_in_org_or_404(db, Cabinet, cabinet_id, organization_id)
-    await unassign_operator(db, cabinet, user_id, actor)
+    await unassign_operator(db, cabinet, user_id, actor, redis)
     await db.commit()
 
 

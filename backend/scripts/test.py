@@ -33,6 +33,7 @@ def main() -> int:
     asyncio.run(manage_database(database, create=True))
     try:
         env = dict(os.environ)
+        env['RATE_LIMIT_ENABLED'] = 'false'  # limit tests enable it explicitly
         env['DATABASE_URL'] = make_url(settings.database_url).set(database=database).render_as_string(hide_password=False)
         root = Path(__file__).resolve().parents[1]
         migration = subprocess.run([sys.executable, '-m', 'alembic', 'upgrade', 'head'], cwd=root, env=env)

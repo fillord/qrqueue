@@ -1,15 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { login as apiLogin, logout as apiLogout, me as apiMe } from '../api/auth'
-import type { User } from '../api/types'
+import { login as apiLogin, logout as apiLogout, me as apiMe, verifyTotp as apiVerifyTotp } from '../api/auth'
+import type { TotpSetup, User } from '../api/types'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
+
+/** Password step outcome: either a session, or a pending second factor
+ * (with enrollment material when the account has no authenticator yet). */
+export type LoginOutcome = { kind: 'authenticated'; user: User } | { kind: 'totp'; setup: TotpSetup | null }
 
 interface AuthContextValue {
   user: User | null
   status: AuthStatus
-  login: (email: string, password: string) => Promise<User>
+  login: (email: string, password: string) => Promise<LoginOutcome>
+  completeTotp: (code: string) => Promise<User>
   logout: () => Promise<void>
 }
 
@@ -55,13 +60,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('api:unauthorized', handleUnauthorized)
   }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    await apiLogin(email, password)
+  const finishLogin = useCallback(async () => {
     const current = await apiMe()
     setUser(current)
     setStatus('authenticated')
     return current
   }, [])
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginOutcome> => {
+      const result = await apiLogin(email, password)
+      if (result.totp_required) return { kind: 'totp', setup: result.totp_setup }
+      return { kind: 'authenticated', user: await finishLogin() }
+    },
+    [finishLogin],
+  )
+
+  const completeTotp = useCallback(
+    async (code: string) => {
+      await apiVerifyTotp(code)
+      return finishLogin()
+    },
+    [finishLogin],
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -72,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <AuthContext.Provider value={{ user, status, login, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, status, login, completeTotp, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {

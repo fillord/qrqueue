@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { createOrgAdmin, getOrganization, listOrgAdmins, setOrgAdminActive } from '../../api/superadmin'
+import { createOrgAdmin, getOrganization, listOrgAdmins, resetOrgAdminTotp, setOrgAdminActive } from '../../api/superadmin'
 import type { AdminCreatePayload } from '../../api/superadmin'
 import type { Organization, StaffUser } from '../../api/types'
 import StatusBadge from '../../components/StatusBadge'
@@ -48,6 +48,17 @@ export default function SaOrganizationDetailPage() {
     if (!id) return
     try {
       await setOrgAdminActive(id, admin.id, !admin.is_active)
+    } catch (err) {
+      push(apiErrorMessage(err, t))
+    } finally {
+      await load()
+    }
+  }
+
+  async function handleResetAdminTotp(admin: StaffUser) {
+    if (!id || !window.confirm(t('admin.users.resetTotpConfirm', { name: admin.full_name }))) return
+    try {
+      await resetOrgAdminTotp(id, admin.id)
     } catch (err) {
       push(apiErrorMessage(err, t))
     } finally {
@@ -122,6 +133,11 @@ export default function SaOrganizationDetailPage() {
                     <button type="button" onClick={() => void handleToggleAdminActive(admin)}>
                       {t(admin.is_active ? 'admin.users.deactivate' : 'admin.users.activate')}
                     </button>
+                    {admin.totp_enabled && (
+                      <button type="button" onClick={() => void handleResetAdminTotp(admin)}>
+                        {t('admin.users.resetTotp')}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

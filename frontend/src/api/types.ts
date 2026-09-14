@@ -50,10 +50,17 @@ export interface User {
   full_name: string
   role: UserRole
   organization_id: string | null
+  totp_enabled: boolean
+}
+
+export interface TotpSetup {
+  secret: string
+  otpauth_uri: string
 }
 
 export interface LoginResult {
   totp_required: boolean
+  totp_setup: TotpSetup | null
 }
 
 export interface Cabinet {
@@ -121,6 +128,7 @@ export interface StaffUser {
   role: UserRole
   organization_id: string
   is_active: boolean
+  totp_enabled: boolean
 }
 
 export interface TvQueueState {

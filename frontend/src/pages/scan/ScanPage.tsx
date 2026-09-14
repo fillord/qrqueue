@@ -17,6 +17,7 @@ const KNOWN_ERROR_CODES = [
   'daily_limit_reached',
   'geo_required',
   'geo_out_of_range',
+  'rate_limited',
 ] as const
 
 /**

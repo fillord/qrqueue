@@ -1,15 +1,14 @@
-import { ApiError, apiGet, apiPost } from './client'
+import { apiGet, apiPost } from './client'
 import type { LoginResult, User } from './types'
 
-/**
- * Resolves once the session cookie is set. Throws ApiError('totp_not_supported')
- * if the backend ever asks for a second factor — no UI for that exists yet.
- */
-export async function login(email: string, password: string): Promise<void> {
-  const result = await apiPost<LoginResult>('/api/auth/login', { email, password })
-  if (result.totp_required) {
-    throw new ApiError(200, 'totp_not_supported')
-  }
+/** Password step. When the result says totp_required, the session cookie is
+ * not set yet — call verifyTotp() with the authenticator code. */
+export function login(email: string, password: string): Promise<LoginResult> {
+  return apiPost<LoginResult>('/api/auth/login', { email, password })
+}
+
+export function verifyTotp(code: string): Promise<LoginResult> {
+  return apiPost<LoginResult>('/api/auth/totp', { code })
 }
 
 export function logout(): Promise<void> {

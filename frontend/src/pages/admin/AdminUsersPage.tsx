@@ -45,6 +45,17 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleResetTotp(user: StaffUser) {
+    if (!window.confirm(t('admin.users.resetTotpConfirm', { name: user.full_name }))) return
+    try {
+      await updateStaff(user.id, { reset_totp: true })
+    } catch (err) {
+      push(apiErrorMessage(err, t))
+    } finally {
+      await load()
+    }
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page__header">
@@ -85,6 +96,11 @@ export default function AdminUsersPage() {
                   <button type="button" onClick={() => void handleToggleActive(user)}>
                     {t(user.is_active ? 'admin.users.deactivate' : 'admin.users.activate')}
                   </button>
+                  {user.totp_enabled && (
+                    <button type="button" onClick={() => void handleResetTotp(user)}>
+                      {t('admin.users.resetTotp')}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
+import { ApiError } from '../../api/client'
 import { pairDevice } from '../../api/tv'
 import { getRememberedDeviceToken, rememberDeviceToken } from '../../lib/tvDevice'
 
@@ -16,7 +17,7 @@ export default function TvPairPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [code, setCode] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<'error' | 'rateLimited' | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -29,13 +30,13 @@ export default function TvPairPage() {
     e.preventDefault()
     if (code.length !== 6) return
     setSubmitting(true)
-    setError(false)
+    setError(null)
     try {
       const { device_token: deviceToken } = await pairDevice(code)
       rememberDeviceToken(deviceToken)
       navigate('/tv', { replace: true })
-    } catch {
-      setError(true)
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 429 ? 'rateLimited' : 'error')
       setCode('')
     } finally {
       setSubmitting(false)
@@ -56,7 +57,7 @@ export default function TvPairPage() {
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
         />
-        {error && <p className="tv-pair__error">{t('tv.pair.error')}</p>}
+        {error && <p className="tv-pair__error">{t(`tv.pair.${error}`)}</p>}
         <button type="submit" disabled={submitting || code.length !== 6}>
           {submitting ? t('tv.pair.submitting') : t('tv.pair.submit')}
         </button>

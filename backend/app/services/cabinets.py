@@ -126,7 +126,7 @@ async def assign_operator(
 
 
 async def unassign_operator(
-    db: AsyncSession, cabinet: Cabinet, user_id: uuid.UUID, actor: User
+    db: AsyncSession, cabinet: Cabinet, user_id: uuid.UUID, actor: User, redis: Redis | None = None
 ) -> None:
     existing = await db.get(CabinetOperator, (cabinet.id, user_id))
     if existing is None:
@@ -134,6 +134,12 @@ async def unassign_operator(
 
     await db.delete(existing)
     await db.flush()
+    # Drop the operator's live selection; the queue event makes an open
+    # operator WebSocket re-validate and close (see ws/routes.AccessRevoked).
+    if redis is not None:
+        await redis.delete(_operator_cabinet_key(user_id))
+        if cabinet.queue_id is not None:
+            await publish_event(redis, cabinet.queue_id, "access.revoked", user_id=str(user_id))
 
     await log_action(
         db,

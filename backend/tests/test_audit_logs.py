@@ -82,7 +82,7 @@ async def test_org_admin_sees_only_own_organization_logs_even_without_filter(
     body = resp.json()
     assert all(item["organization_id"] == str(org_a.id) for item in body["items"])
     actions = {item["action"] for item in body["items"]}
-    assert actions == {"ticket.called", "user.login"}  # org_a's own entries only, never org_b's
+    assert actions == {"ticket.called", "user.login", "user.totp_enabled"}  # org_a only, never org_b
 
 
 async def test_audit_log_actor_name_joined_for_user_actor(client, db_session, make_user, make_organization):

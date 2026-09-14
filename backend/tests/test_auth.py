@@ -27,7 +27,7 @@ async def test_login_success_and_me(client, db_session):
         "/api/auth/login", json={"email": "operator@example.com", "password": "s3cret-pass"}
     )
     assert resp.status_code == 200
-    assert resp.json() == {"totp_required": False}
+    assert resp.json() == {"totp_required": False, "totp_setup": None}
     assert "access_token" in resp.cookies
 
     me_resp = await client.get("/api/auth/me")

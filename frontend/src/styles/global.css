@@ -1034,6 +1034,47 @@ textarea:focus {
   background: var(--color-bg);
 }
 
+.login-form__totp-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.login-form__totp-setup p {
+  margin: 0;
+}
+
+.login-form__totp-qr {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.login-form__totp-secret {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.login-form__totp-secret code {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.login-form__link {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
 .login-form__error {
   color: var(--color-danger-text);
   font-size: 0.875rem;

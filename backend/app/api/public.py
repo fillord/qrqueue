@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,7 @@ from app.schemas.public import (
 from app.services import notifications
 from app.services.scan import ScanError
 from app.services.scan import scan as scan_service
+from app.services.rate_limit import client_ip, enforce_rate_limit
 from app.services.tickets import build_ticket_detail
 from app.services.tickets import confirm as confirm_ticket
 from app.services.tickets import leave as leave_ticket
@@ -42,10 +43,14 @@ _ACTIVE_STATUSES = (
 @router.post("/scan", response_model=TicketSummaryOut, status_code=status.HTTP_201_CREATED)
 async def scan_route(
     payload: ScanRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     client: Client = Depends(current_client),
 ) -> Ticket:
+    await enforce_rate_limit(
+        redis, scope="scan", key=client_ip(request), limit=settings.rate_limit_scan_per_minute
+    )
     try:
         ticket = await scan_service(
             db, redis, token=payload.token, client=client, lat=payload.lat, lng=payload.lng

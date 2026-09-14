@@ -12,7 +12,8 @@ class AdminCreate(BaseModel):
 
 
 class AdminUpdate(BaseModel):
-    is_active: bool
+    is_active: bool | None = None
+    reset_totp: bool | None = None
 
 
 class AdminOut(BaseModel):
@@ -22,5 +23,6 @@ class AdminOut(BaseModel):
     role: UserRole
     organization_id: uuid.UUID
     is_active: bool
+    totp_enabled: bool = False
 
     model_config = {"from_attributes": True}

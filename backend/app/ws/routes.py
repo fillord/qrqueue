@@ -2,11 +2,12 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 
-import jwt
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import resolve_selected_cabinet, resolve_session_user
+from app.api.tv import screen_organization_is_active
 from app.config import settings
 from app.db import get_db
 from app.models.cabinet import Cabinet
@@ -19,7 +20,6 @@ from app.redis import redis_client
 from app.schemas.operator import OperatorQueueOut
 from app.schemas.public import TicketDetailOut
 from app.schemas.tv import TVStateOut
-from app.security import decode_access_token
 from app.services.errors import ServiceError
 from app.services.operator_queue import build_operator_queue_snapshot
 from app.services.tickets import build_ticket_detail
@@ -30,6 +30,13 @@ from app.ws.manager import manager
 router = APIRouter()
 
 _POLICY_VIOLATION = 1008
+
+
+class AccessRevoked(Exception):
+    """Raised by a build_message when the connection's credentials no longer
+    hold (user deactivated, operator unassigned, organization deactivated):
+    the socket is closed so a live connection cannot outlive its access."""
+
 
 BuildMessage = Callable[[dict], Awaitable[dict | None]]
 
@@ -77,44 +84,19 @@ async def _pump(websocket: WebSocket, channels: list[str], build_message: BuildM
                     await websocket.send_json(message)
     except WebSocketDisconnect:
         pass
+    except AccessRevoked:
+        await websocket.close(code=_POLICY_VIOLATION)
     finally:
         for channel, queue in queues.items():
             manager.unsubscribe(channel, queue)
 
 
 async def _authenticate_operator(websocket: WebSocket, db: AsyncSession) -> tuple[User, Cabinet] | None:
-    access_token = websocket.cookies.get(settings.jwt_cookie_name)
-    if not access_token:
+    user = await resolve_session_user(db, websocket.cookies.get(settings.jwt_cookie_name))
+    if user is None or user.role != UserRole.operator:
         return None
-    try:
-        payload = decode_access_token(access_token)
-    except jwt.PyJWTError:
-        return None
-
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-
-    try:
-        user = await db.get(User, uuid.UUID(user_id))
-    except ValueError:
-        return None
-    if user is None or not user.is_active or user.role != UserRole.operator:
-        return None
-
-    cabinet_id_raw = await redis_client.get(f"operator:{user.id}:cabinet")
-    if not cabinet_id_raw:
-        return None
-    try:
-        cabinet = await db.get(Cabinet, uuid.UUID(cabinet_id_raw))
-    except ValueError:
-        return None
-    if (
-        cabinet is None
-        or not cabinet.is_active
-        or cabinet.organization_id != user.organization_id
-        or cabinet.queue_id is None
-    ):
+    cabinet = await resolve_selected_cabinet(db, redis_client, user)
+    if cabinet is None or cabinet.queue_id is None:
         return None
     return user, cabinet
 
@@ -177,9 +159,10 @@ async def ws_operator(websocket: WebSocket, db: AsyncSession = Depends(get_db)) 
 
     async def build_message(_event: dict) -> dict | None:
         db.expire_all()
-        current_cabinet = await db.get(Cabinet, cabinet_id)
-        if current_cabinet is None:
-            return None
+        current = await _authenticate_operator(websocket, db)
+        if current is None or current[1].id != cabinet_id:
+            raise AccessRevoked
+        current_cabinet = current[1]
         try:
             snapshot = await build_operator_queue_snapshot(db, current_cabinet)
         except ServiceError:
@@ -207,7 +190,7 @@ async def ws_tv(
     """
     token = websocket.headers.get("x-device-token") or device_token
     screen = await get_screen_by_device_token(db, token) if token else None
-    if screen is None:
+    if screen is None or not await screen_organization_is_active(db, screen):
         await websocket.close(code=_POLICY_VIOLATION)
         return
     organization_id = screen.organization_id
@@ -229,8 +212,8 @@ async def ws_tv(
     async def build_message(_event: dict) -> dict | None:
         db.expire_all()
         current_screen = await db.get(TVScreen, screen_id)
-        if current_screen is None:
-            return None
+        if current_screen is None or not await screen_organization_is_active(db, current_screen):
+            raise AccessRevoked
         return TVStateOut.model_validate(await build_tv_state(db, current_screen)).model_dump(
             mode="json"
         )

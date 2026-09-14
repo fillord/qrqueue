@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import utcnow
 from app.config import settings
 from app.db import get_db
-from app.models.cabinet import Cabinet
+from app.models.cabinet import Cabinet, CabinetOperator
 from app.models.client import Client
 from app.models.enums import UserRole
 from app.models.organization import Organization
@@ -20,27 +20,45 @@ CLIENT_COOKIE_NAME = "qc"
 CLIENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 
+async def organization_is_active(db: AsyncSession, user: User) -> bool:
+    """Deactivating an organization revokes its staff's access (superadmin has none)."""
+    if user.organization_id is None:
+        return True
+    organization = await db.get(Organization, user.organization_id)
+    return organization is not None and organization.is_active
+
+
+async def resolve_session_user(db: AsyncSession, access_token: str | None) -> User | None:
+    """Shared by the REST cookie dependency and the WebSocket handshake:
+    a valid session token for an active user of an active organization.
+    Pending-2FA tokens are never a session, even though they are signed alike."""
+    if not access_token:
+        return None
+    try:
+        payload = decode_access_token(access_token)
+    except jwt.PyJWTError:
+        return None
+    if payload.get("purpose") is not None:
+        return None
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+    try:
+        user = await db.get(User, uuid.UUID(user_id))
+    except ValueError:
+        return None
+    if user is None or not user.is_active or not await organization_is_active(db, user):
+        return None
+    return user
+
+
 async def current_user(
     access_token: str | None = Cookie(default=None, alias=settings.jwt_cookie_name),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    credentials_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-    )
-    if access_token is None:
-        raise credentials_error
-    try:
-        payload = decode_access_token(access_token)
-    except jwt.PyJWTError:
-        raise credentials_error
-
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise credentials_error
-
-    user = await db.get(User, uuid.UUID(user_id))
-    if user is None or not user.is_active:
-        raise credentials_error
+    user = await resolve_session_user(db, access_token)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return user
 
 
@@ -121,25 +139,40 @@ current_operator = require_role(UserRole.operator.value)
 current_registrar = require_role(UserRole.registrar.value)
 
 
+async def resolve_selected_cabinet(db: AsyncSession, redis: Redis, user: User) -> Cabinet | None:
+    """The operator's Redis-stored cabinet selection, valid only while the
+    cabinet is live, in their organization, and still assigned to them —
+    unassigning an operator revokes the selection instead of leaving it usable."""
+    key = f"operator:{user.id}:cabinet"
+    cabinet_id_raw = await redis.get(key)
+    if cabinet_id_raw is None:
+        return None
+    try:
+        cabinet = await db.get(Cabinet, uuid.UUID(cabinet_id_raw))
+    except ValueError:
+        cabinet = None
+    assignment = None
+    if cabinet is not None:
+        assignment = await db.get(CabinetOperator, (cabinet.id, user.id))
+    if (
+        cabinet is None
+        or not cabinet.is_active
+        or cabinet.organization_id != user.organization_id
+        or assignment is None
+    ):
+        await redis.delete(key)
+        return None
+    return cabinet
+
+
 async def current_cabinet(
     user: User = Depends(current_operator),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> Cabinet:
-    """Resolves the operator's selected cabinet from Redis (see services/cabinets.select_cabinet).
-
-    409 cabinet_not_selected if nothing is selected, or the selection no
-    longer resolves to a live cabinet in this operator's organization.
-    """
-    cabinet_id_raw = await redis.get(f"operator:{user.id}:cabinet")
-    cabinet = None
-    if cabinet_id_raw is not None:
-        try:
-            cabinet = await db.get(Cabinet, uuid.UUID(cabinet_id_raw))
-        except ValueError:
-            cabinet = None
-
-    if cabinet is None or not cabinet.is_active or cabinet.organization_id != user.organization_id:
+    """409 cabinet_not_selected if nothing is selected or the selection was revoked."""
+    cabinet = await resolve_selected_cabinet(db, redis, user)
+    if cabinet is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail={"code": "cabinet_not_selected"}
         )

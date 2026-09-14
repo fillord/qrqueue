@@ -25,3 +25,7 @@ class User(UUIDPkMixin, Base):
     totp_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def totp_enabled(self) -> bool:
+        return self.totp_secret is not None

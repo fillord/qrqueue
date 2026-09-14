@@ -352,7 +352,9 @@
         "open": "Open",
         "opensAt": "Opens at",
         "closesAt": "Closes at"
-      }
+      },
+      "hint": "The queue opens and closes automatically at these hours in the organization's timezone. Unchecked days are days off. A manual pause holds until the next closing time.",
+      "hintUnrestricted": "No day is checked: there is no time restriction and the queue works around the clock. To close the queue, change its status in the queue list."
     },
     "cabinets": {
       "title": "Counters",

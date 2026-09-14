@@ -86,6 +86,9 @@ export default function AdminQueueSchedulePage() {
         {t('admin.schedule.back')}
       </Link>
       <h1>{t('admin.schedule.title', { name: queue.name })}</h1>
+      <p className="admin-page__hint">
+        {t(WEEKDAYS.some((weekday) => rows[weekday].open) ? 'admin.schedule.hint' : 'admin.schedule.hintUnrestricted')}
+      </p>
 
       <table className="admin-table admin-schedule__table">
         <thead>

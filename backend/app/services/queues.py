@@ -144,6 +144,7 @@ async def replace_schedule(
         for entry in entries
     ]
     db.add_all(rows)
+    queue.schedule_open = None  # the schedule worker re-baselines on its next tick
     await db.flush()
 
     await log_action(

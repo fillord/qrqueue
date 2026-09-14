@@ -20,6 +20,7 @@ from app.models.user import User
 from app.redis import redis_client
 from app.security import hash_password
 from app.services.errors import ServiceError
+from app.workers.schedules import run_once as run_schedules_once
 from app.workers.timeouts import run_once as run_timeouts_once
 from app.ws.manager import manager
 from app.ws.routes import router as ws_router
@@ -27,6 +28,7 @@ from app.ws.routes import router as ws_router
 logger = logging.getLogger(__name__)
 
 TIMEOUT_WORKER_INTERVAL_SECONDS = 10
+SCHEDULE_WORKER_INTERVAL_SECONDS = 30
 
 
 async def bootstrap_superadmin() -> None:
@@ -58,17 +60,32 @@ async def _timeout_worker_loop() -> None:
             logger.exception("timeout worker tick failed")
 
 
+async def _schedule_worker_loop() -> None:
+    while True:
+        try:
+            async with async_session_factory() as db:
+                await run_schedules_once(db, redis_client)
+        except Exception:
+            logger.exception("schedule worker tick failed")
+        await asyncio.sleep(SCHEDULE_WORKER_INTERVAL_SECONDS)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     await bootstrap_superadmin()
     manager.start(redis_client)
-    worker_task = asyncio.create_task(_timeout_worker_loop())
+    worker_tasks = [
+        asyncio.create_task(_timeout_worker_loop()),
+        asyncio.create_task(_schedule_worker_loop()),
+    ]
     try:
         yield
     finally:
-        worker_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await worker_task
+        for task in worker_tasks:
+            task.cancel()
+        for task in worker_tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
         await manager.stop()
 
 

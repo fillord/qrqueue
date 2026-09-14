@@ -36,6 +36,10 @@ class Queue(UUIDPkMixin, Base):
     # True only when an admin paused the queue directly (not via cabinet-pause cascade) —
     # blocks the cascade from auto-reopening it when a cabinet resumes.
     manually_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Last "inside working hours?" verdict of workers/schedules.py; None until the
+    # worker has looked (or the schedule was replaced). Only a flip of this value
+    # opens/closes the queue, so a manual close or pause holds until the next edge.
+    schedule_open: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class QueueSchedule(UUIDPkMixin, Base):

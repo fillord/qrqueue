@@ -26,8 +26,12 @@ export default function TicketPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
+    if (liveTicket?.status === 'transferred' && liveTicket.next_ticket_id) {
+      navigate(`/t/${liveTicket.next_ticket_id}`, { replace: true })
+      return
+    }
     if (liveTicket) setTicket(liveTicket)
-  }, [liveTicket])
+  }, [liveTicket, navigate])
 
   useEffect(() => {
     if (id) rememberTicketId(id)

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { ApiError } from '../api/client'
 import { getTvState } from '../api/tv'
 import type { TvState } from '../api/types'
 import { openReconnectingSocket, wsBaseUrl } from '../lib/reconnectingWebSocket'
@@ -8,54 +9,68 @@ export interface UseTvStateResult {
   state: TvState | null
   loading: boolean
   rejected: boolean
+  offline: boolean
 }
 
-/**
- * WS /ws/tv?device_token=... for live updates, with a REST GET fired on
- * mount and on every (re)connect as a safety net. `rejected` is set if the
- * device_token turns out to be invalid (the initial REST call 401s) — the
- * page then forgets it and sends the operator back to /tv/pair.
- */
 export function useTvState(deviceToken: string): UseTvStateResult {
   const [state, setState] = useState<TvState | null>(null)
   const [loading, setLoading] = useState(true)
   const [rejected, setRejected] = useState(false)
-  const cancelledRef = useRef(false)
-
-  const fetchOnce = useCallback(async () => {
-    try {
-      const data = await getTvState(deviceToken)
-      if (cancelledRef.current) return
-      setState(data)
-      setRejected(false)
-    } catch {
-      if (cancelledRef.current) return
-      setRejected(true)
-    } finally {
-      if (!cancelledRef.current) setLoading(false)
-    }
-  }, [deviceToken])
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
-    cancelledRef.current = false
-    void fetchOnce()
+    let cancelled = false
+    let revision = 0
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    setState(null)
+    setLoading(true)
+    setRejected(false)
+    setOffline(false)
+    if (!deviceToken) { setLoading(false); return }
 
+    async function fetchOnce() {
+      clearTimeout(retryTimer)
+      const requestRevision = ++revision
+      try {
+        const data = await getTvState(deviceToken)
+        if (cancelled || requestRevision !== revision) return
+        setState(data)
+        setRejected(false)
+        setOffline(false)
+      } catch (error) {
+        if (cancelled || requestRevision !== revision) return
+        if (error instanceof ApiError && error.status === 401) {
+          setRejected(true)
+        } else {
+          setOffline(true)
+          retryTimer = setTimeout(() => void fetchOnce(), 5000)
+        }
+      } finally {
+        if (!cancelled && requestRevision === revision) setLoading(false)
+      }
+    }
+
+    void fetchOnce()
     const handle = openReconnectingSocket({
       url: `${wsBaseUrl()}/ws/tv?device_token=${encodeURIComponent(deviceToken)}`,
       onOpen: () => void fetchOnce(),
+      onClose: () => { if (!cancelled) setOffline(true) },
       onMessage: (data) => {
-        if (cancelledRef.current) return
+        if (cancelled) return
+        revision += 1 // An older REST response must not overwrite a live snapshot.
+        clearTimeout(retryTimer)
         setState(data as TvState)
         setRejected(false)
+        setOffline(false)
         setLoading(false)
       },
     })
-
     return () => {
-      cancelledRef.current = true
+      cancelled = true
+      clearTimeout(retryTimer)
       handle.close()
     }
-  }, [deviceToken, fetchOnce])
+  }, [deviceToken])
 
-  return { state, loading, rejected }
+  return { state, loading, rejected, offline }
 }

@@ -14,7 +14,7 @@ async def next_number(
     now = now or utcnow()
     today = local_date(organization.timezone, now)
 
-    result = await db.execute(select(Queue).where(Queue.id == queue.id).with_for_update())
+    result = await db.execute(select(Queue).where(Queue.id == queue.id).with_for_update().execution_options(populate_existing=True))
     locked = result.scalar_one()
 
     if locked.counter_date != today:

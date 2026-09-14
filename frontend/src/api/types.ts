@@ -34,6 +34,7 @@ export interface TicketDetail extends TicketSummary {
   estimated_wait_seconds: number | null
   cabinet: CabinetInfo | null
   rating: number | null
+  next_ticket_id: string | null
 }
 
 export interface ScanRequest {

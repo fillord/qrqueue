@@ -10,7 +10,7 @@ from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.models.tv_screen import TVScreen
 
-_CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.serving)
+_CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving)
 
 
 async def _now_serving(db: AsyncSession, queue_id: uuid.UUID) -> tuple[str | None, str | None]:

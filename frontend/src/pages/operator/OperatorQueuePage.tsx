@@ -34,6 +34,9 @@ const KNOWN_ACTION_ERRORS = [
   'active_ticket',
   'cabinet_not_paused',
   'target_queue_unavailable',
+  'outside_schedule',
+  'daily_limit_reached',
+  'already_in_queue',
 ] as const
 
 function isTypingTarget(target: EventTarget | null): boolean {

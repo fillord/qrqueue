@@ -7,6 +7,7 @@ export interface ReconnectingSocketOptions {
   /** Fired after the socket actually opens — good place to fire a one-off
    * REST GET as a safety net against any event missed during the gap. */
   onOpen?: () => void
+  onClose?: () => void
 }
 
 export interface ReconnectingSocketHandle {
@@ -47,6 +48,7 @@ export function openReconnectingSocket(options: ReconnectingSocketOptions): Reco
 
   function scheduleReconnect() {
     if (closed) return
+    options.onClose?.()
     const delay = Math.min(INITIAL_DELAY_MS * 2 ** attempt, MAX_DELAY_MS)
     attempt += 1
     reconnectTimer = setTimeout(connect, delay)

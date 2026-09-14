@@ -29,23 +29,29 @@ export function useTicket(ticketId: string | undefined): UseTicketResult {
     if (!ticketId) return undefined
 
     let cancelled = false
+    let revision = 0
+    setTicket(null)
+    setLoading(true)
+    setNotFound(false)
+    setError(null)
 
     async function fetchOnce() {
+      const requestRevision = ++revision
       try {
         const data = await getTicket(ticketId as string)
-        if (cancelled) return
+        if (cancelled || requestRevision !== revision) return
         setTicket(data)
         setNotFound(false)
         setError(null)
       } catch (err) {
-        if (cancelled) return
+        if (cancelled || requestRevision !== revision) return
         if (err instanceof ApiError && err.status === 404) {
           setNotFound(true)
         } else {
           setError(err instanceof Error ? err.message : 'unknown_error')
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled && requestRevision === revision) setLoading(false)
       }
     }
 
@@ -56,6 +62,7 @@ export function useTicket(ticketId: string | undefined): UseTicketResult {
       onOpen: () => void fetchOnce(),
       onMessage: (data) => {
         if (cancelled) return
+        revision += 1
         setTicket(data as TicketDetail)
         setNotFound(false)
         setError(null)

@@ -59,8 +59,8 @@ function SingleQueueView({
       </div>
       {showQr ? (
         <div className="tv-screen__qr">
-          <LiveQrCode token={qrToken} />
-          <p className="tv-screen__qr-hint">{t('tv.screen.scanHint')}</p>
+          {qrToken && <LiveQrCode token={qrToken} />}
+          <p className="tv-screen__qr-hint">{t(qrToken ? 'tv.screen.scanHint' : 'tv.screen.qrUnavailable')}</p>
         </div>
       ) : (
         <div className="tv-screen__qr tv-screen__qr--instructions">
@@ -101,7 +101,7 @@ export default function TvPage() {
     if (!deviceToken) navigate('/tv/pair', { replace: true })
   }, [deviceToken, navigate])
 
-  const { state, loading, rejected } = useTvState(deviceToken ?? '')
+  const { state, loading, rejected, offline } = useTvState(deviceToken ?? '')
 
   useEffect(() => {
     if (rejected) {
@@ -135,7 +135,7 @@ export default function TvPage() {
     return getTvQrBatch(deviceToken)
   }, [deviceToken, showQr])
 
-  const { token: qrToken } = useLiveQr(fetchQrBatch)
+  const { token: qrToken, offline: qrOffline } = useLiveQr(fetchQrBatch, !!deviceToken && showQr)
 
   if (!deviceToken) return null
 
@@ -143,6 +143,7 @@ export default function TvPage() {
     return (
       <div className="tv-screen tv-screen--loading">
         <div className="spinner" aria-hidden="true" />
+        {offline && <p role="status">{t('tv.screen.offline')}</p>}
       </div>
     )
   }
@@ -163,6 +164,7 @@ export default function TvPage() {
       )}
 
       <footer className="tv-screen__footer">
+        {(offline || qrOffline) && <span role="status">{t('tv.screen.offline')}</span>}
         <span>{t('tv.screen.footer')}</span>
         <button type="button" className="tv-screen__announce-toggle" onClick={toggleAnnouncements}>
           {t(announcementsEnabled ? 'tv.announce.toggleOn' : 'tv.announce.toggleOff')}

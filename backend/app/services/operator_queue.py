@@ -10,6 +10,7 @@ from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.services.errors import ServiceError
+from app.services.queue_order import waiting_order
 
 """Builds the operator/queue snapshot — shared by the GET /operator/queue
 route and the /ws/operator push (see ARCHITECTURE.md section 5): both must
@@ -47,7 +48,7 @@ async def build_operator_queue_snapshot(db: AsyncSession, cabinet: Cabinet) -> d
     result = await db.execute(
         select(Ticket)
         .where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
-        .order_by(Ticket.called_at.is_(None), Ticket.called_at, Ticket.created_at)
+        .order_by(*waiting_order())
     )
     waiting = list(result.scalars().all())
 

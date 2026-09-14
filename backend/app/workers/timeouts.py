@@ -31,8 +31,9 @@ async def run_once(db: AsyncSession, redis: Redis, now: datetime | None = None) 
         if ticket.called_at + timedelta(minutes=timeout_min) <= now
     ]
 
+    processed = 0
     for ticket in expired:
-        await mark_no_show(
+        result = await mark_no_show(
             db,
             redis,
             ticket=ticket,
@@ -41,7 +42,10 @@ async def run_once(db: AsyncSession, redis: Redis, now: datetime | None = None) 
             now=now,
         )
 
+        if result.status == TicketStatus.no_show:
+            processed += 1
+
     if expired:
         await db.commit()
 
-    return len(expired)
+    return processed

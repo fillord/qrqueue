@@ -466,7 +466,10 @@
       "active_ticket": "Can't pause — a ticket is being served right now.",
       "cabinet_not_paused": "This counter isn't paused.",
       "target_queue_unavailable": "The selected queue isn't available right now.",
-      "unknown_error": "Couldn't complete the action. Please try again."
+      "unknown_error": "Couldn't complete the action. Please try again.",
+      "outside_schedule": "The destination queue is closed according to its schedule.",
+      "daily_limit_reached": "The destination queue has reached its daily limit.",
+      "already_in_queue": "The visitor already has an active ticket in this queue or organization."
     }
   },
   "tv": {
@@ -488,7 +491,9 @@
       "queueStatus": {
         "paused": "Intake is paused",
         "closed": "This queue is closed"
-      }
+      },
+      "offline": "Offline. Reconnecting…",
+      "qrUnavailable": "QR temporarily unavailable. Waiting for an update."
     },
     "announce": {
       "called": "Ticket {{number}}.",

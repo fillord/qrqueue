@@ -1,13 +1,13 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi.encoders import jsonable_encoder
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import utcnow
+from app.clock import local_date, utcnow
 from app.models.cabinet import Cabinet
 from app.models.client import Client
 from app.models.enums import AuditActorType, CabinetStatus, QueueStatus, TicketSource, TicketStatus
@@ -19,6 +19,8 @@ from app.services import notifications
 from app.services.audit import log_action
 from app.services.errors import ServiceError
 from app.services.numbering import next_number
+from app.services.queue_order import waiting_order
+from app.services.queue_availability import within_schedule
 from app.services.realtime import publish_event
 from app.services.wait_estimate import estimate_wait_seconds
 
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 _APPROACHING_POSITION = 3
 
-_CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.serving)
+_CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving)
 _ACTIVE_STATUSES = (
     TicketStatus.waiting,
     TicketStatus.called,
@@ -38,6 +40,42 @@ _ACTIVE_STATUSES = (
 def _require_status(ticket: Ticket, *allowed: TicketStatus) -> None:
     if ticket.status not in allowed:
         raise ServiceError("invalid_transition", 409, status=ticket.status.value)
+
+
+async def _lock_queues(db: AsyncSession, *queue_ids: uuid.UUID) -> None:
+    # Ticket mutations of one queue share its row lock. Transfers lock both
+    # queues in UUID order, avoiding opposite-direction transfer deadlocks.
+    await db.execute(
+        select(Queue).where(Queue.id.in_(queue_ids)).order_by(Queue.id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
+
+
+async def _lock_client(db: AsyncSession, client_id: uuid.UUID | None) -> None:
+    if client_id is not None:
+        await db.execute(select(Client).where(Client.id == client_id).with_for_update())
+
+
+async def _lock_ticket(db: AsyncSession, ticket: Ticket) -> None:
+    await _lock_queues(db, ticket.queue_id)
+    await db.refresh(ticket, with_for_update=True)
+
+
+async def _active_ticket(
+    db: AsyncSession,
+    client_id: uuid.UUID,
+    queue: Queue,
+    organization: Organization,
+    exclude_id: uuid.UUID | None = None,
+) -> Ticket | None:
+    stmt = select(Ticket).where(Ticket.client_id == client_id, Ticket.status.in_(_ACTIVE_STATUSES))
+    if organization.one_ticket_per_org:
+        stmt = stmt.where(Ticket.organization_id == organization.id)
+    else:
+        stmt = stmt.where(Ticket.queue_id == queue.id)
+    if exclude_id is not None:
+        stmt = stmt.where(Ticket.id != exclude_id)
+    return (await db.execute(stmt)).scalars().first()
 
 
 async def create_ticket(
@@ -53,7 +91,28 @@ async def create_ticket(
     actor_id: uuid.UUID | None = None,
     note: str | None = None,
     now: datetime | None = None,
+    commit: bool = True,
 ) -> Ticket:
+    # Client first serializes the organization-wide active-ticket limit
+    # even when two requests target different queues.
+    await _lock_client(db, client.id if client else None)
+    await _lock_queues(db, queue.id)
+    now = now or utcnow()
+
+    if not organization.is_active or not queue.is_active or queue.status == QueueStatus.closed:
+        raise ServiceError("queue_closed", 422)
+    if queue.status == QueueStatus.paused:
+        raise ServiceError("queue_paused", 422)
+    today = local_date(organization.timezone, now)
+    if not await within_schedule(db, queue, today, now, organization.timezone):
+        raise ServiceError("outside_schedule", 422)
+    issued_today = queue.last_ticket_number if queue.counter_date == today else 0
+    if queue.daily_ticket_limit is not None and issued_today >= queue.daily_ticket_limit:
+        raise ServiceError("daily_limit_reached", 422)
+    if client:
+        existing = await _active_ticket(db, client.id, queue, organization)
+        if existing:
+            raise ServiceError("already_in_queue", 409, ticket_id=str(existing.id))
     number, display_number = await next_number(db, queue, organization, now)
 
     ticket = Ticket(
@@ -89,7 +148,9 @@ async def create_ticket(
         organization_id=organization.id,
         payload=jsonable_encoder(payload),
     )
-    await publish_event(redis, queue.id, "ticket.created", ticket_id=str(ticket.id), status=ticket.status.value)
+    if commit:
+        await db.commit()
+        await publish_event(redis, queue.id, "ticket.created", ticket_id=str(ticket.id), status=ticket.status.value)
     return ticket
 
 
@@ -104,7 +165,9 @@ async def call_next(
 ) -> Ticket:
     now = now or utcnow()
 
-    if cabinet.status != CabinetStatus.free:
+    await _lock_queues(db, queue.id)
+    await db.refresh(cabinet, with_for_update=True)
+    if cabinet.status != CabinetStatus.free or cabinet.current_ticket_id is not None:
         raise ServiceError("cabinet_busy", 409)
 
     # Tickets with called_at already set (returned from no_show) are ordered
@@ -112,7 +175,7 @@ async def call_next(
     result = await db.execute(
         select(Ticket)
         .where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
-        .order_by(Ticket.called_at.is_(None), Ticket.called_at, Ticket.created_at)
+        .order_by(*waiting_order())
         .limit(1)
         .with_for_update()
     )
@@ -197,7 +260,7 @@ async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
     result = await db.execute(
         select(Ticket)
         .where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
-        .order_by(Ticket.called_at.is_(None), Ticket.called_at, Ticket.created_at)
+        .order_by(*waiting_order())
         .limit(_APPROACHING_POSITION)
     )
     waiting = list(result.scalars().all())
@@ -229,6 +292,7 @@ async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
 async def recall(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, operator: User, now: datetime | None = None
 ) -> Ticket:
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.called)
 
     ticket.call_count += 1
@@ -257,6 +321,7 @@ async def confirm(
     straight from `called`, confirm is just the visitor's own signal.
     """
     now = now or utcnow()
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.called)
 
     ticket.status = TicketStatus.confirmed
@@ -286,6 +351,12 @@ async def mark_no_show(
     actor_id: uuid.UUID | None,
     now: datetime | None = None,
 ) -> Ticket:
+    await _lock_ticket(db, ticket)
+    if actor_type == AuditActorType.system:
+        queue = await db.get(Queue, ticket.queue_id)
+        deadline = ticket.called_at + timedelta(minutes=queue.presence_timeout_min) if ticket.called_at else None
+        if ticket.status != TicketStatus.called or deadline is None or deadline > (now or utcnow()):
+            return ticket
     _require_status(ticket, TicketStatus.called, TicketStatus.confirmed)
 
     ticket.status = TicketStatus.no_show
@@ -315,7 +386,16 @@ async def mark_no_show(
 async def return_to_queue(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, operator: User, now: datetime | None = None
 ) -> Ticket:
+    await _lock_client(db, ticket.client_id)
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.no_show)
+
+    if ticket.client_id:
+        queue = await db.get(Queue, ticket.queue_id)
+        organization = await db.get(Organization, ticket.organization_id)
+        existing = await _active_ticket(db, ticket.client_id, queue, organization, exclude_id=ticket.id)
+        if existing:
+            raise ServiceError("already_in_queue", 409, ticket_id=str(existing.id))
 
     ticket.status = TicketStatus.waiting
     ticket.cabinet_id = None
@@ -342,6 +422,7 @@ async def start_serving(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, operator: User, now: datetime | None = None
 ) -> Ticket:
     now = now or utcnow()
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.called, TicketStatus.confirmed)
 
     ticket.status = TicketStatus.serving
@@ -366,6 +447,7 @@ async def finish(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, operator: User, now: datetime | None = None
 ) -> Ticket:
     now = now or utcnow()
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.serving)
 
     ticket.status = TicketStatus.served
@@ -404,59 +486,60 @@ async def transfer(
     now: datetime | None = None,
 ) -> Ticket:
     now = now or utcnow()
+    await _lock_client(db, ticket.client_id)
+    await _lock_queues(db, ticket.queue_id, target_queue.id)
+    await db.refresh(ticket, with_for_update=True)
     _require_status(ticket, TicketStatus.waiting, TicketStatus.called, TicketStatus.confirmed)
 
     if target_queue.status != QueueStatus.open or not target_queue.is_active:
         raise ServiceError("target_queue_unavailable", 409)
 
-    ticket.status = TicketStatus.transferred
+    async with db.begin_nested():
+        ticket.status = TicketStatus.transferred
 
-    if ticket.cabinet_id is not None:
-        cabinet = await db.get(Cabinet, ticket.cabinet_id)
-        if cabinet is not None:
-            cabinet.status = CabinetStatus.free
-            cabinet.current_ticket_id = None
+        if ticket.cabinet_id is not None:
+            cabinet = await db.get(Cabinet, ticket.cabinet_id)
+            if cabinet is not None:
+                cabinet.status = CabinetStatus.free
+                cabinet.current_ticket_id = None
 
-    await db.flush()
+        await db.flush()
 
-    await log_action(
-        db,
-        actor_type=AuditActorType.user,
-        actor_id=operator.id,
-        action="ticket.transferred",
-        entity_type="ticket",
-        entity_id=ticket.id,
-        organization_id=ticket.organization_id,
-        payload={"target_queue_id": str(target_queue.id)},
-    )
-    # Commit the old ticket's transferred state on its own before publishing
-    # — it's a complete, valid state by itself, and create_ticket() below
-    # (for the new ticket) still commits later via the caller, unchanged,
-    # since it's also reachable directly from scan()/register_ticket() and
-    # committing it early here would break create_ticket() being able to
-    # be part of one atomic transaction in those direct-call cases.
+        await log_action(
+            db,
+            actor_type=AuditActorType.user,
+            actor_id=operator.id,
+            action="ticket.transferred",
+            entity_type="ticket",
+            entity_id=ticket.id,
+            organization_id=ticket.organization_id,
+            payload={"target_queue_id": str(target_queue.id)},
+        )
+        client = await db.get(Client, ticket.client_id) if ticket.client_id else None
+        new_ticket = await create_ticket(
+            db,
+            redis,
+            organization=organization,
+            queue=target_queue,
+            source=TicketSource.transfer,
+            client=client,
+            transferred_from=ticket.id,
+            actor_type=AuditActorType.user,
+            actor_id=operator.id,
+            now=now,
+            commit=False,
+        )
     await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
-
-    client = await db.get(Client, ticket.client_id) if ticket.client_id else None
-    return await create_ticket(
-        db,
-        redis,
-        organization=organization,
-        queue=target_queue,
-        source=TicketSource.transfer,
-        client=client,
-        transferred_from=ticket.id,
-        actor_type=AuditActorType.user,
-        actor_id=operator.id,
-        now=now,
-    )
+    await publish_event(redis, new_ticket.queue_id, "ticket.created", ticket_id=str(new_ticket.id), status=new_ticket.status.value)
+    return new_ticket
 
 
 async def leave(
     db: AsyncSession, redis: Redis, *, ticket: Ticket, client: Client, now: datetime | None = None
 ) -> Ticket:
     """Client leaves the queue voluntarily."""
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.waiting, TicketStatus.called, TicketStatus.confirmed)
 
     ticket.status = TicketStatus.left
@@ -488,6 +571,7 @@ async def rate(
 ) -> Ticket:
     """Client rates a served ticket — one rating per ticket, no realtime
     event (not part of the ARCHITECTURE.md section 5 event set)."""
+    await _lock_ticket(db, ticket)
     _require_status(ticket, TicketStatus.served)
     if ticket.rating is not None:
         raise ServiceError("already_rated", 409)
@@ -514,17 +598,10 @@ async def get_position(db: AsyncSession, ticket: Ticket) -> int | None:
     if ticket.status != TicketStatus.waiting:
         return None
 
-    result = await db.execute(
-        select(func.count())
-        .select_from(Ticket)
-        .where(
-            Ticket.queue_id == ticket.queue_id,
-            Ticket.status == TicketStatus.waiting,
-            Ticket.created_at < ticket.created_at,
-        )
-    )
-    earlier = result.scalar_one()
-    return earlier + 1
+    ranked = select(
+        Ticket.id, func.row_number().over(order_by=waiting_order()).label("position")
+    ).where(Ticket.queue_id == ticket.queue_id, Ticket.status == TicketStatus.waiting).subquery()
+    return (await db.execute(select(ranked.c.position).where(ranked.c.id == ticket.id))).scalar_one_or_none()
 
 
 async def get_now_serving(db: AsyncSession, queue_id: uuid.UUID) -> str | None:
@@ -556,6 +633,12 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         if avg_seconds is not None:
             estimated_wait_seconds = avg_seconds * position
 
+    next_ticket_id = None
+    if ticket.status == TicketStatus.transferred:
+        next_ticket_id = (await db.execute(
+            select(Ticket.id).where(Ticket.transferred_from == ticket.id, Ticket.client_id == ticket.client_id)
+        )).scalar_one_or_none()
+
     return {
         "id": ticket.id,
         "queue_id": ticket.queue_id,
@@ -568,4 +651,5 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         "estimated_wait_seconds": estimated_wait_seconds,
         "cabinet": cabinet,
         "rating": ticket.rating,
+        "next_ticket_id": next_ticket_id,
     }

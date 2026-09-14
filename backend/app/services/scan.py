@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -10,9 +9,10 @@ from app.clock import local_date, utcnow
 from app.models.client import Client
 from app.models.enums import QueueStatus, TicketSource, TicketStatus
 from app.models.organization import Organization
-from app.models.queue import Queue, QueueSchedule
+from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.services.geo import haversine_m
+from app.services.queue_availability import within_schedule
 from app.services.qr_tokens import QRTokenError, verify
 from app.services.tickets import create_ticket
 
@@ -91,23 +91,6 @@ async def scan(
         source=TicketSource.qr,
         client=client,
         now=now,
-    )
-
-
-async def within_schedule(
-    db: AsyncSession, queue: Queue, today, now: datetime, timezone_name: str
-) -> bool:
-    result = await db.execute(select(QueueSchedule).where(QueueSchedule.queue_id == queue.id))
-    entries = result.scalars().all()
-    if not entries:
-        # No schedule configured for this queue at all -> unrestricted, like geo_radius_m=None.
-        return True
-
-    weekday = today.weekday()
-    local_time = now.astimezone(ZoneInfo(timezone_name)).time()
-    return any(
-        entry.weekday == weekday and entry.opens_at <= local_time < entry.closes_at
-        for entry in entries
     )
 
 

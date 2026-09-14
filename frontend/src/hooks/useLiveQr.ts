@@ -1,90 +1,87 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { QrBatch } from '../api/types'
 
 const REFRESH_BEFORE_END_MS = 3 * 60 * 1000
 const RETRY_AFTER_FAILURE_MS = 5000
 
-/**
- * Cycles through a batch of overlapping QR tokens (ARCHITECTURE.md section
- * 4) on a schedule driven by the batch's own `server_time`, not the
- * device's local clock — so a screen with a wrong/drifting clock still
- * switches codes at the right moment relative to the server. Fetches a new
- * batch proactively once under 3 minutes of the current one remains, and if
- * the network is down, keeps cycling whatever tokens are already known
- * rather than going blank.
- */
-export function useLiveQr(fetchBatch: () => Promise<QrBatch>): { token: string | null } {
-  const [activeToken, setActiveToken] = useState<string | null>(null)
-  const offsetMsRef = useRef(0) // server time minus Date.now(), captured at the last successful fetch
-  const tokensRef = useRef<QrBatch['tokens']>([])
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout>>()
-  const cancelledRef = useRef(false)
-
-  const refresh = useCallback(async () => {
-    try {
-      const batch = await fetchBatch()
-      if (cancelledRef.current) return
-      offsetMsRef.current = new Date(batch.server_time).getTime() - Date.now()
-      tokensRef.current = batch.tokens
-      scheduleNext()
-    } catch {
-      if (cancelledRef.current) return
-      if (tokensRef.current.length > 0) {
-        scheduleNext()
-      } else {
-        refreshTimerRef.current = setTimeout(() => void refresh(), RETRY_AFTER_FAILURE_MS)
-      }
-    }
-  }, [fetchBatch])
-
-  const scheduleNext = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
-
-    const nowServer = Date.now() + offsetMsRef.current
-    const tokens = tokensRef.current
-    const current = tokens.find(
-      (t) => new Date(t.nbf).getTime() <= nowServer && nowServer < new Date(t.exp).getTime(),
-    )
-    const upcoming = tokens
-      .filter((t) => new Date(t.nbf).getTime() > nowServer)
-      .sort((a, b) => new Date(a.nbf).getTime() - new Date(b.nbf).getTime())
-
-    if (current) {
-      setActiveToken(current.token)
-
-      if (upcoming.length > 0) {
-        const msUntilNext = new Date(upcoming[0].nbf).getTime() - nowServer
-        timerRef.current = setTimeout(scheduleNext, Math.max(0, msUntilNext))
-      } else {
-        const msUntilExpire = new Date(current.exp).getTime() - nowServer
-        timerRef.current = setTimeout(() => void refresh(), Math.max(0, msUntilExpire))
-      }
-
-      const batchEnd = Math.max(...tokens.map((t) => new Date(t.exp).getTime()))
-      const msUntilRefresh = batchEnd - nowServer - REFRESH_BEFORE_END_MS
-      refreshTimerRef.current = setTimeout(() => void refresh(), Math.max(0, msUntilRefresh))
-    } else if (upcoming.length > 0) {
-      timerRef.current = setTimeout(
-        scheduleNext,
-        Math.max(0, new Date(upcoming[0].nbf).getTime() - nowServer),
-      )
-    } else {
-      void refresh()
-    }
-  }, [refresh])
+/** Keep token rotation independent of network retries so an expired batch
+ * is cleared even while its replacement request is still in flight. */
+export function useLiveQr(
+  fetchBatch: () => Promise<QrBatch>,
+  enabled = true,
+): { token: string | null; offline: boolean } {
+  const [token, setToken] = useState<string | null>(null)
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
-    cancelledRef.current = false
+    let cancelled = false
+    let inFlight = false
+    let offsetMs = 0
+    let tokens: { token: string; start: number; end: number }[] = []
+    let rotationTimer: ReturnType<typeof setTimeout> | undefined
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined
+    setToken(null)
+    setOffline(false)
+    if (!enabled) return
+
+    function rotate() {
+      if (cancelled) return
+      clearTimeout(rotationTimer)
+      const now = Date.now() + offsetMs
+      // Latest started window wins during the 15-second overlap.
+      const current = tokens.find((item) => item.start <= now && now < item.end)
+      setToken(current?.token ?? null)
+      const boundaries = tokens.flatMap((item) => [item.start, item.end]).filter((time) => time > now)
+      if (boundaries.length) {
+        rotationTimer = setTimeout(rotate, Math.min(...boundaries) - now)
+      }
+    }
+
+    async function refresh() {
+      if (cancelled || inFlight) return
+      clearTimeout(refreshTimer)
+      inFlight = true
+      let delay = RETRY_AFTER_FAILURE_MS
+      try {
+        const batch = await fetchBatch()
+        if (cancelled) return
+        const serverTime = Date.parse(batch.server_time)
+        const nextTokens = batch.tokens.map((item) => ({
+          token: item.token, start: Date.parse(item.nbf), end: Date.parse(item.exp),
+        })).filter((item) => Number.isFinite(item.start) && Number.isFinite(item.end) && item.end > serverTime)
+        if (!Number.isFinite(serverTime) || !nextTokens.length) throw new Error('Empty or expired QR batch')
+        offsetMs = serverTime - Date.now()
+        tokens = nextTokens.sort((a, b) => b.start - a.start)
+        setOffline(false)
+        rotate()
+        delay = Math.max(RETRY_AFTER_FAILURE_MS, Math.max(...tokens.map((item) => item.end)) - serverTime - REFRESH_BEFORE_END_MS)
+      } catch {
+        if (!cancelled) setOffline(true)
+      } finally {
+        inFlight = false
+        if (!cancelled) refreshTimer = setTimeout(() => void refresh(), delay)
+      }
+    }
+
+    function resume() {
+      rotate()
+      void refresh()
+    }
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') resume()
+    }
+    window.addEventListener('online', resume)
+    document.addEventListener('visibilitychange', handleVisibility)
     void refresh()
     return () => {
-      cancelledRef.current = true
-      if (timerRef.current) clearTimeout(timerRef.current)
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      cancelled = true
+      clearTimeout(rotationTimer)
+      clearTimeout(refreshTimer)
+      window.removeEventListener('online', resume)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [refresh])
+  }, [fetchBatch, enabled])
 
-  return { token: activeToken }
+  return { token, offline }
 }

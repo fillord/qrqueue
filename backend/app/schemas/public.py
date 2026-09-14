@@ -35,6 +35,7 @@ class TicketDetailOut(TicketSummaryOut):
     estimated_wait_seconds: int | None = None
     cabinet: CabinetInfo | None = None
     rating: int | None = None
+    next_ticket_id: uuid.UUID | None = None
 
 
 class RateRequest(BaseModel):

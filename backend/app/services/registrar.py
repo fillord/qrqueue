@@ -10,7 +10,7 @@ from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.models.user import User
 from app.services.errors import ServiceError
-from app.services.scan import within_schedule
+from app.services.queue_availability import within_schedule
 from app.services.tickets import create_ticket
 
 

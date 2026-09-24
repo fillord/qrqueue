@@ -1,7 +1,7 @@
 import uuid
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Query, Response, status
+from fastapi import Request, Cookie, Depends, HTTPException, Query, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +25,7 @@ async def organization_is_active(db: AsyncSession, user: User) -> bool:
     if user.organization_id is None:
         return True
     organization = await db.get(Organization, user.organization_id)
-    return organization is not None and organization.is_active
+    return organization is not None and organization.is_active and organization.deleted_at is None
 
 
 async def resolve_session_user(db: AsyncSession, access_token: str | None) -> User | None:
@@ -47,7 +47,9 @@ async def resolve_session_user(db: AsyncSession, access_token: str | None) -> Us
         user = await db.get(User, uuid.UUID(user_id))
     except ValueError:
         return None
-    if user is None or not user.is_active or not await organization_is_active(db, user):
+    if (user is None or not user.is_active or user.deleted_at is not None
+            or payload.get("auth_version", 0) != user.auth_version
+            or not await organization_is_active(db, user)):
         return None
     return user
 
@@ -93,13 +95,14 @@ async def current_organization_id(
                 detail="organization_id query parameter is required",
             )
         org = await db.get(Organization, organization_id)
-        if org is None:
+        if org is None or org.deleted_at is not None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
         return organization_id
     return user.organization_id
 
 
 async def current_client(
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
     qc: str | None = Cookie(default=None),
@@ -132,6 +135,10 @@ async def current_client(
     else:
         client.last_seen_at = now
 
+    from app.models.enums import Language
+    requested_language = request.headers.get("accept-language", "").split(",")[0].split(";")[0].split("-")[0].lower()
+    if requested_language in {item.value for item in Language}:
+        client.language = Language(requested_language)
     return client
 
 
@@ -189,6 +196,7 @@ async def get_in_org_or_404(
     must look identical to it not existing.
     """
     entity = await db.get(model, entity_id)
-    if entity is None or getattr(entity, "organization_id", None) != organization_id:
+    if (entity is None or getattr(entity, "organization_id", None) != organization_id
+            or getattr(entity, "deleted_at", None) is not None):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return entity

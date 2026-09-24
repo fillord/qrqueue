@@ -2,15 +2,34 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from app.models.enums import QueueStatus, TicketStatus
 
 
 class ScanRequest(BaseModel):
     token: str
-    lat: float | None = None
-    lng: float | None = None
+    queue_id: uuid.UUID | None = None
+    lat: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    lng: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     fingerprint: str | None = None
+
+
+class ScanOptionsRequest(BaseModel):
+    token: str
+
+
+class ScanOption(BaseModel):
+    id: uuid.UUID
+    name: str
+    status: QueueStatus
+    unavailable_reason: Literal["queue_closed", "queue_paused", "outside_schedule", "daily_limit_reached"] | None
+
+
+class ScanOptionsOut(BaseModel):
+    organization_name: str
+    selection_token: str
+    queues: list[ScanOption]
 
 
 class TicketSummaryOut(BaseModel):
@@ -40,7 +59,7 @@ class TicketDetailOut(TicketSummaryOut):
 
 class RateRequest(BaseModel):
     rating: int = Field(ge=1, le=5)
-    comment: str | None = None
+    comment: str | None = Field(default=None, max_length=2000)
 
 
 class PushKeys(BaseModel):

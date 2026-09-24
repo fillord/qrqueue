@@ -10,7 +10,7 @@ export function isPushSupported(): boolean {
 /** Registers /sw.js (built from src/sw.ts, see vite.config.ts). Never throws
  * — callers just get null on unsupported/failed browsers and move on. */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!isPushSupported()) return null
+  if (!('serviceWorker' in navigator)) return null
   try {
     return await navigator.serviceWorker.register('/sw.js', { type: 'module' })
   } catch {

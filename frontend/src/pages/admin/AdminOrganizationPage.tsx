@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,8 @@ export default function AdminOrganizationPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
+  function load() {
+    setError(false)
     void getOwnOrganization().then((data) => {
       setOrg(data)
       setName(data.name)
@@ -29,8 +31,10 @@ export default function AdminOrganizationPage() {
       setDefaultLanguage(data.default_language)
       setTimezoneValue(data.timezone)
       setOneTicketPerOrg(data.one_ticket_per_org)
-    })
-  }, [])
+    }).catch(() => setError(true))
+  }
+
+  useEffect(load, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -58,7 +62,7 @@ export default function AdminOrganizationPage() {
   if (!org) {
     return (
       <div className="admin-page">
-        <div className="spinner" aria-hidden="true" />
+        {error ? <LoadError retry={load} /> : <div className="spinner" aria-hidden="true" />}
       </div>
     )
   }

@@ -9,34 +9,26 @@ const SPEECH_LANG: Record<TvState['language'], string> = {
   en: 'en-US',
 }
 
-/**
- * Speaks newly-called ticket numbers via the browser's built-in
- * SpeechSynthesis — no dependency. Diffs each queue's `now_serving` against
- * the previous snapshot rather than reacting to a WS event type, since
- * /ws/tv always pushes a full state snapshot (ARCHITECTURE.md section 5
- * doesn't carry a discrete event payload down to the TV). The first
- * snapshot after mount only seeds the comparison baseline — it never
- * announces whatever was already being served before the screen loaded.
- */
 export function useTvAnnouncer(state: TvState | null, enabled: boolean): void {
-  const previousRef = useRef<Map<string, string | null> | null>(null)
+  const previousRef = useRef<Map<string, number> | null>(null)
 
   useEffect(() => {
     if (!state) return
 
     const previous = previousRef.current
-    const current = new Map(state.queues.map((q) => [q.queue_id, q.now_serving]))
+    const calls = state.queues.flatMap((q) => q.active_calls)
+    const current = new Map(calls.map((call) => [call.ticket_id, call.call_count]))
 
     if (previous && enabled && 'speechSynthesis' in window) {
       const t = i18n.getFixedT(state.language)
-      for (const queue of state.queues) {
-        if (queue.now_serving && queue.now_serving !== previous.get(queue.queue_id)) {
-          const text = queue.now_serving_cabinet
+      for (const call of calls) {
+        if (call.call_count !== previous.get(call.ticket_id)) {
+          const text = call.cabinet_label
             ? t('tv.announce.calledWithCabinet', {
-                number: queue.now_serving,
-                cabinet: queue.now_serving_cabinet,
+                number: call.display_number,
+                cabinet: call.cabinet_label,
               })
-            : t('tv.announce.called', { number: queue.now_serving })
+            : t('tv.announce.called', { number: call.display_number })
           const utterance = new SpeechSynthesisUtterance(text)
           utterance.lang = SPEECH_LANG[state.language]
           window.speechSynthesis.speak(utterance)

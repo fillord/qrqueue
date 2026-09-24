@@ -11,9 +11,11 @@ from app.models.enums import QueueStatus, TicketSource, TicketStatus
 from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.ticket import Ticket
+from app.models.tv_screen import TVScreen
+from app.services.hall_scan import hall_queues
 from app.services.geo import haversine_m
 from app.services.queue_availability import within_schedule
-from app.services.qr_tokens import QRTokenError, verify
+from app.services.qr_tokens import QRTokenError, verify, verify_selection
 from app.services.tickets import create_ticket
 
 _ACTIVE_STATUSES = (
@@ -22,6 +24,21 @@ _ACTIVE_STATUSES = (
     TicketStatus.confirmed,
     TicketStatus.serving,
 )
+
+
+async def queue_unavailability(db: AsyncSession, queue: Queue, organization: Organization, now: datetime) -> str | None:
+    if not queue.is_active or queue.deleted_at is not None or queue.status == QueueStatus.closed:
+        return "queue_closed"
+    if queue.status == QueueStatus.paused:
+        return "queue_paused"
+    today = local_date(organization.timezone, now)
+    if not await within_schedule(db, queue, today, now, organization.timezone):
+        return "outside_schedule"
+    if queue.daily_ticket_limit is not None:
+        issued_today = 0 if queue.counter_date != today else queue.last_ticket_number
+        if issued_today >= queue.daily_ticket_limit:
+            return "daily_limit_reached"
+    return None
 
 
 class ScanError(Exception):
@@ -37,6 +54,7 @@ async def scan(
     *,
     token: str,
     client: Client,
+    selected_queue_id: uuid.UUID | None = None,
     lat: float | None = None,
     lng: float | None = None,
     now: datetime | None = None,
@@ -45,30 +63,31 @@ async def scan(
 
     # 1. signature, nbf, exp
     try:
-        queue_id = verify(token, now)
+        if selected_queue_id is None:
+            queue_id = verify(token, now)
+        else:
+            screen_id = verify_selection(token, now)
     except QRTokenError as exc:
         raise ScanError(exc.reason)
 
+    if selected_queue_id is not None:
+        screen = await db.get(TVScreen, screen_id)
+        if screen is None or selected_queue_id not in {queue.id for queue in await hall_queues(db, screen)}:
+            raise ScanError("queue_unavailable")
+        queue_id = selected_queue_id
+
     queue = await db.get(Queue, queue_id)
-    if queue is None:
+    if queue is None or queue.deleted_at is not None:
         raise ScanError("token_invalid")
 
     organization = await db.get(Organization, queue.organization_id)
+    if organization is None or not organization.is_active or organization.deleted_at is not None:
+        raise ScanError("queue_unavailable")
 
     # 2. queue open, schedule, daily_ticket_limit
-    if not queue.is_active or queue.status == QueueStatus.closed:
-        raise ScanError("queue_closed")
-    if queue.status == QueueStatus.paused:
-        raise ScanError("queue_paused")
-
-    today = local_date(organization.timezone, now)
-    if not await within_schedule(db, queue, today, now, organization.timezone):
-        raise ScanError("outside_schedule")
-
-    if queue.daily_ticket_limit is not None:
-        issued_today = 0 if queue.counter_date != today else queue.last_ticket_number
-        if issued_today >= queue.daily_ticket_limit:
-            raise ScanError("daily_limit_reached")
+    unavailability = await queue_unavailability(db, queue, organization, now)
+    if unavailability:
+        raise ScanError(unavailability)
 
     # 3. geozone
     if queue.geo_radius_m is not None:

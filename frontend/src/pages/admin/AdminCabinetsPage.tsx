@@ -1,8 +1,9 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getAdminQueues } from '../../api/admin'
-import { createCabinet, listCabinets } from '../../api/cabinets'
+import { archiveCabinet, createCabinet, listCabinets, restoreCabinet, updateCabinet } from '../../api/cabinets'
 import type { CabinetCreatePayload } from '../../api/cabinets'
 import { listStaff } from '../../api/staffAdmin'
 import type { Cabinet, CabinetStatus, QueueSummary, StaffUser } from '../../api/types'
@@ -22,31 +23,51 @@ const STATUS_TONE: Record<CabinetStatus, 'success' | 'warning' | 'danger' | 'neu
 
 export default function AdminCabinetsPage() {
   const { t } = useTranslation()
+  const [loadError, setLoadError] = useState(false)
   const { toasts, push, dismiss } = useToasts()
   const [cabinets, setCabinets] = useState<Cabinet[] | null>(null)
   const [queues, setQueues] = useState<QueueSummary[]>([])
   const [operators, setOperators] = useState<StaffUser[]>([])
+  const [editing, setEditing] = useState<Cabinet | null>(null)
   const [creating, setCreating] = useState(false)
   const [managingOperatorsFor, setManagingOperatorsFor] = useState<Cabinet | null>(null)
+  const [includeArchived, setIncludeArchived] = useState(false)
 
   async function load() {
+    setLoadError(false)
+    try {
     const [cabinetList, queueList, staffList] = await Promise.all([
-      listCabinets(),
+      listCabinets(includeArchived),
       getAdminQueues(),
       listStaff(),
     ])
     setCabinets(cabinetList)
     setQueues(queueList)
     setOperators(staffList.filter((u) => u.role === 'operator'))
+    } catch { setLoadError(true) }
   }
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [includeArchived])
+
+  async function handleArchive(cabinet: Cabinet) {
+    if (!window.confirm(t('crud.archiveCabinetConfirm', { name: cabinet.label }))) return
+    try { await archiveCabinet(cabinet.id); await load() }
+    catch (err) { push(apiErrorMessage(err, t)) }
+  }
+
+  async function handleRestore(cabinet: Cabinet) {
+    try { await restoreCabinet(cabinet.id); push(t('crud.restoreHint')); await load() }
+    catch (err) { push(apiErrorMessage(err, t)) }
+  }
 
   async function handleCreate(payload: CabinetCreatePayload) {
     try {
-      await createCabinet(payload)
+      if (editing) {
+        await updateCabinet(editing.id, payload)
+        setEditing(null)
+      } else await createCabinet(payload)
       setCreating(false)
     } catch (err) {
       push(apiErrorMessage(err, t))
@@ -55,17 +76,23 @@ export default function AdminCabinetsPage() {
     }
   }
 
+  async function toggleActive(cabinet: Cabinet) {
+    try { await updateCabinet(cabinet.id, { is_active: !cabinet.is_active }); await load() }
+    catch (err) { push(apiErrorMessage(err, t)) }
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page__header">
         <h1>{t('admin.cabinets.title')}</h1>
-        <button type="button" onClick={() => setCreating(true)}>
-          {t('admin.cabinets.create')}
-        </button>
+        <div className="admin-page__header-actions">
+          <button type="button" className="admin-button--secondary" onClick={() => setIncludeArchived(!includeArchived)}>{t(includeArchived ? 'crud.hideArchived' : 'crud.showArchived')}</button>
+          <button type="button" onClick={() => setCreating(true)}>{t('admin.cabinets.create')}</button>
+        </div>
       </div>
 
       {cabinets === null ? (
-        <div className="spinner" aria-hidden="true" />
+        loadError ? null : <div className="spinner" aria-hidden="true" />
       ) : cabinets.length === 0 ? (
         <p className="admin-page__empty">{t('admin.cabinets.empty')}</p>
       ) : (
@@ -81,15 +108,18 @@ export default function AdminCabinetsPage() {
           <tbody>
             {cabinets.map((cabinet) => (
               <tr key={cabinet.id}>
-                <td>{cabinet.label}</td>
+                <td>{cabinet.label}{cabinet.deleted_at ? ` (${t('crud.archived')})` : !cabinet.is_active ? ` (${t('admin.users.inactive')})` : ''}</td>
                 <td>{queues.find((q) => q.id === cabinet.queue_id)?.name ?? '—'}</td>
                 <td>
-                  <StatusBadge tone={STATUS_TONE[cabinet.status]} label={t(`operator.cabinetStatus.${cabinet.status}`)} />
+                  <StatusBadge tone={cabinet.deleted_at ? 'neutral' : STATUS_TONE[cabinet.status]} label={cabinet.deleted_at ? t('crud.archived') : t(`operator.cabinetStatus.${cabinet.status}`)} />
                 </td>
                 <td className="admin-table__actions">
-                  <button type="button" onClick={() => setManagingOperatorsFor(cabinet)}>
-                    {t('admin.cabinets.manageOperators')}
-                  </button>
+                  {cabinet.deleted_at ? <button type="button" onClick={() => void handleRestore(cabinet)}>{t('crud.restore')}</button> : <>
+                    <button type="button" onClick={() => setEditing(cabinet)}>{t('admin.common.edit')}</button>
+                    <button type="button" disabled={!!cabinet.current_ticket_id} onClick={() => void toggleActive(cabinet)}>{t(cabinet.is_active ? 'admin.users.deactivate' : 'admin.users.activate')}</button>
+                    <button type="button" onClick={() => setManagingOperatorsFor(cabinet)}>{t('admin.cabinets.manageOperators')}</button>
+                    <button type="button" className="admin-action--danger" onClick={() => void handleArchive(cabinet)}>{t('crud.archive')}</button>
+                  </>}
                 </td>
               </tr>
             ))}
@@ -97,8 +127,8 @@ export default function AdminCabinetsPage() {
         </table>
       )}
 
-      {creating && (
-        <CabinetFormModal queues={queues} onSubmit={handleCreate} onClose={() => setCreating(false)} />
+      {(creating || editing) && (
+        <CabinetFormModal initial={editing ?? undefined} queues={queues} onSubmit={handleCreate} onClose={() => { setCreating(false); setEditing(null) }} />
       )}
 
       {managingOperatorsFor && (
@@ -109,6 +139,7 @@ export default function AdminCabinetsPage() {
         />
       )}
 
+      {loadError && <LoadError retry={() => void load()} />}
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   )

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, apiPut } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './client'
 import type { AdminQueue, QueueStatus, ScheduleEntry, ScheduleEntryWithId } from './types'
 
 export interface QueueCreatePayload {
@@ -15,8 +15,16 @@ export interface QueueCreatePayload {
 
 export type QueueUpdatePayload = Partial<QueueCreatePayload> & { is_active?: boolean }
 
-export function listQueues(): Promise<AdminQueue[]> {
-  return apiGet<AdminQueue[]>('/api/admin/queues')
+export function listQueues(includeArchived = false): Promise<AdminQueue[]> {
+  return apiGet<AdminQueue[]>(`/api/admin/queues${includeArchived ? '?include_archived=true' : ''}`)
+}
+
+export function archiveQueue(id: string): Promise<void> {
+  return apiDelete<void>(`/api/admin/queues/${id}`)
+}
+
+export function restoreQueue(id: string): Promise<AdminQueue> {
+  return apiPost<AdminQueue>(`/api/admin/queues/${id}/restore`, {})
 }
 
 export function getQueue(id: string): Promise<AdminQueue> {

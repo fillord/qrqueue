@@ -238,55 +238,39 @@ async def _notify_called(db: AsyncSession, ticket: Ticket) -> None:
         cabinet = await db.get(Cabinet, ticket.cabinet_id)
         cabinet_label = cabinet.label if cabinet is not None else None
 
-    body = f"Подойдите к {cabinet_label}." if cabinet_label else "Подойдите к окну приёма."
-    await notifications.notify_client(
-        db,
-        client.id,
-        {
-            "title": f"Вас вызывают — {ticket.display_number}",
-            "body": body,
-            "ticket_id": str(ticket.id),
-        },
-    )
+    await notifications.notify_client(db, client.id, notifications.ticket_message(client.language, "called", ticket, cabinet_label))
 
 
 async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
-    """Pings whoever is now exactly _APPROACHING_POSITION-th in line — not
-    everyone at or under that position on every recompute, which would spam
-    a ticket once for every call ahead of it. `position_notified` makes this
-    a one-time signal per ticket even if it re-enters that position later
-    (e.g. after a no_show `return`).
-    """
     result = await db.execute(
-        select(Ticket)
-        .where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
-        .order_by(*waiting_order())
-        .limit(_APPROACHING_POSITION)
+        select(Ticket).where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
+        .order_by(*waiting_order()).limit(_APPROACHING_POSITION)
     )
-    waiting = list(result.scalars().all())
-    if len(waiting) < _APPROACHING_POSITION:
-        return
+    candidates = [ticket for ticket in result.scalars().all() if ticket.client_id and not ticket.position_notified]
+    for ticket in candidates:
+        # An atomic claim prevents concurrent queue transitions from notifying twice.
+        from sqlalchemy import update
+        claimed = await db.execute(update(Ticket).where(
+            Ticket.id == ticket.id, Ticket.position_notified.is_(False), Ticket.status == TicketStatus.waiting
+        ).values(position_notified=True).returning(Ticket.id))
+        if claimed.scalar_one_or_none() is None:
+            continue
+        await db.commit()
+        client = await db.get(Client, ticket.client_id)
+        if client:
+            await notifications.notify_client(db, client.id, notifications.ticket_message(client.language, "approaching", ticket))
 
-    ticket = waiting[_APPROACHING_POSITION - 1]
-    if ticket.position_notified or ticket.client_id is None:
-        return
 
-    ticket.position_notified = True
-    await db.flush()
-    await db.commit()
-
-    client = await db.get(Client, ticket.client_id)
-    if client is None:
-        return
-    await notifications.notify_client(
-        db,
-        client.id,
-        {
-            "title": f"Скоро ваша очередь — {ticket.display_number}",
-            "body": "Вы примерно третий в очереди — будьте рядом.",
-            "ticket_id": str(ticket.id),
-        },
-    )
+async def _notify_after_change(db: AsyncSession, ticket: Ticket, kind: str | None = None) -> None:
+    try:
+        if kind and ticket.client_id:
+            client = await db.get(Client, ticket.client_id)
+            if client:
+                await notifications.notify_client(db, client.id, notifications.ticket_message(client.language, kind, ticket))
+        queue = await db.get(Queue, ticket.queue_id)
+        await _notify_approaching_position(db, queue)
+    except Exception:
+        logger.exception("push notification after ticket transition failed")
 
 
 async def recall(
@@ -380,6 +364,7 @@ async def mark_no_show(
     )
     await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
+    await _notify_after_change(db, ticket, "missed")
     return ticket
 
 
@@ -415,6 +400,7 @@ async def return_to_queue(
     )
     await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
+    await _notify_after_change(db, ticket, None)
     return ticket
 
 
@@ -532,6 +518,8 @@ async def transfer(
     await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
     await publish_event(redis, new_ticket.queue_id, "ticket.created", ticket_id=str(new_ticket.id), status=new_ticket.status.value)
+    await _notify_after_change(db, ticket)
+    await _notify_after_change(db, new_ticket)
     return new_ticket
 
 
@@ -563,6 +551,7 @@ async def leave(
     )
     await db.commit()
     await publish_event(redis, ticket.queue_id, "ticket.updated", ticket_id=str(ticket.id), status=ticket.status.value)
+    await _notify_after_change(db, ticket, None)
     return ticket
 
 
@@ -631,7 +620,12 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
         organization = await db.get(Organization, ticket.organization_id)
         avg_seconds = await estimate_wait_seconds(db, queue, organization)
         if avg_seconds is not None:
-            estimated_wait_seconds = avg_seconds * position
+            capacity = (await db.execute(select(func.count()).select_from(Cabinet).where(
+                Cabinet.queue_id == queue.id, Cabinet.is_active.is_(True),
+                Cabinet.status.in_((CabinetStatus.free, CabinetStatus.busy)),
+            ))).scalar_one()
+            if capacity and queue.status == QueueStatus.open:
+                estimated_wait_seconds = round(avg_seconds * position / capacity)
 
     next_ticket_id = None
     if ticket.status == TicketStatus.transferred:

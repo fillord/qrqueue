@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from app.schemas.validation import Name, Password, PatchModel
 import enum
 import uuid
 
@@ -13,15 +16,16 @@ class StaffRole(str, enum.Enum):
 
 class StaffCreate(BaseModel):
     email: EmailStr
-    password: str
-    full_name: str
+    password: Password
+    full_name: Name
     role: StaffRole
 
 
-class StaffUpdate(BaseModel):
+class StaffUpdate(PatchModel):
     reset_totp: bool | None = None
-    full_name: str | None = None
-    password: str | None = None
+    email: EmailStr | None = None
+    full_name: Name | None = None
+    password: Password | None = None
     role: StaffRole | None = None
     is_active: bool | None = None
 
@@ -34,5 +38,6 @@ class StaffOut(BaseModel):
     organization_id: uuid.UUID
     is_active: bool
     totp_enabled: bool = False
+    deleted_at: datetime | None = None
 
     model_config = {"from_attributes": True}

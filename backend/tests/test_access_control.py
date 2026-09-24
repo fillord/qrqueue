@@ -87,6 +87,7 @@ async def test_superadmin_can_reset_admin_totp(client, db_session, make_user, ma
     admin, password = await make_user(email="reset-admin@example.com", role=UserRole.org_admin, organization_id=org.id)
     sa, sa_password = await make_user(email="reset-sa@example.com", role=UserRole.superadmin)
     await login(client, admin.email, password)
+    old_session = client.cookies.get(settings.jwt_cookie_name)
     await db_session.refresh(admin)
     assert admin.totp_secret is not None
 
@@ -95,7 +96,9 @@ async def test_superadmin_can_reset_admin_totp(client, db_session, make_user, ma
     resp = await client.patch(f"/api/sa/organizations/{org.id}/admins/{admin.id}", json={"reset_totp": True})
     assert resp.status_code == 200, resp.text
     await db_session.refresh(admin)
-    assert admin.totp_secret is None
+    assert admin.totp_secret is None and admin.auth_version == 1
+    client.cookies.set(settings.jwt_cookie_name, old_session)
+    assert (await client.get("/api/auth/me")).status_code == 401
     await client.post("/api/auth/logout")
     body = await _password_step(client, admin.email, password)
     assert body["totp_setup"] is not None

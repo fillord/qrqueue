@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
+from app.redis import redis_client
 from app.models.cabinet import Cabinet, CabinetOperator
 from app.models.client import Client, PushSubscription
 from app.models.enums import QueueStatus, TicketSource, TicketStatus, UserRole
@@ -149,7 +150,7 @@ async def test_call_next_still_succeeds_when_push_delivery_raises(
     assert resp.json()["status"] == "called"
 
 
-async def test_position_three_notified_exactly_once_not_on_every_recompute(
+async def test_first_three_notified_exactly_once_not_on_every_recompute(
     db_session, make_organization, monkeypatch
 ):
     _configure_vapid(monkeypatch)
@@ -169,15 +170,15 @@ async def test_position_three_notified_exactly_once_not_on_every_recompute(
     monkeypatch.setattr(notifications, "webpush", lambda **kw: calls.append(kw))
 
     await tickets_service._notify_approaching_position(db_session, queue)
-    assert len(calls) == 1
-    assert third_ticket.display_number in _payloads(calls)[0]["title"]
+    assert len(calls) == 3
+    assert {p["ticket_id"] for p in _payloads(calls)} == {str(t.id) for t in tickets[:3]}
 
     await db_session.refresh(third_ticket)
     assert third_ticket.position_notified is True
 
     # Recomputing again with no change in the queue must not re-notify.
     await tickets_service._notify_approaching_position(db_session, queue)
-    assert len(calls) == 1
+    assert len(calls) == 3
 
 
 async def test_call_next_notifies_new_position_three_ticket_each_time_without_duplicates(
@@ -208,9 +209,9 @@ async def test_call_next_notifies_new_position_three_ticket_each_time_without_du
     await client.post(f"/api/operator/cabinets/{cabinet.id}/select")
 
     # Ticket 1 called (its own "you're called" push) -> waiting becomes
-    # [2,3,4,5], position 3 is ticket 4: one "approaching" push too.
+    # [2,3,4,5]: notify all first three, each once.
     await client.post("/api/operator/call-next")
-    assert len(approaching_titles()) == 1
+    assert len(approaching_titles()) == 3
     first_approaching = approaching_titles()[0]
 
     # Free the cabinet, call again: ticket 2 called -> waiting is [3,4,5],
@@ -225,6 +226,37 @@ async def test_call_next_notifies_new_position_three_ticket_each_time_without_du
     await client.post(f"/api/operator/tickets/{current.id}/finish")
     await client.post("/api/operator/call-next")
 
-    assert len(approaching_titles()) == 2
+    assert len(approaching_titles()) == 4
     assert approaching_titles()[0] == first_approaching  # unchanged, not repeated
-    assert approaching_titles()[1] != first_approaching  # a different ticket this time
+    assert approaching_titles()[3] != first_approaching  # a different ticket this time
+
+
+async def test_missed_call_push_uses_client_language(db_session, make_organization, monkeypatch):
+    from app.models.enums import AuditActorType, Language
+    _configure_vapid(monkeypatch)
+    org = await make_organization(name='Missed call language')
+    queue = await _make_queue(db_session, org)
+    visitor = await _make_subscribed_client(db_session, 'https://push.example.com/missed')
+    visitor.language = Language.en
+    ticket = await _make_waiting_ticket(db_session, org, queue, number=1, client=visitor)
+    ticket.status = TicketStatus.called
+    await db_session.commit()
+    calls = []
+    monkeypatch.setattr(notifications, 'webpush', lambda **kw: calls.append(kw))
+    await tickets_service.mark_no_show(db_session, redis_client, ticket=ticket, actor_type=AuditActorType.user, actor_id=None)
+    assert _payloads(calls)[0]['title'].startswith('Missed call')
+    assert _payloads(calls)[0]['ticket_id'] == str(ticket.id)
+
+
+async def test_short_queue_also_gets_approaching_notification(db_session, make_organization, monkeypatch):
+    _configure_vapid(monkeypatch)
+    org = await make_organization(name='Short queue')
+    queue = await _make_queue(db_session, org)
+    visitor = await _make_subscribed_client(db_session, 'https://push.example.com/short')
+    ticket = await _make_waiting_ticket(db_session, org, queue, number=1, client=visitor)
+    calls = []
+    monkeypatch.setattr(notifications, 'webpush', lambda **kw: calls.append(kw))
+    await tickets_service._notify_approaching_position(db_session, queue)
+    await tickets_service._notify_approaching_position(db_session, queue)
+    assert len(calls) == 1
+    assert _payloads(calls)[0]['ticket_id'] == str(ticket.id)

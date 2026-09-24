@@ -1,5 +1,9 @@
 import { apiGet, apiPost } from './client'
-import type { ScanRequest, TicketDetail, TicketSummary } from './types'
+import type { ScanOptions, ScanRequest, TicketDetail, TicketSummary } from './types'
+
+export function getScanOptions(token: string): Promise<ScanOptions> {
+  return apiPost<ScanOptions>('/api/public/scan-options', { token })
+}
 
 export function scan(payload: ScanRequest): Promise<TicketSummary> {
   return apiPost<TicketSummary>('/api/public/scan', payload)

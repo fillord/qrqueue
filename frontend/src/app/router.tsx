@@ -1,3 +1,6 @@
+import SaUsersPage from '../pages/superadmin/SaUsersPage'
+import SaTrialRequestsPage from '../pages/superadmin/SaTrialRequestsPage'
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import AdminAnalyticsPage from '../pages/admin/AdminAnalyticsPage'
@@ -25,6 +28,8 @@ import TvPage from '../pages/tv/TvPage'
 import TvPairPage from '../pages/tv/TvPairPage'
 import Layout from './Layout'
 import ProtectedRoute from './ProtectedRoute'
+
+const AdminSignagePage = lazy(() => import('../pages/admin/AdminSignagePage'))
 
 export default function AppRouter() {
   return (
@@ -80,6 +85,7 @@ export default function AppRouter() {
           <Route path="cabinets" element={<AdminCabinetsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="tv-screens" element={<AdminTvScreensPage />} />
+          <Route path="signage" element={<Suspense fallback={<div className="spinner" aria-hidden="true" />}><AdminSignagePage /></Suspense>} />
         </Route>
 
         <Route
@@ -91,6 +97,8 @@ export default function AppRouter() {
           }
         >
           <Route index element={<Navigate to="/sa/analytics" replace />} />
+          <Route path="users" element={<SaUsersPage />} />
+          <Route path="trial-requests" element={<SaTrialRequestsPage />} />
           <Route path="organizations" element={<SaOrganizationsPage />} />
           <Route path="organizations/:id" element={<SaOrganizationDetailPage />} />
           <Route path="analytics" element={<SaAnalyticsPage />} />

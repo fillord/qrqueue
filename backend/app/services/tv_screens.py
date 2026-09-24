@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import utcnow
 from app.models.enums import AuditActorType
 from app.models.organization import Organization
+from app.models.queue import Queue
+from app.models.cabinet import Cabinet
 from app.models.tv_screen import TVScreen
+from app.models.tv_media import TVMedia
 from app.models.user import User
 from app.schemas.tv import TVScreenCreate
 from app.services.audit import log_action
@@ -15,6 +18,39 @@ from app.services.errors import ServiceError
 
 _PAIRING_CODE_LENGTH = 6
 _PAIRING_CODE_ALPHABET = "0123456789"
+
+
+async def _checked_media_ids(db: AsyncSession, organization_id, media_ids):
+    selected = list(dict.fromkeys(media_ids))
+    if selected:
+        found = (await db.scalars(select(TVMedia.id).where(
+            TVMedia.organization_id == organization_id, TVMedia.id.in_(selected)
+        ))).all()
+        if len(found) != len(selected):
+            raise ServiceError("media_not_found", 404)
+    return selected
+
+
+async def _checked_queue_ids(db: AsyncSession, organization_id, queue_ids):
+    selected = list(dict.fromkeys(queue_ids))
+    if selected:
+        found = (await db.scalars(select(Queue.id).where(
+            Queue.organization_id == organization_id, Queue.id.in_(selected), Queue.deleted_at.is_(None)
+        ))).all()
+        if len(found) != len(selected):
+            raise ServiceError("queue_not_found", 404)
+    return selected
+
+
+async def _checked_cabinet_ids(db: AsyncSession, organization_id, cabinet_ids):
+    selected = list(dict.fromkeys(cabinet_ids))
+    if selected:
+        found = (await db.scalars(select(Cabinet.id).where(
+            Cabinet.organization_id == organization_id, Cabinet.id.in_(selected), Cabinet.deleted_at.is_(None)
+        ))).all()
+        if len(found) != len(selected):
+            raise ServiceError("cabinet_not_found", 404)
+    return selected
 
 
 async def _generate_pairing_code(db: AsyncSession) -> str:
@@ -30,12 +66,24 @@ async def create_tv_screen(
     db: AsyncSession, organization: Organization, payload: TVScreenCreate, actor: User
 ) -> TVScreen:
     code = await _generate_pairing_code(db)
+    selected_media_ids = await _checked_media_ids(db, organization.id, payload.selected_media_ids)
+    selected_queue_ids = await _checked_queue_ids(db, organization.id, payload.selected_queue_ids)
+    selected_cabinet_ids = await _checked_cabinet_ids(db, organization.id, payload.selected_cabinet_ids)
     screen = TVScreen(
         organization_id=organization.id,
-        queue_id=payload.queue_id,
+        queue_id=payload.queue_id if payload.display_mode == "queue" else None,
         name=payload.name,
         pairing_code=code,
         language=payload.language,
+        display_mode=payload.display_mode,
+        slide_seconds=payload.slide_seconds,
+        ads_enabled=payload.ads_enabled,
+        media_playlist_mode=payload.media_playlist_mode,
+        selected_media_ids=selected_media_ids,
+        queue_selection_mode=payload.queue_selection_mode,
+        selected_queue_ids=selected_queue_ids,
+        cabinet_selection_mode=payload.cabinet_selection_mode,
+        selected_cabinet_ids=selected_cabinet_ids,
     )
     db.add(screen)
     await db.flush()
@@ -48,7 +96,13 @@ async def create_tv_screen(
         entity_type="tv_screen",
         entity_id=screen.id,
         organization_id=organization.id,
-        payload={"name": payload.name, "queue_id": str(payload.queue_id) if payload.queue_id else None},
+        payload={"name": payload.name, "queue_id": str(payload.queue_id) if payload.queue_id else None,
+                 "media_playlist_mode": payload.media_playlist_mode,
+                 "selected_media_ids": [str(item) for item in selected_media_ids],
+                 "queue_selection_mode": payload.queue_selection_mode,
+                 "selected_queue_ids": [str(item) for item in selected_queue_ids],
+                 "cabinet_selection_mode": payload.cabinet_selection_mode,
+                 "selected_cabinet_ids": [str(item) for item in selected_cabinet_ids]},
     )
     return screen
 
@@ -90,3 +144,31 @@ async def pair_tv_screen(db: AsyncSession, *, code: str, now: datetime | None = 
 async def get_screen_by_device_token(db: AsyncSession, device_token: str) -> TVScreen | None:
     result = await db.execute(select(TVScreen).where(TVScreen.device_token == device_token))
     return result.scalar_one_or_none()
+
+
+async def update_tv_screen(db, screen, payload, actor):
+    from app.services.realtime import defer_event, organization_channel
+    changes = payload.model_dump(exclude_unset=True)
+    if "selected_media_ids" in changes:
+        changes["selected_media_ids"] = await _checked_media_ids(
+            db, screen.organization_id, changes["selected_media_ids"]
+        )
+    if "queue_id" in changes and changes["queue_id"] is not None:
+        await _checked_queue_ids(db, screen.organization_id, [changes["queue_id"]])
+    if "selected_queue_ids" in changes:
+        changes["selected_queue_ids"] = await _checked_queue_ids(
+            db, screen.organization_id, changes["selected_queue_ids"]
+        )
+    if "selected_cabinet_ids" in changes:
+        changes["selected_cabinet_ids"] = await _checked_cabinet_ids(
+            db, screen.organization_id, changes["selected_cabinet_ids"]
+        )
+    for field, value in changes.items():
+        setattr(screen, field, value)
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="tv_screen.updated", entity_type="tv_screen",
+                     entity_id=screen.id, organization_id=screen.organization_id,
+                     payload={key: [str(item) for item in value] if key in ("selected_media_ids", "selected_queue_ids", "selected_cabinet_ids")
+                              else str(value) if key == "queue_id" and value is not None else value
+                              for key, value in changes.items()})
+    defer_event(db, organization_channel(screen.organization_id), "tv_screen.updated", screen_id=str(screen.id))

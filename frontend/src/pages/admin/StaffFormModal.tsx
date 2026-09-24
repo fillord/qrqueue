@@ -3,23 +3,26 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { StaffCreatePayload } from '../../api/staffAdmin'
+import type { StaffUser } from '../../api/types'
 import Modal from '../../components/Modal'
 
 export default function StaffFormModal({
+  initial,
   onSubmit,
   onClose,
 }: {
+  initial?: StaffUser
   onSubmit: (payload: StaffCreatePayload) => Promise<void>
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initial?.email ?? '')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [role, setRole] = useState<'operator' | 'registrar'>('operator')
+  const [fullName, setFullName] = useState(initial?.full_name ?? '')
+  const [role, setRole] = useState<'operator' | 'registrar'>(initial?.role === 'registrar' ? 'registrar' : 'operator')
   const [submitting, setSubmitting] = useState(false)
 
-  const canSubmit = email.trim() !== '' && password.trim() !== '' && fullName.trim() !== ''
+  const canSubmit = email.trim() !== '' && (!!initial || password.length >= 8) && fullName.trim() !== ''
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -33,7 +36,7 @@ export default function StaffFormModal({
   }
 
   return (
-    <Modal title={t('admin.users.form.title')} onClose={onClose}>
+    <Modal title={t(initial ? 'admin.common.edit' : 'admin.users.form.title')} onClose={onClose}>
       <form className="modal-form" onSubmit={(e) => void handleSubmit(e)}>
         <label className="modal__field">
           <span>{t('admin.users.form.fullName')}</span>
@@ -47,9 +50,10 @@ export default function StaffFormModal({
 
         <label className="modal__field">
           <span>{t('admin.users.form.password')}</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required={!initial} minLength={8} autoComplete="new-password" />
         </label>
 
+        {initial && <p>{t('admin.common.passwordHint')}</p>}
         <div className="modal__field">
           <span>{t('admin.users.form.role')}</span>
           <label className="modal__radio">

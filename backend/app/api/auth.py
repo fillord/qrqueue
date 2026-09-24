@@ -40,7 +40,7 @@ def _cookie_kwargs() -> dict:
 def _set_session_cookie(response: Response, user: User) -> None:
     response.set_cookie(
         key=settings.jwt_cookie_name,
-        value=create_access_token(user.id, user.role.value),
+        value=create_access_token(user.id, user.role.value, user.auth_version),
         max_age=settings.jwt_expire_minutes * 60,
         **_cookie_kwargs(),
     )
@@ -78,7 +78,8 @@ async def login(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
+    if (user is None or not user.is_active or user.deleted_at is not None
+            or not verify_password(payload.password, user.password_hash)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not await organization_is_active(db, user):
         raise HTTPException(
@@ -87,11 +88,11 @@ async def login(
 
     setup: TotpSetupOut | None = None
     if user.totp_secret is not None:
-        pending = create_totp_pending_token(user.id)
+        pending = create_totp_pending_token(user.id, auth_version=user.auth_version)
     elif user.role.value in settings.totp_required_role_set:
         secret = generate_totp_secret()
         setup = TotpSetupOut(secret=secret, otpauth_uri=totp_provisioning_uri(secret, user.email))
-        pending = create_totp_pending_token(user.id, setup_secret=secret)
+        pending = create_totp_pending_token(user.id, setup_secret=secret, auth_version=user.auth_version)
     else:
         await _record_login(db, request, user)
         _set_session_cookie(response, user)
@@ -129,7 +130,9 @@ async def totp_step(
         raise expired
 
     user = await db.get(User, uuid.UUID(claims["sub"]))
-    if user is None or not user.is_active or not await organization_is_active(db, user):
+    if (user is None or not user.is_active or user.deleted_at is not None
+            or claims.get("auth_version", 0) != user.auth_version
+            or not await organization_is_active(db, user)):
         raise expired
 
     await enforce_rate_limit(

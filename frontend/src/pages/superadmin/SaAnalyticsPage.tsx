@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -12,6 +13,7 @@ const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function SaAnalyticsPage() {
   const { t } = useTranslation()
+  const [retry, setRetry] = useState(0)
   const [searchParams] = useSearchParams()
   const initial = defaultDateRange(7)
   const [from, setFrom] = useState(initial.from)
@@ -25,8 +27,8 @@ export default function SaAnalyticsPage() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    void getOrganizations().then(setOrganizations)
-  }, [])
+    void getOrganizations().then(setOrganizations).catch(() => setError(true))
+  }, [retry])
 
   useEffect(() => {
     setQueueId('')
@@ -34,8 +36,8 @@ export default function SaAnalyticsPage() {
       setQueues([])
       return
     }
-    void getAdminQueues(organizationId).then(setQueues)
-  }, [organizationId])
+    void getAdminQueues(organizationId).then(setQueues).catch(() => setError(true))
+  }, [organizationId, retry])
 
   useEffect(() => {
     setLoading(true)
@@ -44,7 +46,7 @@ export default function SaAnalyticsPage() {
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [from, to, organizationId, queueId])
+  }, [retry, from, to, organizationId, queueId])
 
   const weekdayLabels = WEEKDAY_KEYS.map((key) => t(`admin.analytics.weekdays.${key}`))
 
@@ -94,7 +96,7 @@ export default function SaAnalyticsPage() {
       {!organizationId && <p className="admin-page__hint">{t('admin.saAnalytics.allOrgsHint')}</p>}
       {error && <p className="admin-page__error">{t('admin.analytics.error')}</p>}
 
-      {loading || !data ? (
+      {error ? <LoadError retry={() => setRetry((n) => n + 1)} /> : loading || !data ? (
         <div className="spinner" aria-hidden="true" />
       ) : (
         <>

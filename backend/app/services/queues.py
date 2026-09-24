@@ -5,7 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import local_date
+from app.clock import local_date, utcnow
+from app.models.cabinet import Cabinet
 from app.models.enums import AuditActorType, QueueStatus, TicketStatus
 from app.models.organization import Organization
 from app.models.queue import Queue, QueueSchedule
@@ -120,7 +121,7 @@ async def update_queue(db: AsyncSession, queue: Queue, payload: QueueUpdate, act
 
 
 async def list_queues_with_waiting_counts(
-    db: AsyncSession, organization_id: uuid.UUID
+    db: AsyncSession, organization_id: uuid.UUID, *, include_archived: bool = False
 ) -> list[tuple[Queue, int]]:
     """One GROUP BY pass, not N+1 — waiting_count per queue for the admin queues list."""
     waiting_counts = (
@@ -129,13 +130,54 @@ async def list_queues_with_waiting_counts(
         .group_by(Ticket.queue_id)
         .subquery()
     )
-    result = await db.execute(
+    query = (
         select(Queue, func.coalesce(waiting_counts.c.cnt, 0))
         .outerjoin(waiting_counts, waiting_counts.c.queue_id == Queue.id)
         .where(Queue.organization_id == organization_id)
         .order_by(Queue.name)
     )
+    if not include_archived:
+        query = query.where(Queue.deleted_at.is_(None))
+    result = await db.execute(query)
     return [(queue, int(count)) for queue, count in result.all()]
+
+
+async def archive_queue(db: AsyncSession, queue: Queue, actor: User) -> None:
+    await db.refresh(queue, with_for_update=True)
+    active_ticket = await db.scalar(select(Ticket.id).where(
+        Ticket.queue_id == queue.id,
+        Ticket.status.in_([TicketStatus.waiting, TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving]),
+    ).limit(1))
+    if active_ticket is not None:
+        raise HTTPException(status_code=409, detail={"code": "active_tickets"})
+    cabinet_id = await db.scalar(select(Cabinet.id).where(
+        Cabinet.queue_id == queue.id, Cabinet.deleted_at.is_(None),
+    ).limit(1))
+    if cabinet_id is not None:
+        raise HTTPException(status_code=409, detail={"code": "attached_cabinets"})
+    queue.deleted_at = utcnow()
+    queue.is_active = False
+    queue.status = QueueStatus.closed
+    queue.schedule_open = None
+    await db.flush()
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="queue.archived", entity_type="queue", entity_id=queue.id,
+                     organization_id=queue.organization_id, payload={"name": queue.name})
+    defer_event(db, queue_channel(queue.id), "queue.updated", queue_id=str(queue.id))
+    defer_event(db, organization_channel(queue.organization_id), "queue.updated", queue_id=str(queue.id))
+
+
+async def restore_queue(db: AsyncSession, queue: Queue, actor: User) -> Queue:
+    queue.deleted_at = None
+    queue.is_active = False
+    queue.status = QueueStatus.closed
+    queue.schedule_open = None
+    await db.flush()
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="queue.restored", entity_type="queue", entity_id=queue.id,
+                     organization_id=queue.organization_id)
+    defer_event(db, organization_channel(queue.organization_id), "queue.updated", queue_id=str(queue.id))
+    return queue
 
 
 async def get_schedule(db: AsyncSession, queue: Queue) -> list[QueueSchedule]:

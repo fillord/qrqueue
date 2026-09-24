@@ -21,7 +21,7 @@ class QRTokenError(Exception):
         super().__init__(reason)
 
 
-def issue_batch(queue_id: uuid.UUID, now: datetime | None = None) -> dict:
+def _issue_batch(claim: str, subject_id: uuid.UUID, now: datetime | None = None) -> dict:
     now = now or utcnow()
     ttl = timedelta(seconds=settings.qr_token_ttl_seconds)
     batch_span = timedelta(minutes=settings.qr_token_batch_minutes)
@@ -32,14 +32,29 @@ def issue_batch(queue_id: uuid.UUID, now: datetime | None = None) -> dict:
         nbf = now + i * ttl
         exp = now + (i + 1) * ttl + _OVERLAP
         jti = str(uuid.uuid4())
-        payload = {"q": str(queue_id), "nbf": nbf, "exp": exp, "jti": jti}
+        payload = {claim: str(subject_id), "nbf": nbf, "exp": exp, "jti": jti}
         token = jwt.encode(payload, settings.qr_token_secret, algorithm=_ALGORITHM)
         tokens.append({"token": token, "nbf": nbf, "exp": exp, "jti": jti})
 
     return {"server_time": now, "tokens": tokens}
 
 
-def verify(token: str, now: datetime | None = None) -> uuid.UUID:
+def issue_batch(queue_id: uuid.UUID, now: datetime | None = None) -> dict:
+    return _issue_batch("q", queue_id, now)
+
+
+def issue_screen_batch(screen_id: uuid.UUID, now: datetime | None = None) -> dict:
+    return _issue_batch("s", screen_id, now)
+
+
+def issue_selection(screen_id: uuid.UUID, now: datetime | None = None) -> str:
+    now = now or utcnow()
+    return jwt.encode({"ss": str(screen_id), "nbf": now,
+                       "exp": now + timedelta(seconds=settings.qr_selection_ttl_seconds),
+                       "jti": str(uuid.uuid4())}, settings.qr_token_secret, algorithm=_ALGORITHM)
+
+
+def _verify_subject(token: str, claim: str, now: datetime | None = None) -> uuid.UUID:
     now = now or utcnow()
     try:
         payload = jwt.decode(
@@ -51,10 +66,10 @@ def verify(token: str, now: datetime | None = None) -> uuid.UUID:
     except jwt.InvalidTokenError:
         raise QRTokenError("token_invalid")
 
-    queue_id = payload.get("q")
+    subject_id = payload.get(claim)
     nbf = payload.get("nbf")
     exp = payload.get("exp")
-    if queue_id is None or nbf is None or exp is None:
+    if not isinstance(subject_id, str) or not isinstance(nbf, (int, float)) or not isinstance(exp, (int, float)):
         raise QRTokenError("token_invalid")
 
     now_ts = now.timestamp()
@@ -64,6 +79,18 @@ def verify(token: str, now: datetime | None = None) -> uuid.UUID:
         raise QRTokenError("token_expired")
 
     try:
-        return uuid.UUID(queue_id)
+        return uuid.UUID(subject_id)
     except (ValueError, TypeError, AttributeError):
         raise QRTokenError("token_invalid")
+
+
+def verify(token: str, now: datetime | None = None) -> uuid.UUID:
+    return _verify_subject(token, "q", now)
+
+
+def verify_screen(token: str, now: datetime | None = None) -> uuid.UUID:
+    return _verify_subject(token, "s", now)
+
+
+def verify_selection(token: str, now: datetime | None = None) -> uuid.UUID:
+    return _verify_subject(token, "ss", now)

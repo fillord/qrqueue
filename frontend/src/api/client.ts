@@ -1,14 +1,18 @@
+import i18n from 'i18next'
+
 export class ApiError extends Error {
   status: number
   code: string
   ticketId?: string
+  row?: number
 
-  constructor(status: number, code: string, ticketId?: string) {
+  constructor(status: number, code: string, ticketId?: string, row?: number) {
     super(code)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.ticketId = ticketId
+    this.row = row
   }
 }
 
@@ -38,8 +42,8 @@ async function parseErrorDetail(response: Response): Promise<{ code: string; tic
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,
+    headers: { 'Content-Type': 'application/json', 'Accept-Language': i18n.language || 'ru', ...(init?.headers ?? {}) },
   })
 
   if (!response.ok) {

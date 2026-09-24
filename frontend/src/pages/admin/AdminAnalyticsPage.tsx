@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -10,6 +11,7 @@ const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function AdminAnalyticsPage() {
   const { t } = useTranslation()
+  const [retry, setRetry] = useState(0)
   const initial = defaultDateRange(7)
   const [from, setFrom] = useState(initial.from)
   const [to, setTo] = useState(initial.to)
@@ -20,8 +22,8 @@ export default function AdminAnalyticsPage() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    void getAdminQueues().then(setQueues)
-  }, [])
+    void getAdminQueues().then(setQueues).catch(() => setError(true))
+  }, [retry])
 
   useEffect(() => {
     setLoading(true)
@@ -30,7 +32,7 @@ export default function AdminAnalyticsPage() {
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [from, to, queueId])
+  }, [retry, from, to, queueId])
 
   const weekdayLabels = WEEKDAY_KEYS.map((key) => t(`admin.analytics.weekdays.${key}`))
 
@@ -66,7 +68,7 @@ export default function AdminAnalyticsPage() {
 
       {error && <p className="admin-page__error">{t('admin.analytics.error')}</p>}
 
-      {loading || !data ? (
+      {error ? <LoadError retry={() => setRetry((n) => n + 1)} /> : loading || !data ? (
         <div className="spinner" aria-hidden="true" />
       ) : (
         <>

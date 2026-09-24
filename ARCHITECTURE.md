@@ -31,6 +31,8 @@
 | trial_ends_at | timestamptz null | |
 | one_ticket_per_org | bool | default false: лимит «один активный талон» действует в рамках очереди; true — в рамках всей организации |
 | is_active | bool | |
+| deleted_at | timestamptz null | Архивация без удаления очередей, талонов и аудита |
+| video_large_upload_enabled | bool | Ручное расширение лимита одного видео с 50 до 100 МБ суперадминистратором |
 
 ### users
 | Поле | Тип | Примечание |
@@ -42,7 +44,9 @@
 | role | enum(superadmin, org_admin, operator, registrar) | |
 | organization_id | uuid null FK | null только у superadmin |
 | totp_secret | text null | 2FA, обязательна для superadmin и org_admin |
+| auth_version | integer | Входит в JWT; увеличивается при сбросе 2FA и отзывает прежние сессии/ожидающие коды |
 | is_active | bool | |
+| deleted_at | timestamptz null | Архивный пользователь не может войти; история сохраняется |
 | last_login_at | timestamptz null | |
 
 ### queues
@@ -60,6 +64,7 @@
 | last_ticket_number | int | счётчик |
 | counter_date | date | дата счётчика в TZ организации; если не сегодня — сброс в 0 |
 | is_active | bool | |
+| deleted_at | timestamptz null | Архивация без удаления талонов и расписания |
 
 ### queue_schedules
 | Поле | Тип |
@@ -81,6 +86,7 @@
 | status | enum(free, busy, paused, offline) | |
 | current_ticket_id | uuid null FK tickets | кого обслуживает сейчас |
 | is_active | bool | |
+| deleted_at | timestamptz null | Архивация без удаления назначений и истории |
 
 ### cabinet_operators
 `cabinet_id`, `user_id` — какие операторы могут работать в кабинете. Оператор при входе выбирает кабинет из своих.
@@ -132,6 +138,22 @@
 | device_token | text null | выдаётся после привязки, хранится на устройстве |
 | language | enum | |
 | last_seen_at | timestamptz null | |
+| display_mode | text(queue, schedule, media) | Отдельные ТВ для очереди, расписания и роликов с объявлениями |
+| slide_seconds | int | Время показа слайда расписания или изображения, 5–120 секунд |
+| ads_enabled | bool | Разрешение рекламы на конкретном ТВ, по умолчанию false |
+| media_playlist_mode | text(all, selected) | Повторять все активные материалы либо только отмеченные |
+| selected_media_ids | uuid[] | Выбранные материалы конкретного ТВ; ID проверяются по организации |
+| queue_selection_mode | text(all, selected) | Для общего табло: все активные очереди либо только отмеченные |
+| selected_queue_ids | uuid[] | Выбранные очереди общего табло; ID проверяются по организации |
+| cabinet_selection_mode | text(all, selected) | Показывать вызовы всех либо только отмеченных кабинетов |
+| selected_cabinet_ids | uuid[] | Выбранные кабинеты; ID проверяются по организации |
+
+### departments и department_schedule_items
+`departments`: `id`, `organization_id`, `name`, `is_active`, `sort_order`.
+`department_schedule_items`: `id`, `department_id`, `doctor_name`, `service_name?`, `room?`, `weekday` (0–6), `starts_at`, `ends_at`, `sort_order`. Время локальное в часовом поясе организации. XLSX-импорт разворачивает ячейки Пн–Вс в записи по дням; ТВ собирает их обратно в таблицу с одной строкой на врача. Все семь дней видны одновременно; при длинном списке врачей перелистываются только строки отделения, затем экран переходит к следующему отделению.
+
+### tv_media и tv_media_chunks
+`tv_media`: `id`, `organization_id`, `title`, `kind` (`video` или `advertisement`), MIME, ожидаемый размер, загруженный размер, готовность, активность, порядок, дата создания. `tv_media_chunks`: `(media_id, chunk_index)` и бинарный фрагмент до 512 КБ. Это позволяет загружать 50/100 МБ через стандартный лимит nginx, хранить файлы устойчиво к пересозданию контейнера и отдавать байтовые диапазоны для воспроизведения. Реклама фильтруется по `ads_enabled` ТВ. Экран `schedule` получает только отделения, `media` — только ролики и объявления. Медиаэкран по кругу воспроизводит все активные материалы либо выбранные для него; видео идёт до конца, одиночный ролик повторяется. Для вертикального видео свободные края заполняет размытая копия того же ролика, чёткий кадр остаётся целым. При миграции прежние экраны `signage` становятся `schedule`. Хранение медиа увеличивает объём PostgreSQL и бэкапов.
 
 ### audit_logs
 | Поле | Тип |
@@ -171,7 +193,7 @@ waiting ──call-next──▶ called ──confirm / start──▶ confirmed
 
 ## 4. Живой QR-код
 
-Токены **stateless**, подписаны HMAC (`QR_TOKEN_SECRET`), в Redis не хранятся. Формат — JWT с полями `q` (queue_id), `nbf`, `exp`, `jti`.
+Токены **stateless**, подписаны HMAC (`QR_TOKEN_SECRET`), в Redis не хранятся. QR одной очереди содержит JWT с `q` (queue_id), `nbf`, `exp`, `jti`. QR общего табло содержит `s` (screen_id) вместо `q`.
 
 **Выдача пачки.** ТВ запрашивает `GET /api/tv/qr-batch` и получает `server_time` плюс список токенов на `QR_TOKEN_BATCH_MINUTES` вперёд. Токен *i* действует с `t0 + i·TTL` по `t0 + (i+1)·TTL + 15 s` — перекрытие в 15 секунд, чтобы сканирование в момент смены кода не отваливалось. ТВ переключает коды по своему таймеру, синхронизированному с `server_time`, и запрашивает новую пачку, когда осталось меньше 3 минут. Если сеть упала — экран продолжает крутить оставшиеся коды и показывает значок «нет связи».
 
@@ -180,6 +202,8 @@ waiting ──call-next──▶ called ──confirm / start──▶ confirmed
 2. очередь `open`, расписание, `daily_ticket_limit`;
 3. геозона: если `geo_radius_m` не null — расстояние (haversine) от координат клиента до центра ≤ радиус; координаты не переданы → отказ;
 4. у клиента нет активного талона в этой очереди (или организации).
+
+Для общего табло `/q` отправляет QR в `POST /public/scan-options`. Сервер проверяет срок и подпись, находит актуальные активные очереди, назначенные экрану, и выдаёт подписанный `selection_token` с `ss` (screen_id) на `QR_SELECTION_TTL_SECONDS` (по умолчанию 5 минут). Посетитель выбирает очередь на телефоне и отправляет `POST /public/scan` с этим токеном и `queue_id`. Сервер повторно проверяет назначение очереди экрану и применяет те же ограничения расписания, геозоны, дневного лимита и активного талона, что и для QR отдельной очереди. Изменение настроек табло сразу прекращает выдачу талонов для убранной очереди. Выбор кабинетов управляет только показом вызовов, но не распределением талонов внутри очереди.
 
 Токен многоразовый в пределах TTL: несколько человек у одного экрана сканируют один и тот же код. Защита от повторов — на уровне клиента, не токена.
 
@@ -213,6 +237,8 @@ Redis pub/sub, канал `queue:{queue_id}`. Бэкенд публикует с
 - `POST /auth/logout`
 - `GET /auth/me`
 
+Если единственный суперадминистратор теряет TOTP, восстановление выполняется из доверенной серверной консоли командой `scripts/recover_superadmin_totp.py` после проверки действующего пароля. Команда допускает только `SUPERADMIN_EMAIL`, очищает TOTP, увеличивает `auth_version` и создаёт запись аудита. Следующий вход требует новой привязки TOTP; веб-обхода второго фактора нет.
+
 ### Public (посетитель)
 - `POST /public/scan` `{token, lat?, lng?, fingerprint?}` → талон; создаёт клиента и cookie при первом визите
 - `GET /public/me/tickets` — активные талоны устройства (для восстановления страницы после перезагрузки)
@@ -243,16 +269,20 @@ Redis pub/sub, канал `queue:{queue_id}`. Бэкенд публикует с
 - `POST /registrar/tickets` `{queue_id, note?}` → талон без клиента, номер называется устно или печатается
 
 ### Admin (org_admin, в рамках своей организации)
-- CRUD `/admin/queues`, `/admin/queues/{id}/schedule`
-- CRUD `/admin/cabinets`, `POST /admin/cabinets/{id}/operators`
-- CRUD `/admin/users` (operator, registrar)
+- CRUD `/admin/queues`, `/admin/queues/{id}/schedule`: `DELETE` архивирует очередь после завершения активных талонов и архивации кабинетов; `GET ?include_archived=true` показывает архив, `POST /admin/queues/{id}/restore` восстанавливает выключенной и закрытой
+- CRUD `/admin/cabinets`, `POST /admin/cabinets/{id}/operators`: `DELETE` архивирует кабинет без активного обслуживания, `GET ?include_archived=true` показывает архив, `POST /admin/cabinets/{id}/restore` восстанавливает выключенным; назначения и история сохраняются
+- CRUD `/admin/users` (operator, registrar): удаление архивирует запись, `POST /admin/users/{id}/restore` возвращает её деактивированной
 - CRUD `/admin/tv-screens` (+ генерация `pairing_code`)
+- CRUD `/admin/departments` и `/admin/departments/{id}/schedule` — отделения, врачи, кабинеты и часы приёма по дням недели
+- `POST /admin/departments/import` — проверенный XLSX-импорт; атомарно заменяет расписание отделений из файла в пределах организации
+- `/admin/tv-media` — метаданные, загрузка частями, завершение, активация, удаление; `/tv/media/{id}` — публичная выдача активного материала с HTTP Range
 - `GET /admin/analytics?from&to&queue_id?` — среднее ожидание, время приёма по операторам, пики по часам и дням, доля неявок, средняя оценка
 - `GET /admin/audit-logs?from&to&action?`
 - `PATCH /admin/organization` — брендирование, язык, `one_ticket_per_org`
 
 ### Superadmin
-- CRUD `/sa/organizations`, `POST /sa/organizations/{id}/admins`
+- CRUD `/sa/organizations` и `/sa/users` (кроме платформенного superadmin); удаление архивирует, `POST /sa/organizations/{id}/restore` и `POST /sa/users/{id}/restore` восстанавливают деактивированными
+- `POST /sa/organizations/{id}/admins` — создание администратора организации
 - всё из `/admin/*` с параметром `organization_id`
 - `GET /sa/audit-logs`, `GET /sa/analytics`
 

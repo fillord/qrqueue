@@ -1,9 +1,9 @@
-import { apiGet, apiPatch, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type { Analytics, AuditLogPage, Organization, StaffUser } from './types'
 import type { AuditLogQuery } from './admin'
 
-export function getOrganizations(): Promise<Organization[]> {
-  return apiGet<Organization[]>('/api/sa/organizations')
+export function getOrganizations(includeArchived = false): Promise<Organization[]> {
+  return apiGet<Organization[]>(`/api/sa/organizations${includeArchived ? '?include_archived=true' : ''}`)
 }
 
 export function getOrganization(id: string): Promise<Organization> {
@@ -21,6 +21,20 @@ export function createOrganization(payload: OrganizationCreatePayload): Promise<
 
 export function setOrganizationActive(id: string, isActive: boolean): Promise<Organization> {
   return apiPatch<Organization>(`/api/sa/organizations/${id}`, { is_active: isActive })
+}
+
+export type OrganizationEditPayload = Partial<Pick<Organization, 'name' | 'slug' | 'timezone' | 'default_language' | 'logo_url' | 'brand_color' | 'plan' | 'trial_ends_at' | 'one_ticket_per_org' | 'is_active' | 'video_large_upload_enabled'>>
+
+export function updateOrganization(id: string, payload: OrganizationEditPayload): Promise<Organization> {
+  return apiPatch<Organization>(`/api/sa/organizations/${id}`, payload)
+}
+
+export function archiveOrganization(id: string): Promise<void> {
+  return apiDelete<void>(`/api/sa/organizations/${id}`)
+}
+
+export function restoreOrganization(id: string): Promise<Organization> {
+  return apiPost<Organization>(`/api/sa/organizations/${id}/restore`)
 }
 
 export function listOrgAdmins(organizationId: string): Promise<StaffUser[]> {
@@ -53,6 +67,10 @@ export function resetOrgAdminTotp(organizationId: string, adminId: string): Prom
   })
 }
 
+export function updateOrgAdmin(organizationId: string, adminId: string, payload: { email?: string; full_name?: string; password?: string }): Promise<StaffUser> {
+  return apiPatch<StaffUser>(`/api/sa/organizations/${organizationId}/admins/${adminId}`, payload)
+}
+
 export interface SaAnalyticsQuery {
   from: string
   to: string
@@ -78,4 +96,33 @@ export function getSaAuditLogs(query: SaAuditLogQuery): Promise<AuditLogPage> {
   if (query.action) params.set('action', query.action)
   if (query.organizationId) params.set('organization_id', query.organizationId)
   return apiGet<AuditLogPage>(`/api/sa/audit-logs?${params.toString()}`)
+}
+
+export interface UserDirectoryEntry extends Omit<StaffUser, 'organization_id'> {
+  organization_id: string | null
+  organization_name: string | null
+}
+
+export type ManagedUserRole = 'org_admin' | 'operator' | 'registrar'
+export interface ManagedUserCreate { email: string; password: string; full_name: string; role: ManagedUserRole; organization_id: string }
+export interface ManagedUserUpdate { email?: string; password?: string; full_name?: string; role?: ManagedUserRole; is_active?: boolean; reset_totp?: boolean }
+
+export function listAllUsers(includeArchived = false): Promise<UserDirectoryEntry[]> {
+  return apiGet<UserDirectoryEntry[]>(`/api/sa/users${includeArchived ? '?include_archived=true' : ''}`)
+}
+
+export function createManagedUser(payload: ManagedUserCreate): Promise<UserDirectoryEntry> {
+  return apiPost<UserDirectoryEntry>('/api/sa/users', payload)
+}
+
+export function updateManagedUser(id: string, payload: ManagedUserUpdate): Promise<UserDirectoryEntry> {
+  return apiPatch<UserDirectoryEntry>(`/api/sa/users/${id}`, payload)
+}
+
+export function archiveManagedUser(id: string): Promise<void> {
+  return apiDelete<void>(`/api/sa/users/${id}`)
+}
+
+export function restoreManagedUser(id: string): Promise<UserDirectoryEntry> {
+  return apiPost<UserDirectoryEntry>(`/api/sa/users/${id}/restore`)
 }

@@ -18,7 +18,7 @@ export default function AdminFormModal({
   const [fullName, setFullName] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const canSubmit = email.trim() !== '' && password.trim() !== '' && fullName.trim() !== ''
+  const canSubmit = email.trim() !== '' && password.length >= 8 && fullName.trim() !== ''
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -46,7 +46,7 @@ export default function AdminFormModal({
 
         <label className="modal__field">
           <span>{t('admin.users.form.password')}</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
         </label>
 
         <div className="modal__actions">

@@ -78,3 +78,32 @@ async def unsubscribe(db: AsyncSession, client: Client, endpoint: str) -> None:
     if existing is not None:
         await db.delete(existing)
         await db.flush()
+
+
+_MESSAGES = {
+    "ru": {
+        "called": ("Вас вызывают — {number}", "Подойдите к {cabinet}."),
+        "approaching": ("Скоро ваша очередь — {number}", "Вы в числе первых трёх — будьте рядом."),
+        "missed": ("Вызов пропущен — {number}", "Обратитесь к сотруднику, чтобы вернуться в очередь."),
+        "desk": "окну приёма",
+    },
+    "kk": {
+        "called": ("Сізді шақырады — {number}", "{cabinet} келіңіз."),
+        "approaching": ("Кезегіңіз жақындады — {number}", "Сіз алғашқы үштіктесіз — жақын жерде болыңыз."),
+        "missed": ("Шақыру өткізіліп алынды — {number}", "Кезекке оралу үшін қызметкерге хабарласыңыз."),
+        "desk": "қабылдау терезесіне",
+    },
+    "en": {
+        "called": ("Your turn — {number}", "Please go to {cabinet}."),
+        "approaching": ("Your turn is approaching — {number}", "You are among the first three — please stay nearby."),
+        "missed": ("Missed call — {number}", "Contact a staff member to return to the queue."),
+        "desk": "the service desk",
+    },
+}
+
+
+def ticket_message(language, kind, ticket, cabinet=None):
+    messages = _MESSAGES.get(language, _MESSAGES["ru"])
+    title, body = messages[kind]
+    values = {"number": ticket.display_number, "cabinet": cabinet or messages["desk"]}
+    return {"title": title.format(**values), "body": body.format(**values), "ticket_id": str(ticket.id)}

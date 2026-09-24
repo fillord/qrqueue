@@ -107,3 +107,26 @@ async def test_only_counts_todays_tickets(db_session, make_organization):
 
     result = await estimate_wait_seconds(db_session, queue, org, now=now)
     assert result is None
+
+
+async def test_ticket_estimate_accounts_for_active_cabinets(db_session, make_organization):
+    from app.models.cabinet import Cabinet
+    from app.models.enums import CabinetStatus
+    from app.services.tickets import build_ticket_detail
+    org = await make_organization(name='Capacity estimate')
+    queue = await _make_queue(db_session, org)
+    now = datetime.now(timezone.utc)
+    for number in range(5):
+        await _make_served_ticket(db_session, org, queue, number=number, duration_seconds=120, finished_at=now)
+    ticket = Ticket(organization_id=org.id, queue_id=queue.id, number=6, display_number='A006', status=TicketStatus.waiting, source=TicketSource.registrar)
+    db_session.add(ticket)
+    cabinets = [Cabinet(organization_id=org.id, queue_id=queue.id, label=str(i), status=CabinetStatus.free) for i in range(2)]
+    db_session.add_all(cabinets)
+    await db_session.commit()
+    assert (await build_ticket_detail(db_session, ticket))['estimated_wait_seconds'] == 60
+    cabinets[1].status = CabinetStatus.paused
+    await db_session.flush()
+    assert (await build_ticket_detail(db_session, ticket))['estimated_wait_seconds'] == 120
+    cabinets[0].status = CabinetStatus.offline
+    await db_session.flush()
+    assert (await build_ticket_detail(db_session, ticket))['estimated_wait_seconds'] is None

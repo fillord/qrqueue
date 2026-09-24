@@ -39,9 +39,16 @@ export interface TicketDetail extends TicketSummary {
 
 export interface ScanRequest {
   token: string
+  queue_id?: string
   lat?: number
   lng?: number
   fingerprint?: string
+}
+
+export interface ScanOptions {
+  organization_name: string
+  selection_token: string
+  queues: { id: string; name: string; status: QueueStatus; unavailable_reason: 'queue_closed' | 'queue_paused' | 'outside_schedule' | 'daily_limit_reached' | null }[]
 }
 
 export interface User {
@@ -71,6 +78,7 @@ export interface Cabinet {
   status: CabinetStatus
   current_ticket_id: string | null
   is_active: boolean
+  deleted_at: string | null
 }
 
 export interface OperatorTicket extends TicketSummary {
@@ -108,6 +116,7 @@ export interface AdminQueue {
   last_ticket_number: number
   counter_date: string
   is_active: boolean
+  deleted_at: string | null
   waiting_count: number
 }
 
@@ -129,9 +138,18 @@ export interface StaffUser {
   organization_id: string
   is_active: boolean
   totp_enabled: boolean
+  deleted_at: string | null
+}
+
+export interface TvActiveCall {
+  ticket_id: string
+  display_number: string
+  cabinet_label: string | null
+  call_count: number
 }
 
 export interface TvQueueState {
+  active_calls: TvActiveCall[]
   queue_id: string
   queue_name: string
   queue_status: QueueStatus
@@ -147,7 +165,28 @@ export interface TvState {
   language: 'kk' | 'ru' | 'en'
   is_hall_screen: boolean
   queues: TvQueueState[]
+  timezone: string
+  display_mode: 'queue' | 'schedule' | 'media'
+  slide_seconds: number
+  ads_enabled: boolean
+  departments: TvDepartmentState[]
+  media: TvMediaState[]
 }
+
+export interface TvScheduleEntry {
+  id: string
+  department_id: string
+  doctor_name: string
+  service_name: string | null
+  room: string | null
+  weekday: number
+  starts_at: string
+  ends_at: string
+  sort_order: number
+}
+
+export interface TvDepartmentState { id: string; name: string; entries: TvScheduleEntry[] }
+export interface TvMediaState { id: string; title: string; kind: 'video' | 'advertisement'; mime_type: string; url: string }
 
 export interface QrBatchToken {
   token: string
@@ -168,6 +207,15 @@ export interface TvScreen {
   pairing_code: string | null
   language: 'kk' | 'ru' | 'en'
   last_seen_at: string | null
+  display_mode: 'queue' | 'schedule' | 'media'
+  slide_seconds: number
+  ads_enabled: boolean
+  media_playlist_mode: 'all' | 'selected'
+  selected_media_ids: string[]
+  queue_selection_mode: 'all' | 'selected'
+  selected_queue_ids: string[]
+  cabinet_selection_mode: 'all' | 'selected'
+  selected_cabinet_ids: string[]
 }
 
 export interface Organization {
@@ -182,6 +230,8 @@ export interface Organization {
   trial_ends_at: string | null
   one_ticket_per_org: boolean
   is_active: boolean
+  deleted_at: string | null
+  video_large_upload_enabled: boolean
 }
 
 export interface OperatorStat {

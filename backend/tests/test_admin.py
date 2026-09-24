@@ -1,7 +1,7 @@
 from datetime import date
 
 from app.models.cabinet import Cabinet, CabinetOperator
-from app.models.enums import QueueStatus, TicketSource, TicketStatus, UserRole
+from app.models.enums import CabinetStatus, QueueStatus, TicketSource, TicketStatus, UserRole
 from app.models.queue import Queue
 from app.models.ticket import Ticket
 from tests.utils import login
@@ -228,3 +228,26 @@ async def test_list_cabinet_operators(client, db_session, make_user, make_organi
     assert resp.status_code == 200, resp.text
     emails = [u["email"] for u in resp.json()]
     assert emails == ["operator7@example.com"]
+
+
+async def test_busy_cabinet_cannot_be_deactivated_or_moved(client, db_session, make_user, make_organization):
+    from app.models.ticket import Ticket
+    from app.models.enums import TicketStatus, TicketSource
+    org = await make_organization(name='Cabinet integrity')
+    _, password = await make_user(email='cabinet-integrity@example.com', role=UserRole.org_admin, organization_id=org.id)
+    await login(client, 'cabinet-integrity@example.com', password)
+    queue = (await client.post('/api/admin/queues', json={'name':'Queue','ticket_prefix':'A'})).json()
+    other = (await client.post('/api/admin/queues', json={'name':'Other','ticket_prefix':'B'})).json()
+    cabinet_id = (await client.post('/api/admin/cabinets', json={'label':'Desk','queue_id':queue['id']})).json()['id']
+    import uuid
+    cabinet = await db_session.get(Cabinet, uuid.UUID(cabinet_id))
+    ticket = Ticket(organization_id=org.id, queue_id=cabinet.queue_id, cabinet_id=cabinet.id,
+                    number=1, display_number='A001', status=TicketStatus.called, source=TicketSource.registrar)
+    db_session.add(ticket)
+    await db_session.flush()
+    cabinet.current_ticket_id = ticket.id
+    cabinet.status = CabinetStatus.busy
+    await db_session.commit()
+    for data in ({'is_active':False}, {'queue_id':other['id']}, {'status':'free'}):
+        assert (await client.patch(f'/api/admin/cabinets/{cabinet_id}', json=data)).status_code == 409
+    assert (await client.patch(f'/api/admin/cabinets/{cabinet_id}', json={'label':'Renamed'})).status_code == 200

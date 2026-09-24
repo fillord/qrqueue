@@ -2,6 +2,8 @@ import { CheckCircle } from '@phosphor-icons/react'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { apiPost } from '../../api/client'
+
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
 export default function LandingRequestForm() {
@@ -11,18 +13,21 @@ export default function LandingRequestForm() {
   const [contact, setContact] = useState('')
   const [status, setStatus] = useState<Status>('idle')
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
 
-    if (!name.trim() || !contact.trim()) {
+    if (!name.trim() || contact.trim().length < 3) {
       setStatus('error')
       return
     }
 
     setStatus('submitting')
-    // Backend for trial requests doesn't exist yet — this is a UI-only stub.
-    console.log('landing trial request', { name, organization, contact })
-    window.setTimeout(() => setStatus('success'), 500)
+    try {
+      await apiPost('/api/public/trial-requests', { name: name.trim(), organization: organization.trim(), contact: contact.trim() })
+      setStatus('success')
+    } catch {
+      setStatus('error')
+    }
   }
 
   if (status === 'success') {
@@ -44,6 +49,7 @@ export default function LandingRequestForm() {
           onChange={(event) => setName(event.target.value)}
           placeholder={t('landing.cta.form.namePlaceholder')}
           autoComplete="name"
+          maxLength={120}
         />
       </label>
       <label className="landing-cta-form__field">
@@ -54,6 +60,7 @@ export default function LandingRequestForm() {
           onChange={(event) => setOrganization(event.target.value)}
           placeholder={t('landing.cta.form.organizationPlaceholder')}
           autoComplete="organization"
+          maxLength={200}
         />
       </label>
       <label className="landing-cta-form__field">
@@ -64,6 +71,7 @@ export default function LandingRequestForm() {
           onChange={(event) => setContact(event.target.value)}
           placeholder={t('landing.cta.form.contactPlaceholder')}
           autoComplete="tel"
+          maxLength={200}
         />
       </label>
       {status === 'error' && <p className="landing-cta-form__error">{t('landing.cta.form.error')}</p>}

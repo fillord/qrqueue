@@ -1,6 +1,9 @@
 import uuid
 from datetime import date, datetime, time as dt_time, timedelta, timezone
 
+from zoneinfo import ZoneInfo
+from app.models.organization import Organization
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,15 +24,17 @@ async def list_audit_logs(
     """organization_id=None is superadmin's "every organization" view — org_admin
     routes always pass their own organization_id, never None.
     """
+    org = await db.get(Organization, organization_id) if organization_id else None
+    tz = ZoneInfo(org.timezone) if org else timezone.utc
     conditions = []
     if organization_id is not None:
         conditions.append(AuditLog.organization_id == organization_id)
     if date_from is not None:
-        conditions.append(AuditLog.created_at >= datetime.combine(date_from, dt_time.min, tzinfo=timezone.utc))
+        conditions.append(AuditLog.created_at >= datetime.combine(date_from, dt_time.min, tzinfo=tz))
     if date_to is not None:
         conditions.append(
             AuditLog.created_at
-            < datetime.combine(date_to, dt_time.min, tzinfo=timezone.utc) + timedelta(days=1)
+            < datetime.combine(date_to, dt_time.min, tzinfo=tz) + timedelta(days=1)
         )
     if action is not None:
         conditions.append(AuditLog.action == action)

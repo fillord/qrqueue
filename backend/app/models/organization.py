@@ -26,3 +26,5 @@ class Organization(UUIDPkMixin, Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     one_ticket_per_org: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    video_large_upload_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

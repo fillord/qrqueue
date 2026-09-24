@@ -1,9 +1,13 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
-import type { Analytics, AuditLogPage, Organization, QueueSummary, TvScreen } from './types'
+import type { AdminQueue, Analytics, AuditLogPage, Cabinet, Organization, TvScreen } from './types'
 
-export function getAdminQueues(organizationId?: string): Promise<QueueSummary[]> {
+export function getAdminQueues(organizationId?: string): Promise<AdminQueue[]> {
   const suffix = organizationId ? `?organization_id=${organizationId}` : ''
-  return apiGet<QueueSummary[]>(`/api/admin/queues${suffix}`)
+  return apiGet<AdminQueue[]>(`/api/admin/queues${suffix}`)
+}
+
+export function getAdminCabinets(organizationId?: string): Promise<Cabinet[]> {
+  return apiGet<Cabinet[]>(`/api/admin/cabinets${orgSuffix(organizationId)}`)
 }
 
 function orgSuffix(organizationId?: string): string {
@@ -15,7 +19,7 @@ export function getTvScreens(organizationId?: string): Promise<TvScreen[]> {
 }
 
 export function createTvScreen(
-  payload: { name: string; queue_id: string | null },
+  payload: { name: string; queue_id: string | null; language?: TvScreen['language']; display_mode?: TvScreen['display_mode']; slide_seconds?: number; ads_enabled?: boolean; media_playlist_mode?: TvScreen['media_playlist_mode']; selected_media_ids?: string[]; queue_selection_mode?: TvScreen['queue_selection_mode']; selected_queue_ids?: string[]; cabinet_selection_mode?: TvScreen['cabinet_selection_mode']; selected_cabinet_ids?: string[] },
   organizationId?: string,
 ): Promise<TvScreen> {
   return apiPost<TvScreen>(`/api/admin/tv-screens${orgSuffix(organizationId)}`, payload)
@@ -76,4 +80,8 @@ function auditLogQueryString(query: AuditLogQuery): string {
 
 export function getAuditLogs(query: AuditLogQuery): Promise<AuditLogPage> {
   return apiGet<AuditLogPage>(`/api/admin/audit-logs?${auditLogQueryString(query)}`)
+}
+
+export function updateTvScreen(id: string, payload: Partial<Pick<TvScreen, 'language' | 'display_mode' | 'slide_seconds' | 'ads_enabled' | 'media_playlist_mode' | 'selected_media_ids' | 'queue_id' | 'queue_selection_mode' | 'selected_queue_ids' | 'cabinet_selection_mode' | 'selected_cabinet_ids' | 'name'>>, organizationId?: string): Promise<TvScreen> {
+  return apiPatch<TvScreen>(`/api/admin/tv-screens/${id}${orgSuffix(organizationId)}`, payload)
 }

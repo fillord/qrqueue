@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -10,6 +11,8 @@ const PAGE_SIZE = 25
 
 export default function SaAuditLogPage() {
   const { t } = useTranslation()
+  const [retry, setRetry] = useState(0)
+  const [error, setError] = useState(false)
   const [searchParams] = useSearchParams()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [organizationId, setOrganizationId] = useState(searchParams.get('organization_id') ?? '')
@@ -21,11 +24,12 @@ export default function SaAuditLogPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    void getOrganizations().then(setOrganizations)
-  }, [])
+    void getOrganizations().then(setOrganizations).catch(() => setError(true))
+  }, [retry])
 
   useEffect(() => {
     setLoading(true)
+    setError(false)
     void getSaAuditLogs({
       from: from || undefined,
       to: to || undefined,
@@ -35,11 +39,12 @@ export default function SaAuditLogPage() {
       offset,
     })
       .then(setPage)
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [action, from, to, organizationId, offset])
+  }, [retry, action, from, to, organizationId, offset])
 
   const selectedOrgTimezone = organizations.find((org) => org.id === organizationId)?.timezone
-  const displayTimezone = selectedOrgTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const displayTimezone = selectedOrgTimezone ?? 'UTC'
 
   return (
     <div className="admin-page">
@@ -99,7 +104,7 @@ export default function SaAuditLogPage() {
         </label>
       </div>
 
-      {loading || !page ? (
+      {error ? <LoadError retry={() => setRetry((n) => n + 1)} /> : loading || !page ? (
         <div className="spinner" aria-hidden="true" />
       ) : page.items.length === 0 ? (
         <p className="admin-page__empty">{t('admin.auditLog.empty')}</p>

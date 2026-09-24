@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.config import settings
-from app.services.qr_tokens import QRTokenError, issue_batch, verify
+from app.services.qr_tokens import (QRTokenError, issue_batch, issue_screen_batch,
+                                    issue_selection, verify, verify_screen, verify_selection)
 
 
 def test_batch_windows_overlap_by_15_seconds():
@@ -66,3 +67,18 @@ def test_verify_garbage_token_is_invalid():
     with pytest.raises(QRTokenError) as exc_info:
         verify("not-a-real-token")
     assert exc_info.value.reason == "token_invalid"
+
+
+def test_hall_qr_exchanges_for_five_minute_selection_token():
+    screen_id = uuid.uuid4()
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    qr = issue_screen_batch(screen_id, now)["tokens"][0]["token"]
+    assert verify_screen(qr, now) == screen_id
+    with pytest.raises(QRTokenError, match="token_invalid"):
+        verify(qr, now)
+    selection = issue_selection(screen_id, now)
+    assert verify_selection(selection, now + timedelta(minutes=4)) == screen_id
+    with pytest.raises(QRTokenError, match="token_expired"):
+        verify_selection(selection, now + timedelta(seconds=settings.qr_selection_ttl_seconds))
+    with pytest.raises(QRTokenError, match="token_invalid"):
+        verify_screen(selection, now)

@@ -2,6 +2,11 @@
   "app": {
     "title": "Online Queue"
   },
+  "dashboard": {
+    "navigation": "Dashboard sections",
+    "hideMenu": "Hide menu",
+    "showMenu": "Show menu"
+  },
   "landing": {
     "hero": {
       "title": "No crowd waiting at the door",
@@ -61,7 +66,7 @@
       "items": {
         "antiFraud": {
           "title": "Protection against queue fraud",
-          "description": "The QR code on screen refreshes every few minutes, so an old screenshot can't hold a spot."
+          "description": "The QR code on the screen refreshes regularly. Expired codes cannot be used to join the queue."
         },
         "realtime": {
           "title": "Real time",
@@ -96,6 +101,7 @@
   },
   "scan": {
     "joining": "Joining the queue…",
+    "choose": { "title": "Choose a queue", "hint": "Your ticket will be issued after you choose. These queues belong to this display.", "back": "Choose another queue" },
     "hints": {
       "rescan": "Please scan the code on the screen again."
     },
@@ -109,6 +115,7 @@
       "daily_limit_reached": "Today's ticket limit has been reached.",
       "geo_required": "We couldn't determine your location. Please allow location access and try again.",
       "geo_out_of_range": "You're too far from the service location.",
+      "queue_unavailable": "This queue is no longer available on the display. Scan the QR code again.",
       "unknown_error": "Couldn't join the queue. Please try again.",
       "rate_limited": "Too many attempts from your address. Wait a minute."
     }
@@ -413,6 +420,27 @@
       },
       "resetTotp": "Reset 2FA",
       "resetTotpConfirm": "Reset two-factor authentication for {{name}}? They will have to link their app again at the next sign-in."
+    },
+    "trials": {
+      "title": "Trial requests",
+      "refresh": "Refresh",
+      "empty": "No requests yet",
+      "date": "Date",
+      "name": "Name",
+      "organization": "Organization",
+      "contact": "Contact",
+      "status": "Status",
+      "processed": "Processed",
+      "new": "New",
+      "reopen": "Reopen",
+      "complete": "Mark processed",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "common": {
+      "edit": "Edit",
+      "passwordHint": "Leave the password blank to keep the current one.",
+      "retry": "Retry loading"
     }
   },
   "operator": {
@@ -496,7 +524,7 @@
   "tv": {
     "pair": {
       "title": "Connect this screen",
-      "hint": "Enter the 6-digit code shown on this screen.",
+      "hint": "Enter the 6-digit code from the Screens section in the admin panel.",
       "submit": "Connect",
       "submitting": "Connecting…",
       "error": "That code is wrong or already used. Please try again.",
@@ -508,6 +536,7 @@
       "cabinet": "Counter: {{label}}",
       "waiting": "Waiting: {{count}}",
       "scanHint": "Scan to join the queue",
+      "hallChooseHint": "Scan and choose a queue on your phone",
       "hallScanHint": "Scan the QR code at the counter you need",
       "footer": "Online Queue",
       "queueStatus": {
@@ -558,11 +587,152 @@
       "name": "Name",
       "queue": "Queue",
       "pairingCode": "Pairing code"
+    },
+    "language": "Screen language",
+    "queueBoard": {
+      "screenSource": "Queues shown on screen",
+      "queuesTitle": "Queues on the hall display",
+      "allQueues": "All active queues",
+      "selectedQueues": "Only checked queues",
+      "noQueues": "No active queues.",
+      "queueHint": "If none are checked, the display shows no queues.",
+      "cabinetsTitle": "Cabinet calls",
+      "allCabinets": "From all cabinets",
+      "selectedCabinets": "Only from checked cabinets",
+      "noCabinets": "No available cabinets for these queues.",
+      "cabinetHint": "This hides calls from other cabinets but does not route tickets only to checked cabinets. Select every serving cabinet for a shared queue."
+    },
+    "playlist": {
+      "title": "Repeat videos and announcements",
+      "all": "Repeat all active media",
+      "selected": "Repeat only checked media",
+      "empty": "Upload and activate a video or announcement first.",
+      "adsHint": "Ads appear on this TV only when Show ads is enabled."
     }
   },
   "language": {
     "kk": "Қазақша",
     "ru": "Русский",
     "en": "English"
+  },
+  "crud": {
+    "archive": "Archive",
+    "restore": "Restore",
+    "archived": "Archived",
+    "showArchived": "Show archive",
+    "hideArchived": "Hide archive",
+    "archiveOrganizationConfirm": "Archive organization “{{name}}”? Staff access and new tickets will stop. History will be retained.",
+    "archiveUserConfirm": "Archive user “{{name}}”? Their access will be closed and history retained.",
+    "archiveQueueConfirm": "Archive queue “{{name}}”? Ticket history will be retained.",
+    "archiveCabinetConfirm": "Archive cabinet “{{name}}”? Service history will be retained.",
+    "restoreHint": "The restored record stays inactive. Activate it when you are ready.",
+    "activeTickets": "Finish active tickets before archiving.",
+    "attachedCabinets": "Archive this queue's cabinets first.",
+    "archivedQueue": "Restore this cabinet's queue first.",
+    "createUser": "Add user",
+    "editUser": "Edit user",
+    "editOrganization": "Edit organization",
+    "selectOrganization": "Select organization",
+    "trialEndsAt": "Trial ends at",
+    "save": "Save"
+  },
+  "signage": {
+    "title": "TV schedules and media",
+    "intro": "Add departments and doctors' hours for the full week. Create separate TV screens for schedules and for videos and announcements.",
+    "departments": "Departments",
+    "departmentName": "Department name",
+    "departmentExists": "A department with this name already exists.",
+    "addDepartment": "Add department",
+    "noDepartments": "Add a department to start the schedule.",
+    "importTitle": "Import schedule from Excel",
+    "importHint": "Use one row per doctor: department, doctor, specialty, room and Mon–Sun hours. Put one interval such as 09:00–13:00 in a day cell, or leave it blank. Import replaces schedules only for departments in the file. Up to 1,000 rows and 2 MB.",
+    "downloadTemplate": "Download Excel template",
+    "importFile": "Completed XLSX file",
+    "importButton": "Import schedule",
+    "importConfirm": "Replace schedules for the departments in this file? Every row will be checked before changes are saved.",
+    "importSuccess": "Imported {{rows}} appointment slots for {{departments}} departments.",
+    "excelTooLarge": "The file is too large. Maximum size is 2 MB.",
+    "invalidExcelFormat": "Invalid Excel format. Use the downloaded XLSX template with its original headers.",
+    "excelTooManyRows": "The file contains more than 1,000 schedule rows.",
+    "emptyExcel": "The file has no schedule rows.",
+    "invalidExcelRow": "Error in row {{row}}. Use one row per doctor and one HH:MM–HH:MM interval in each day cell.",
+    "scheduleFor": "Schedule: {{name}}",
+    "weekday": "Day of week",
+    "weekdays": { "0": "Monday", "1": "Tuesday", "2": "Wednesday", "3": "Thursday", "4": "Friday", "5": "Saturday", "6": "Sunday" },
+    "shortWeekdays": { "0": "Mon", "1": "Tue", "2": "Wed", "3": "Thu", "4": "Fri", "5": "Sat", "6": "Sun" },
+    "doctor": "Doctor",
+    "service": "Specialty or note",
+    "specialty": "Specialty",
+    "room": "Room",
+    "roomValue": "Room {{room}}",
+    "from": "From",
+    "to": "To",
+    "addSchedule": "Add appointment hours",
+    "noSchedule": "No appointments have been added for this department.",
+    "weekSchedule": "Weekly schedule",
+    "noAppointments": "No appointments this week",
+    "media": "Videos and announcements",
+    "mediaHint": "MP4 or WebM video up to {{limit}} MB. JPEG, PNG or WebP images up to 10 MB.",
+    "mediaTitle": "Title",
+    "mediaKind": "Type",
+    "kindVideo": "Video",
+    "kindAd": "Ad or announcement",
+    "file": "File",
+    "upload": "Upload",
+    "uploadProgress": "Uploading: {{percent}}%",
+    "uploadIncomplete": "Upload incomplete",
+    "noMedia": "No videos or announcements yet.",
+    "adsHint": "Ads appear only on TVs where an administrator enables them. The organization chooses the content.",
+    "size": "Size",
+    "sizeMb": "{{size}} MB",
+    "fileTooLarge": "The file exceeds the allowed size.",
+    "limitUpgrade": "This video exceeds 50 MB. Ask a superadmin to enable the 100 MB limit for your organization.",
+    "badFormat": "Supported formats: MP4 and WebM video, JPEG, PNG and WebP images.",
+    "videoOnly": "Choose a video file for a regular video.",
+    "largeVideoUploads": "Extended video limit: 100 MB per file",
+    "screenMode": "Screen mode",
+    "modeQueue": "Queue board",
+    "modeSchedule": "Department schedules",
+    "modeMedia": "Videos and announcements",
+    "slideSeconds": "Seconds per slide",
+    "showAds": "Show ads",
+    "noScheduleContent": "No schedules have been added",
+    "noMediaContent": "No videos or announcements have been added",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteDepartmentConfirm": "Delete department “{{name}}” and its entire schedule?",
+    "deleteScheduleConfirm": "Remove these appointment hours from the schedule?",
+    "deleteMediaConfirm": "Remove “{{name}}” from the playlist?"
+  },
+  "directory": {
+    "search": "Search",
+    "all": "All",
+    "sort": "Sort by",
+    "asc": "Ascending ↑",
+    "desc": "Descending ↓",
+    "count": "Found: {{count}} of {{total}}",
+    "reset": "Reset filters",
+    "empty": "No matches",
+    "emptyHint": "Change your search or reset the filters.",
+    "noEntries": "There are no entries yet.",
+    "results": "Search results",
+    "pages": "List pages",
+    "page": "Page {{page}} of {{pages}}",
+    "previous": "Previous",
+    "next": "Next",
+    "searchOrganizations": "Organization name or address",
+    "searchUsers": "Staff name or email",
+    "searchAllUsers": "Name, email or organization",
+    "status": "Status",
+    "users": "Users",
+    "organization": "Organization",
+    "platform": "Platform",
+    "usersHint": "All accounts in one list. Select an organization name to open its details.",
+    "roles": {
+      "superadmin": "Superadmin",
+      "org_admin": "Administrator",
+      "operator": "Operator",
+      "registrar": "Registrar"
+    }
   }
 }

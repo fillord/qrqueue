@@ -30,15 +30,19 @@ class Settings(BaseSettings):
     # Redis-backed limits from ARCHITECTURE.md section 6; the disposable-DB
     # test runner turns them off so unrelated tests don't trip them.
     rate_limit_enabled: bool = True
+    rate_limit_trial_per_hour: int = 5
     rate_limit_scan_per_minute: int = 10
     rate_limit_login_per_minute: int = 5
     rate_limit_tv_pair_per_minute: int = 5
 
     qr_token_secret: str
     qr_token_ttl_seconds: int = 45
+    qr_selection_ttl_seconds: int = 300
     qr_token_batch_minutes: int = 15
 
     presence_timeout_minutes: int = 3
+    video_base_limit_mb: int = 50
+    video_extended_limit_mb: int = 100
 
     superadmin_email: str
     superadmin_password: str

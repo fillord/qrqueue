@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -16,13 +17,17 @@ export default function CabinetOperatorsModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const [loadError, setLoadError] = useState(false)
   const [assigned, setAssigned] = useState<StaffUser[] | null>(null)
   const [addingId, setAddingId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
+    setLoadError(false)
+    try {
     setAssigned(await listCabinetOperators(cabinet.id))
+    } catch { setLoadError(true) }
   }
 
   useEffect(() => {
@@ -63,7 +68,7 @@ export default function CabinetOperatorsModal({
   return (
     <Modal title={t('admin.cabinets.operatorsModal.title', { label: cabinet.label })} onClose={onClose}>
       {assigned === null ? (
-        <div className="spinner" aria-hidden="true" />
+        loadError ? null : <div className="spinner" aria-hidden="true" />
       ) : assigned.length === 0 ? (
         <p className="admin-page__empty">{t('admin.cabinets.operatorsModal.empty')}</p>
       ) : (
@@ -93,6 +98,7 @@ export default function CabinetOperatorsModal({
         </button>
       </div>
 
+      {loadError && <LoadError retry={() => void load()} />}
       {error && <p className="admin-page__error">{error}</p>}
 
       <div className="modal__actions">

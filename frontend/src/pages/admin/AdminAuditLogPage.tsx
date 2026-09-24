@@ -1,3 +1,4 @@
+import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,6 +10,8 @@ const PAGE_SIZE = 25
 
 export default function AdminAuditLogPage() {
   const { t } = useTranslation()
+  const [retry, setRetry] = useState(0)
+  const [error, setError] = useState(false)
   const [timezoneName, setTimezoneName] = useState('UTC')
   const [action, setAction] = useState('')
   const [from, setFrom] = useState('')
@@ -18,11 +21,12 @@ export default function AdminAuditLogPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    void getOwnOrganization().then((org) => setTimezoneName(org.timezone))
-  }, [])
+    void getOwnOrganization().then((org) => setTimezoneName(org.timezone)).catch(() => setError(true))
+  }, [retry])
 
   useEffect(() => {
     setLoading(true)
+    setError(false)
     void getAuditLogs({
       from: from || undefined,
       to: to || undefined,
@@ -31,8 +35,9 @@ export default function AdminAuditLogPage() {
       offset,
     })
       .then(setPage)
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [action, from, to, offset])
+  }, [retry, action, from, to, offset])
 
   return (
     <div className="admin-page">
@@ -75,7 +80,7 @@ export default function AdminAuditLogPage() {
         </label>
       </div>
 
-      {loading || !page ? (
+      {error ? <LoadError retry={() => setRetry((n) => n + 1)} /> : loading || !page ? (
         <div className="spinner" aria-hidden="true" />
       ) : page.items.length === 0 ? (
         <p className="admin-page__empty">{t('admin.auditLog.empty')}</p>

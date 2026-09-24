@@ -13,8 +13,16 @@ export interface CabinetUpdatePayload {
   is_active?: boolean
 }
 
-export function listCabinets(): Promise<Cabinet[]> {
-  return apiGet<Cabinet[]>('/api/admin/cabinets')
+export function listCabinets(includeArchived = false): Promise<Cabinet[]> {
+  return apiGet<Cabinet[]>(`/api/admin/cabinets${includeArchived ? '?include_archived=true' : ''}`)
+}
+
+export function archiveCabinet(id: string): Promise<void> {
+  return apiDelete<void>(`/api/admin/cabinets/${id}`)
+}
+
+export function restoreCabinet(id: string): Promise<Cabinet> {
+  return apiPost<Cabinet>(`/api/admin/cabinets/${id}/restore`, {})
 }
 
 export function createCabinet(payload: CabinetCreatePayload): Promise<Cabinet> {

@@ -33,7 +33,7 @@ async def require_queue(db: AsyncSession, cabinet: Cabinet) -> Queue:
     if cabinet.queue_id is None:
         raise ServiceError("cabinet_has_no_queue", 409)
     queue = await db.get(Queue, cabinet.queue_id)
-    if queue is None:
+    if queue is None or queue.deleted_at is not None:
         raise ServiceError("cabinet_has_no_queue", 409)
     return queue
 

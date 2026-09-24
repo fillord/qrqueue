@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_client
 from app.config import settings
+from app.clock import utcnow
 from app.db import get_db
+from app.models.trial_request import TrialRequest
+from app.models.organization import Organization
+from app.models.tv_screen import TVScreen
+from app.schemas.trial_request import TrialRequestCreate
 from app.models.client import Client
 from app.models.enums import TicketStatus
 from app.models.ticket import Ticket
@@ -17,6 +22,8 @@ from app.schemas.public import (
     PushUnsubscribeRequest,
     RateRequest,
     ScanRequest,
+    ScanOptionsRequest,
+    ScanOptionsOut,
     TicketDetailOut,
     TicketSummaryOut,
     VapidKeyOut,
@@ -24,6 +31,9 @@ from app.schemas.public import (
 from app.services import notifications
 from app.services.scan import ScanError
 from app.services.scan import scan as scan_service
+from app.services.scan import queue_unavailability
+from app.services.hall_scan import hall_queues
+from app.services.qr_tokens import QRTokenError, issue_selection, verify_screen
 from app.services.rate_limit import client_ip, enforce_rate_limit
 from app.services.tickets import build_ticket_detail
 from app.services.tickets import confirm as confirm_ticket
@@ -40,6 +50,34 @@ _ACTIVE_STATUSES = (
 )
 
 
+@router.post("/scan-options", response_model=ScanOptionsOut)
+async def scan_options_route(
+    payload: ScanOptionsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict:
+    await enforce_rate_limit(
+        redis, scope="scan_options", key=client_ip(request), limit=settings.rate_limit_scan_per_minute
+    )
+    try:
+        screen_id = verify_screen(payload.token)
+    except QRTokenError as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.reason})
+    screen = await db.get(TVScreen, screen_id)
+    if screen is None:
+        raise HTTPException(status_code=422, detail={"code": "token_invalid"})
+    queues = await hall_queues(db, screen)
+    if not queues:
+        raise HTTPException(status_code=422, detail={"code": "queue_unavailable"})
+    organization = await db.get(Organization, screen.organization_id)
+    now = utcnow()
+    return {"organization_name": organization.name, "selection_token": issue_selection(screen.id),
+            "queues": [{"id": queue.id, "name": queue.name, "status": queue.status,
+                        "unavailable_reason": await queue_unavailability(db, queue, organization, now)}
+                       for queue in queues]}
+
+
 @router.post("/scan", response_model=TicketSummaryOut, status_code=status.HTTP_201_CREATED)
 async def scan_route(
     payload: ScanRequest,
@@ -53,7 +91,8 @@ async def scan_route(
     )
     try:
         ticket = await scan_service(
-            db, redis, token=payload.token, client=client, lat=payload.lat, lng=payload.lng
+            db, redis, token=payload.token, client=client, selected_queue_id=payload.queue_id,
+            lat=payload.lat, lng=payload.lng
         )
     except ScanError as exc:
         # No ticket-related rows were touched before this point, so it's safe
@@ -182,3 +221,19 @@ async def unsubscribe_push_route(
 ) -> None:
     await notifications.unsubscribe(db, client, payload.endpoint)
     await db.commit()
+
+
+@router.post("/trial-requests", status_code=201)
+async def create_trial_request(
+    payload: TrialRequestCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> dict:
+    await enforce_rate_limit(
+        redis, scope="trial", key=client_ip(request),
+        limit=settings.rate_limit_trial_per_hour, window_seconds=3600,
+    )
+    db.add(TrialRequest(**payload.model_dump()))
+    await db.commit()
+    return {"accepted": True}

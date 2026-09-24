@@ -26,11 +26,12 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
-def create_access_token(user_id: uuid.UUID, role: str) -> str:
+def create_access_token(user_id: uuid.UUID, role: str, auth_version: int = 0) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
         "role": role,
+        "auth_version": auth_version,
         "iat": now,
         "exp": now + timedelta(minutes=settings.jwt_expire_minutes),
     }
@@ -41,13 +42,14 @@ def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
 
 
-def create_totp_pending_token(user_id: uuid.UUID, setup_secret: str | None = None) -> str:
+def create_totp_pending_token(user_id: uuid.UUID, setup_secret: str | None = None, auth_version: int = 0) -> str:
     """Short-lived token proving the password step passed; carries the
     not-yet-confirmed secret during enrollment. Never accepted as a session."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
         "purpose": "totp",
+        "auth_version": auth_version,
         "iat": now,
         "exp": now + timedelta(minutes=TOTP_PENDING_MINUTES),
     }

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPkMixin
@@ -26,3 +26,12 @@ class TVScreen(UUIDPkMixin, Base):
         nullable=False,
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    display_mode: Mapped[str] = mapped_column(String(12), nullable=False, default="queue")
+    slide_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    ads_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    media_playlist_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="all")
+    selected_media_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)
+    queue_selection_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="all")
+    selected_queue_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)
+    cabinet_selection_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="all")
+    selected_cabinet_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)

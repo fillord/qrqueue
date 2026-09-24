@@ -1,5 +1,6 @@
 import uuid
-from datetime import date, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -48,7 +49,7 @@ async def test_audit_logs_filter_by_date_range(client, db_session, make_user, ma
     await _log(db_session, org.id, action="ticket.created", actor_id=admin.id)
 
     await login(client, "audit-admin2@example.com", password)
-    today = date.today()
+    today = datetime.now(ZoneInfo(org.timezone)).date()
 
     resp = await client.get(f"/api/admin/audit-logs?from={today}&to={today}")
     assert resp.status_code == 200, resp.text
@@ -127,3 +128,21 @@ async def test_sa_audit_logs_scoping(client, db_session, make_user, make_organiz
     resp = await client.get(f"/api/sa/audit-logs?action={marker_action}")
     assert resp.status_code == 200, resp.text
     assert resp.json()["total"] == 2
+
+
+async def test_audit_day_uses_organization_timezone(db_session, make_organization):
+    import uuid
+    from datetime import date, datetime, timezone
+    from app.models.audit_log import AuditLog
+    from app.models.enums import AuditActorType
+    from app.services.audit_query import list_audit_logs
+    org = await make_organization(name='Audit local day', timezone='Asia/Almaty')
+    for hour in (18, 20):
+        db_session.add(AuditLog(organization_id=org.id, actor_type=AuditActorType.system,
+            action='test.boundary', entity_type='queue', entity_id=uuid.uuid4(), payload={},
+            created_at=datetime(2026, 9, 22, hour, tzinfo=timezone.utc)))
+    await db_session.flush()
+    items, count = await list_audit_logs(db_session, organization_id=org.id,
+        date_from=date(2026, 9, 23), date_to=date(2026, 9, 23), action=None, limit=25, offset=0)
+    assert count == 1
+    assert items[0]['created_at'].hour == 20

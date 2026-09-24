@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
+
+import DashboardShell from '../../components/DashboardShell'
 
 function linkClass({ isActive }: { isActive: boolean }): string {
   return isActive ? 'admin-layout__link admin-layout__link--active' : 'admin-layout__link'
@@ -10,8 +12,7 @@ export default function AdminLayout() {
   const { t } = useTranslation()
 
   return (
-    <div className="admin-layout">
-      <nav className="admin-layout__sidebar">
+    <DashboardShell>
         <NavLink to="/admin/analytics" className={linkClass}>
           {t('admin.nav.analytics')}
         </NavLink>
@@ -33,10 +34,9 @@ export default function AdminLayout() {
         <NavLink to="/admin/tv-screens" className={linkClass}>
           {t('admin.nav.tvScreens')}
         </NavLink>
-      </nav>
-      <div className="admin-layout__content">
-        <Outlet />
-      </div>
-    </div>
+        <NavLink to="/admin/signage" className={linkClass}>
+          {t('signage.title')}
+        </NavLink>
+    </DashboardShell>
   )
 }

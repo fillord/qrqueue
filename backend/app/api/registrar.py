@@ -46,7 +46,7 @@ async def create_registrar_ticket_route(
     registrar: User = Depends(current_registrar),
 ) -> Ticket:
     queue = await db.get(Queue, payload.queue_id)
-    if queue is None or queue.organization_id != registrar.organization_id:
+    if queue is None or queue.organization_id != registrar.organization_id or queue.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     organization = await db.get(Organization, registrar.organization_id)

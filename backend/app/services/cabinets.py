@@ -7,16 +7,18 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clock import utcnow
 from app.models.cabinet import Cabinet, CabinetOperator
-from app.models.enums import AuditActorType, CabinetStatus, QueueStatus, UserRole
+from app.models.enums import AuditActorType, CabinetStatus, QueueStatus, TicketStatus, UserRole
 from app.models.organization import Organization
 from app.models.queue import Queue
+from app.models.ticket import Ticket
 from app.models.user import User
 from app.schemas.cabinet import CabinetCreate, CabinetUpdate
 from app.services.audit import log_action
 from app.services.errors import ServiceError
 from app.services.queues import create_queue_record
-from app.services.realtime import defer_event, publish_event, queue_channel
+from app.services.realtime import defer_event, organization_channel, publish_event, queue_channel
 
 OPERATOR_CABINET_TTL_SECONDS = 12 * 60 * 60
 
@@ -26,7 +28,9 @@ async def create_cabinet(
 ) -> Cabinet:
     if payload.queue_id is not None:
         queue = await db.get(Queue, payload.queue_id)
-        if queue is None or queue.organization_id != organization.id:
+        if queue is not None:
+            await db.refresh(queue, with_for_update=True)
+        if queue is None or queue.organization_id != organization.id or queue.deleted_at is not None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue not found")
         queue_id = queue.id
     else:
@@ -70,13 +74,26 @@ async def create_cabinet(
 async def update_cabinet(
     db: AsyncSession, cabinet: Cabinet, payload: CabinetUpdate, actor: User
 ) -> Cabinet:
+    lock_queues = {qid for qid in (cabinet.queue_id, payload.queue_id) if qid is not None}
+    for qid in sorted(lock_queues, key=str):
+        await db.execute(select(Queue.id).where(Queue.id == qid).with_for_update())
+    await db.refresh(cabinet, with_for_update=True)
     changes = payload.model_dump(exclude_unset=True)
+
+    if cabinet.current_ticket_id and any(
+        key in changes and changes[key] != getattr(cabinet, key)
+        for key in ("queue_id", "status", "is_active")
+    ):
+        raise HTTPException(409, "Cabinet has an active ticket")
+    if changes.get("status") == CabinetStatus.busy and not cabinet.current_ticket_id:
+        raise HTTPException(409, "No active ticket")
 
     if "queue_id" in changes and changes["queue_id"] is not None:
         queue = await db.get(Queue, changes["queue_id"])
-        if queue is None or queue.organization_id != cabinet.organization_id:
+        if queue is None or queue.organization_id != cabinet.organization_id or queue.deleted_at is not None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue not found")
 
+    old_queue_id = cabinet.queue_id
     for field, value in changes.items():
         setattr(cabinet, field, value)
     await db.flush()
@@ -92,6 +109,45 @@ async def update_cabinet(
         organization_id=cabinet.organization_id,
         payload=jsonable_encoder(changes),
     )
+    for qid in {old_queue_id, cabinet.queue_id} - {None}:
+        defer_event(db, queue_channel(qid), "cabinet.updated", cabinet_id=str(cabinet.id))
+    return cabinet
+
+
+async def archive_cabinet(db: AsyncSession, cabinet: Cabinet, actor: User) -> None:
+    await db.refresh(cabinet, with_for_update=True)
+    active_ticket = await db.scalar(select(Ticket.id).where(
+        Ticket.cabinet_id == cabinet.id,
+        Ticket.status.in_([TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving]),
+    ).limit(1))
+    if cabinet.current_ticket_id is not None or active_ticket is not None:
+        raise HTTPException(status_code=409, detail={"code": "active_tickets"})
+    cabinet.deleted_at = utcnow()
+    cabinet.is_active = False
+    cabinet.status = CabinetStatus.offline
+    await db.flush()
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="cabinet.archived", entity_type="cabinet", entity_id=cabinet.id,
+                     organization_id=cabinet.organization_id, payload={"label": cabinet.label})
+    if cabinet.queue_id is not None:
+        defer_event(db, queue_channel(cabinet.queue_id), "cabinet.updated", cabinet_id=str(cabinet.id))
+    defer_event(db, organization_channel(cabinet.organization_id), "cabinet.updated", cabinet_id=str(cabinet.id))
+
+
+async def restore_cabinet(db: AsyncSession, cabinet: Cabinet, actor: User) -> Cabinet:
+    if cabinet.queue_id is not None:
+        queue = await db.get(Queue, cabinet.queue_id)
+        if queue is None or queue.deleted_at is not None:
+            raise HTTPException(status_code=409, detail={"code": "archived_queue"})
+    cabinet.deleted_at = None
+    cabinet.is_active = False
+    cabinet.status = CabinetStatus.offline
+    await db.flush()
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="cabinet.restored", entity_type="cabinet", entity_id=cabinet.id,
+                     organization_id=cabinet.organization_id)
+    if cabinet.queue_id is not None:
+        defer_event(db, queue_channel(cabinet.queue_id), "cabinet.updated", cabinet_id=str(cabinet.id))
     return cabinet
 
 

@@ -1,7 +1,7 @@
 import uuid
-from datetime import date, time
+from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, Numeric, SmallInteger, Text, Time
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, SmallInteger, Text, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,7 @@ class Queue(UUIDPkMixin, Base):
     last_ticket_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     counter_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # True only when an admin paused the queue directly (not via cabinet-pause cascade) —
     # blocks the cascade from auto-reopening it when a cabinet resumes.
     manually_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

@@ -65,6 +65,7 @@ async def list_my_cabinets_route(
         select(Cabinet)
         .join(CabinetOperator, CabinetOperator.cabinet_id == Cabinet.id)
         .where(CabinetOperator.user_id == operator.id)
+        .where(Cabinet.deleted_at.is_(None))
         .order_by(Cabinet.label)
     )
     return list(result.scalars().all())
@@ -198,7 +199,7 @@ async def transfer_route(
     ticket = await _get_ticket_by_queue(db, ticket_id, cabinet)
 
     target_queue = await db.get(Queue, payload.queue_id)
-    if target_queue is None or target_queue.organization_id != operator.organization_id:
+    if target_queue is None or target_queue.organization_id != operator.organization_id or target_queue.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     organization = await db.get(Organization, operator.organization_id)

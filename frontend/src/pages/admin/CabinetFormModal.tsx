@@ -3,22 +3,24 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { CabinetCreatePayload } from '../../api/cabinets'
-import type { QueueSummary } from '../../api/types'
+import type { Cabinet, QueueSummary } from '../../api/types'
 import Modal from '../../components/Modal'
 
 export default function CabinetFormModal({
+  initial,
   queues,
   onSubmit,
   onClose,
 }: {
+  initial?: Cabinet
   queues: QueueSummary[]
   onSubmit: (payload: CabinetCreatePayload) => Promise<void>
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const [label, setLabel] = useState('')
-  const [autoCreateQueue, setAutoCreateQueue] = useState(queues.length === 0)
-  const [queueId, setQueueId] = useState(queues[0]?.id ?? '')
+  const [label, setLabel] = useState(initial?.label ?? '')
+  const [autoCreateQueue, setAutoCreateQueue] = useState(!initial && queues.length === 0)
+  const [queueId, setQueueId] = useState(initial?.queue_id ?? queues[0]?.id ?? '')
   const [submitting, setSubmitting] = useState(false)
 
   const canSubmit = label.trim() !== '' && (autoCreateQueue || queueId !== '')
@@ -35,7 +37,7 @@ export default function CabinetFormModal({
   }
 
   return (
-    <Modal title={t('admin.cabinets.form.title')} onClose={onClose}>
+    <Modal title={t(initial ? 'admin.common.edit' : 'admin.cabinets.form.title')} onClose={onClose}>
       <form className="modal-form" onSubmit={(e) => void handleSubmit(e)}>
         <label className="modal__field">
           <span>{t('admin.cabinets.form.label')}</span>
@@ -44,7 +46,7 @@ export default function CabinetFormModal({
 
         <div className="modal__field">
           <span>{t('admin.cabinets.form.queue')}</span>
-          <label className="modal__radio">
+          {!initial && <label className="modal__radio">
             <input
               type="radio"
               name="cabinet-queue-mode"
@@ -52,7 +54,7 @@ export default function CabinetFormModal({
               onChange={() => setAutoCreateQueue(true)}
             />
             <span>{t('admin.cabinets.form.autoCreateQueue')}</span>
-          </label>
+          </label>}
           <label className="modal__radio">
             <input
               type="radio"

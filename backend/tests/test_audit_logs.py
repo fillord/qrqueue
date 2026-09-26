@@ -5,6 +5,10 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.models.enums import AuditActorType, UserRole
+from app.models.enums import QueueStatus, TicketSource
+from app.models.queue import Queue
+from app.models.cabinet import Cabinet
+from app.models.ticket import Ticket
 from app.services.audit import log_action
 from tests.utils import login
 
@@ -101,6 +105,38 @@ async def test_audit_log_actor_name_joined_for_user_actor(client, db_session, ma
     assert resp.status_code == 200, resp.text
     items = resp.json()["items"]
     assert items[0]["actor_name"] == "Иван Иванов"
+
+
+async def test_ticket_audit_log_includes_number_queue_and_cabinet(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="Журнал талона")
+    admin, password = await make_user(
+        email="audit-ticket@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    queue = Queue(organization_id=org.id, name="Терапия", ticket_prefix="A",
+                  status=QueueStatus.open, counter_date=datetime.now().date())
+    db_session.add(queue)
+    await db_session.flush()
+    cabinet = Cabinet(organization_id=org.id, queue_id=queue.id, label="Кабинет 3")
+    db_session.add(cabinet)
+    await db_session.flush()
+    ticket = Ticket(organization_id=org.id, queue_id=queue.id, cabinet_id=cabinet.id,
+                    number=24, display_number="A-024", source=TicketSource.qr)
+    db_session.add(ticket)
+    await db_session.flush()
+    await log_action(db_session, actor_type=AuditActorType.user, actor_id=admin.id,
+                     action="ticket.serving_started", entity_type="ticket", entity_id=ticket.id,
+                     organization_id=org.id)
+    await db_session.commit()
+
+    await login(client, "audit-ticket@example.com", password)
+    response = await client.get("/api/admin/audit-logs?action=ticket.serving_started")
+    assert response.status_code == 200, response.text
+    item = response.json()["items"][0]
+    assert item["entity_label"] == "A-024"
+    assert item["queue_name"] == "Терапия"
+    assert item["cabinet_label"] == "Кабинет 3"
 
 
 async def test_sa_audit_logs_scoping(client, db_session, make_user, make_organization):

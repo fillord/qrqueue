@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { getTvState } from '../api/tv'
+import { getTvState, sendTvHeartbeat } from '../api/tv'
 import type { TvState } from '../api/types'
 import { openReconnectingSocket, wsBaseUrl } from '../lib/reconnectingWebSocket'
 
@@ -51,10 +51,20 @@ export function useTvState(deviceToken: string): UseTvStateResult {
     }
 
     void fetchOnce()
+    const heartbeat = window.setInterval(() => {
+      void sendTvHeartbeat(deviceToken).catch((error) => {
+        if (!cancelled && error instanceof ApiError && error.status === 401) setRejected(true)
+      })
+    }, 30_000)
     const handle = openReconnectingSocket({
       url: `${wsBaseUrl()}/ws/tv?device_token=${encodeURIComponent(deviceToken)}`,
       onOpen: () => void fetchOnce(),
-      onClose: () => { if (!cancelled) setOffline(true) },
+      onClose: () => {
+        if (!cancelled) {
+          setOffline(true)
+          void fetchOnce() // A revoked device token is rejected immediately, without waiting for the next heartbeat.
+        }
+      },
       onMessage: (data) => {
         if (cancelled) return
         revision += 1 // An older REST response must not overwrite a live snapshot.
@@ -68,6 +78,7 @@ export function useTvState(deviceToken: string): UseTvStateResult {
     return () => {
       cancelled = true
       clearTimeout(retryTimer)
+      window.clearInterval(heartbeat)
       handle.close()
     }
   }, [deviceToken])

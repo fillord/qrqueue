@@ -48,6 +48,8 @@ class CabinetInfo(BaseModel):
 
 
 class TicketDetailOut(TicketSummaryOut):
+    organization_name: str
+    queue_name: str
     position: int | None
     queue_status: QueueStatus
     now_serving: str | None

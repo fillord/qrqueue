@@ -241,8 +241,8 @@ export default function OperatorQueuePage() {
             )}
           </div>
 
-          <div className="operator-queue__no-show">
-            <h2>{t('operator.noShow.title')}</h2>
+          <details className="operator-queue__no-show">
+            <summary>{t('operator.noShow.title')} · {queue.no_show.length}</summary>
             {queue.no_show.length === 0 ? (
               <p className="operator-queue__empty">{t('operator.noShow.empty')}</p>
             ) : (
@@ -257,7 +257,7 @@ export default function OperatorQueuePage() {
                 ))}
               </ul>
             )}
-          </div>
+          </details>
         </section>
       </div>
 

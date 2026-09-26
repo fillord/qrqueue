@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 
 import { getAuditLogs, getOwnOrganization } from '../../api/admin'
 import type { AuditLogPage } from '../../api/types'
+import AuditActionFilter from '../../components/AuditActionFilter'
+import AuditEntryObject from '../../components/AuditEntryObject'
+import { auditActionLabel } from '../../lib/auditLogPresentation'
 import { formatDateTimeInTimezone } from '../../lib/formatDate'
 
 const PAGE_SIZE = 25
@@ -44,18 +47,10 @@ export default function AdminAuditLogPage() {
       <h1>{t('admin.auditLog.title')}</h1>
 
       <div className="admin-filters">
-        <label>
-          <span>{t('admin.auditLog.action')}</span>
-          <input
-            type="text"
-            value={action}
-            placeholder="ticket.called"
-            onChange={(e) => {
-              setAction(e.target.value)
-              setOffset(0)
-            }}
-          />
-        </label>
+        <AuditActionFilter value={action} onChange={(value) => {
+          setAction(value)
+          setOffset(0)
+        }} />
         <label>
           <span>{t('admin.analytics.from')}</span>
           <input
@@ -100,10 +95,8 @@ export default function AdminAuditLogPage() {
                 <tr key={item.id}>
                   <td>{formatDateTimeInTimezone(item.created_at, timezoneName)}</td>
                   <td>{item.actor_name ?? t(`admin.auditLog.actorType.${item.actor_type}`)}</td>
-                  <td>
-                    <code>{item.action}</code>
-                  </td>
-                  <td>{item.entity_type}</td>
+                  <td>{auditActionLabel(t, item.action)}</td>
+                  <td><AuditEntryObject item={item} /></td>
                 </tr>
               ))}
             </tbody>

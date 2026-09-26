@@ -4,7 +4,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
@@ -109,6 +109,13 @@ app.include_router(tv_signage_router, prefix="/api")
 app.include_router(ws_router)
 
 
-@app.get("/api/health")
-async def health() -> dict:
+@app.get("/api/health", response_model=None)
+async def health() -> dict | JSONResponse:
+    try:
+        async with async_session_factory() as db:
+            await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=3)
+        await asyncio.wait_for(redis_client.ping(), timeout=3)
+    except Exception:
+        logger.exception("Readiness check failed")
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
     return {"status": "ok"}

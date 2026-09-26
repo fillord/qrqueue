@@ -1,5 +1,17 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
-import type { AdminQueue, Analytics, AuditLogPage, Cabinet, Organization, TvScreen } from './types'
+import type { AdminHomeData, AdminProblemsData, AdminQueue, Analytics, AuditLogPage, Cabinet, DailyReportData, Organization, TvScreen, TvState } from './types'
+
+export function getAdminHome(): Promise<AdminHomeData> {
+  return apiGet<AdminHomeData>('/api/admin/home')
+}
+
+export function getAdminProblems(): Promise<AdminProblemsData> {
+  return apiGet<AdminProblemsData>('/api/admin/problems')
+}
+
+export function getDailyReport(day?: string): Promise<DailyReportData> {
+  return apiGet<DailyReportData>(`/api/admin/daily-report${day ? `?day=${encodeURIComponent(day)}` : ''}`)
+}
 
 export function getAdminQueues(organizationId?: string): Promise<AdminQueue[]> {
   const suffix = organizationId ? `?organization_id=${organizationId}` : ''
@@ -18,6 +30,10 @@ export function getTvScreens(organizationId?: string): Promise<TvScreen[]> {
   return apiGet<TvScreen[]>(`/api/admin/tv-screens${orgSuffix(organizationId)}`)
 }
 
+export function getTvScreenPreview(id: string, organizationId?: string): Promise<TvState> {
+  return apiGet<TvState>(`/api/admin/tv-screens/${id}/preview${orgSuffix(organizationId)}`)
+}
+
 export function createTvScreen(
   payload: { name: string; queue_id: string | null; language?: TvScreen['language']; display_mode?: TvScreen['display_mode']; slide_seconds?: number; ads_enabled?: boolean; media_playlist_mode?: TvScreen['media_playlist_mode']; selected_media_ids?: string[]; queue_selection_mode?: TvScreen['queue_selection_mode']; selected_queue_ids?: string[]; cabinet_selection_mode?: TvScreen['cabinet_selection_mode']; selected_cabinet_ids?: string[] },
   organizationId?: string,
@@ -27,6 +43,10 @@ export function createTvScreen(
 
 export function deleteTvScreen(id: string, organizationId?: string): Promise<void> {
   return apiDelete<void>(`/api/admin/tv-screens/${id}${orgSuffix(organizationId)}`)
+}
+
+export function unpairTvScreen(id: string, organizationId?: string): Promise<TvScreen> {
+  return apiPost<TvScreen>(`/api/admin/tv-screens/${id}/unpair${orgSuffix(organizationId)}`)
 }
 
 export function getOwnOrganization(): Promise<Organization> {

@@ -15,6 +15,7 @@ export default function OrganizationFormModal({
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [template, setTemplate] = useState<NonNullable<OrganizationCreatePayload['template']>>('blank')
   const [submitting, setSubmitting] = useState(false)
 
   const canSubmit = name.trim() !== ''
@@ -24,7 +25,7 @@ export default function OrganizationFormModal({
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), slug: slug.trim() || undefined })
+      await onSubmit({ name: name.trim(), slug: slug.trim() || undefined, template })
     } finally {
       setSubmitting(false)
     }
@@ -46,6 +47,16 @@ export default function OrganizationFormModal({
             onChange={(e) => setSlug(e.target.value)}
             placeholder={t('admin.saOrganizations.form.slugPlaceholder')}
           />
+        </label>
+
+        <label className="modal__field">
+          <span>{t('admin.saOrganizations.form.template')}</span>
+          <select value={template} onChange={(event) => setTemplate(event.target.value as NonNullable<OrganizationCreatePayload['template']>)}>
+            <option value="blank">{t('admin.saOrganizations.form.templateBlank')}</option>
+            <option value="clinic">{t('admin.saOrganizations.form.templateClinic')}</option>
+            <option value="service_center">{t('admin.saOrganizations.form.templateService')}</option>
+          </select>
+          <small>{t('admin.saOrganizations.form.templateHint')}</small>
         </label>
 
         <div className="modal__actions">

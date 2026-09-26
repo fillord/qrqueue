@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.models.cabinet import Cabinet
 from app.models.enums import Language, QueueStatus, UserRole
@@ -54,6 +55,11 @@ async def test_admin_creates_lists_and_deletes_tv_screen(
     assert len(body["pairing_code"]) == 6
     screen_id = body["id"]
 
+    preview = await client.get(f"/api/admin/tv-screens/{screen_id}/preview?organization_id={org.id}")
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["organization_name"] == org.name
+    assert "device_token" not in preview.json()
+
     resp = await client.get(f"/api/admin/tv-screens?organization_id={org.id}")
     assert resp.status_code == 200, resp.text
     assert [s["id"] for s in resp.json()] == [screen_id]
@@ -86,6 +92,43 @@ async def test_admin_cannot_see_other_org_tv_screen(client, db_session, make_use
     await login(client, "tv-admin-a@example.com", password_a)
     resp = await client.delete(f"/api/admin/tv-screens/{screen_id}?organization_id={org_a.id}")
     assert resp.status_code == 404, resp.text
+    resp = await client.post(f"/api/admin/tv-screens/{screen_id}/unpair?organization_id={org_a.id}")
+    assert resp.status_code == 404, resp.text
+    resp = await client.get(f"/api/admin/tv-screens/{screen_id}/preview?organization_id={org_a.id}")
+    assert resp.status_code == 404, resp.text
+
+
+async def test_admin_unpairs_tv_and_can_pair_it_again(client, db_session, make_user, make_organization):
+    org = await make_organization(name="TV Unpair Организация")
+    queue = await _make_queue(db_session, org)
+    admin, password = await make_user(
+        email="tv-unpair@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    await login(client, "tv-unpair@example.com", password)
+    created = await client.post("/api/admin/tv-screens", json={
+        "name": "Табло", "queue_id": str(queue.id), "language": "ru",
+    })
+    assert created.status_code == 201, created.text
+    screen_id = created.json()["id"]
+    old_code = created.json()["pairing_code"]
+    paired = await client.post("/api/tv/pair", json={"code": old_code})
+    assert paired.status_code == 200, paired.text
+    old_token = paired.json()["device_token"]
+
+    unpaired = await client.post(f"/api/admin/tv-screens/{screen_id}/unpair")
+    assert unpaired.status_code == 200, unpaired.text
+    assert unpaired.json()["queue_id"] == str(queue.id)
+    assert unpaired.json()["name"] == "Табло"
+    assert unpaired.json()["last_seen_at"] is None
+    new_code = unpaired.json()["pairing_code"]
+    assert new_code and new_code != old_code
+    assert (await client.get("/api/tv/state", headers={"X-Device-Token": old_token})).status_code == 401
+    assert (await client.post(f"/api/admin/tv-screens/{screen_id}/unpair")).status_code == 409
+
+    paired_again = await client.post("/api/tv/pair", json={"code": new_code})
+    assert paired_again.status_code == 200, paired_again.text
+    assert paired_again.json()["device_token"] != old_token
+    assert (await client.get("/api/tv/state", headers={"X-Device-Token": paired_again.json()["device_token"]})).status_code == 200
 
 
 async def test_pair_flow_state_and_qr_batch(client, db_session, make_user, make_organization):
@@ -134,6 +177,25 @@ async def test_pair_flow_state_and_qr_batch(client, db_session, make_user, make_
     batch = resp.json()
     assert "server_time" in batch
     assert len(batch["tokens"]) >= 1
+
+
+async def test_tv_heartbeat_refreshes_last_seen_and_requires_device_token(
+    client, db_session, make_organization
+):
+    org = await make_organization(name="TV heartbeat")
+    screen = TVScreen(organization_id=org.id, name="Lobby", pairing_code=None,
+                      device_token="heartbeat-device-token", language=Language.ru)
+    db_session.add(screen)
+    await db_session.commit()
+    stale = datetime.now(timezone.utc) - timedelta(minutes=5)
+    screen.last_seen_at = stale
+    await db_session.commit()
+
+    assert (await client.post("/api/tv/heartbeat")).status_code == 401
+    response = await client.post("/api/tv/heartbeat", headers={"X-Device-Token": "heartbeat-device-token"})
+    assert response.status_code == 204, response.text
+    await db_session.refresh(screen)
+    assert screen.last_seen_at > stale
 
 
 async def test_qr_batch_rejected_for_hall_screen_without_queue(
@@ -318,6 +380,42 @@ async def test_tv_state_keeps_simultaneous_calls_and_recall_count(db_session, ma
     calls = state['queues'][0]['active_calls']
     assert len(calls) == 3
     assert {(c['display_number'], c['cabinet_label'], c['call_count']) for c in calls} == {('A001', '1', 1), ('A002', '2', 2), ('A003', '3', 3)}
+
+
+async def test_tv_recent_calls_keep_last_two_after_completion_and_respect_screen_selection(
+    db_session, make_organization
+):
+    from app.models.enums import TicketSource, TicketStatus
+    from app.models.ticket import Ticket
+    from app.services.tv_state import build_tv_state
+
+    org = await make_organization(name='Recent calls')
+    first_queue = await _make_queue(db_session, org, name='Therapy')
+    second_queue = await _make_queue(db_session, org, name='Surgery')
+    first_cabinet = await _make_cabinet(db_session, org, first_queue, label='101')
+    second_cabinet = await _make_cabinet(db_session, org, second_queue, label='202')
+    local_start = datetime.now(ZoneInfo(org.timezone)).replace(hour=0, minute=0, second=0, microsecond=0)
+    calls = [
+        (first_queue, first_cabinet, 'A001', local_start - timedelta(minutes=1), TicketStatus.served),
+        (first_queue, first_cabinet, 'A002', local_start + timedelta(minutes=1), TicketStatus.served),
+        (second_queue, second_cabinet, 'B001', local_start + timedelta(minutes=2), TicketStatus.serving),
+        (first_queue, first_cabinet, 'A003', local_start + timedelta(minutes=3), TicketStatus.called),
+    ]
+    for number, (queue, cabinet, display_number, called_at, status) in enumerate(calls, 1):
+        db_session.add(Ticket(organization_id=org.id, queue_id=queue.id, cabinet_id=cabinet.id,
+                              number=number, display_number=display_number, source=TicketSource.registrar,
+                              status=status, call_count=1, called_at=called_at.astimezone(timezone.utc)))
+    await db_session.flush()
+
+    screen = TVScreen(organization_id=org.id, queue_id=None, name='Hall', language=Language.ru)
+    state = await build_tv_state(db_session, screen)
+    assert [(call['display_number'], call['queue_name']) for call in state['recent_calls']] == [
+        ('A003', 'Therapy'), ('B001', 'Surgery')]
+
+    screen.cabinet_selection_mode = 'selected'
+    screen.selected_cabinet_ids = [first_cabinet.id]
+    state = await build_tv_state(db_session, screen)
+    assert [call['display_number'] for call in state['recent_calls']] == ['A003', 'A002']
 
 
 async def test_admin_can_change_screen_language_and_other_org_cannot(client, db_session, make_user, make_organization):

@@ -1,12 +1,13 @@
 import LoadError from '../../components/LoadError'
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { createTvScreen, updateTvScreen, deleteTvScreen, getAdminCabinets, getAdminQueues, getTvScreens } from '../../api/admin'
+import { createTvScreen, updateTvScreen, deleteTvScreen, getAdminCabinets, getAdminQueues, getTvScreens, unpairTvScreen } from '../../api/admin'
 import type { AdminQueue, Cabinet, TvScreen } from '../../api/types'
 import { listMedia } from '../../api/signage'
 import type { MediaAsset } from '../../api/signage'
+import { tvConnectionStatus } from '../../lib/tvConnection'
 
 /**
  * /admin/tv-screens (org_admin, own org) and, embedded with an explicit
@@ -16,7 +17,7 @@ import type { MediaAsset } from '../../api/signage'
  * instead of duplicating this CRUD UI.
  */
 export default function AdminTvScreensPage({ organizationId }: { organizationId?: string }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [loadError, setLoadError] = useState(false)
   const [screens, setScreens] = useState<TvScreen[] | null>(null)
   const [queues, setQueues] = useState<AdminQueue[]>([])
@@ -26,8 +27,12 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
   const [displayMode, setDisplayMode] = useState<TvScreen['display_mode']>('queue')
   const [name, setName] = useState('')
   const [queueId, setQueueId] = useState('')
+  const [createQueueIds, setCreateQueueIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(false)
+  const [now, setNow] = useState(Date.now())
+  const [expandedScreenId, setExpandedScreenId] = useState<string | null>(null)
+  const [previewScreenId, setPreviewScreenId] = useState<string | null>(null)
 
   async function load() {
     setLoadError(false)
@@ -49,15 +54,31 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
     void load()
   }, [organizationId])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now())
+      void getTvScreens(organizationId).then((data) => {
+        setScreens(data)
+        setLoadError(false)
+      }).catch(() => setLoadError(true))
+    }, 30_000)
+    return () => window.clearInterval(timer)
+  }, [organizationId])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || (displayMode === 'queue' && !queueId && createQueueIds.length === 0)) return
     setSubmitting(true)
     setError(false)
     try {
-      await createTvScreen({ name: name.trim(), queue_id: displayMode === 'queue' ? queueId || null : null, language, display_mode: displayMode }, organizationId)
+      await createTvScreen({
+        name: name.trim(), queue_id: displayMode === 'queue' ? queueId || null : null,
+        language, display_mode: displayMode,
+        ...(displayMode === 'queue' && !queueId ? { queue_selection_mode: 'selected' as const, selected_queue_ids: createQueueIds } : {}),
+      }, organizationId)
       setName('')
       setQueueId('')
+      setCreateQueueIds([])
       await load()
     } catch {
       setError(true)
@@ -67,8 +88,19 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
   }
 
   async function handleDelete(id: string) {
+    const screen = screens?.find((item) => item.id === id)
+    if (!screen || !window.confirm(t('adminTv.deleteConfirm', { name: screen.name }))) return
     try { await deleteTvScreen(id, organizationId); await load() }
     catch { setError(true) }
+  }
+
+  async function handleUnpair(screen: TvScreen) {
+    if (!window.confirm(t('adminTv.unpairConfirm', { name: screen.name }))) return
+    setSubmitting(true)
+    setError(false)
+    try { await unpairTvScreen(screen.id, organizationId); await load() }
+    catch { setError(true) }
+    finally { setSubmitting(false) }
   }
 
   async function changeLanguage(screen: TvScreen, language: TvScreen['language']) {
@@ -107,63 +139,90 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
           <option value="queue">{t('signage.modeQueue')}</option><option value="schedule">{t('signage.modeSchedule')}</option><option value="media">{t('signage.modeMedia')}</option>
         </select>
         <select aria-label={t('adminTv.columns.queue')} value={queueId} disabled={displayMode !== 'queue'} onChange={(e) => setQueueId(e.target.value)}>
-          <option value="">{t('adminTv.noQueue')}</option>
-          {queues.map((queue) => (
+          <option value="">{t('adminTv.multiQueue')}</option>
+          {queues.filter((queue) => queue.is_active && !queue.deleted_at).map((queue) => (
             <option key={queue.id} value={queue.id}>
               {queue.name}
             </option>
           ))}
         </select>
         <select aria-label={t('adminTv.language')} value={language} onChange={(e) => setLanguage(e.target.value as TvScreen['language'])}><option value="kk">Қазақша</option><option value="ru">Русский</option><option value="en">English</option></select>
-        <button type="submit" disabled={submitting || !name.trim()}>
+        {displayMode === 'queue' && !queueId && <fieldset className="admin-tv-screens__create-queues">
+          <legend>{t('adminTv.queueBoard.createQueuesTitle')}</legend>
+          <div className="admin-tv-screens__create-queue-list">
+            {queues.filter((queue) => queue.is_active && !queue.deleted_at).map((queue) => <label key={queue.id}>
+              <input type="checkbox" checked={createQueueIds.includes(queue.id)} disabled={submitting} onChange={() => setCreateQueueIds((current) => current.includes(queue.id) ? current.filter((id) => id !== queue.id) : [...current, queue.id])} />
+              {queue.name}
+            </label>)}
+          </div>
+          <small>{t('adminTv.queueBoard.createQueuesHint')}</small>
+        </fieldset>}
+        <button type="submit" disabled={submitting || !name.trim() || (displayMode === 'queue' && !queueId && createQueueIds.length === 0)}>
           {t('adminTv.create')}
         </button>
       </form>
 
       {loadError && <LoadError retry={() => void load()} />}
       {error && <p className="admin-tv-screens__error">{t('adminTv.error')}</p>}
+      {screens && screens.some((screen) => tvConnectionStatus(screen, now) === 'offline') &&
+        <p className="admin-tv-screens__warning" role="status">
+          {t('adminTv.connection.offlineCount', { count: screens.filter((screen) => tvConnectionStatus(screen, now) === 'offline').length })}
+        </p>}
 
       {screens === null ? (
         loadError ? null : <div className="spinner" aria-hidden="true" />
       ) : screens.length === 0 ? (
         <p>{t('adminTv.empty')}</p>
       ) : (
-        <table className="admin-tv-screens__table">
-          <thead>
-            <tr>
-              <th>{t('adminTv.columns.name')}</th>
-              <th>{t('adminTv.columns.queue')}</th>
-              <th>{t('adminTv.columns.pairingCode')}</th><th>{t('adminTv.language')}</th><th>{t('signage.screenMode')}</th><th>{t('signage.slideSeconds')}</th><th>{t('signage.showAds')}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {screens.map((screen) => (
-              <Fragment key={screen.id}><tr>
-                <td>{screen.name}</td>
-                <td>{screen.display_mode === 'queue' ? <select aria-label={t('adminTv.queueBoard.screenSource')} value={screen.queue_id ?? ''} disabled={submitting} onChange={(e) => void changeScreen(screen, { queue_id: e.target.value || null })}>
-                  <option value="">{t('adminTv.noQueue')}</option>
-                  {queues.map((queue) => <option key={queue.id} value={queue.id}>{queue.name}</option>)}
-                </select> : (queues.find((q) => q.id === screen.queue_id)?.name ?? '—')}</td>
-                <td>
-                  {screen.pairing_code ? (
-                    <code className="admin-tv-screens__code">{screen.pairing_code}</code>
-                  ) : (
-                    t('adminTv.paired')
-                  )}
-                </td>
-                <td><select aria-label={t('adminTv.language')} value={screen.language} disabled={submitting} onChange={(e) => void changeLanguage(screen, e.target.value as TvScreen['language'])}><option value="kk">Қазақша</option><option value="ru">Русский</option><option value="en">English</option></select></td>
-                <td><select aria-label={t('signage.screenMode')} value={screen.display_mode} disabled={submitting} onChange={(e) => void changeScreen(screen, { display_mode: e.target.value as TvScreen['display_mode'] })}><option value="queue">{t('signage.modeQueue')}</option><option value="schedule">{t('signage.modeSchedule')}</option><option value="media">{t('signage.modeMedia')}</option></select></td>
-                <td><input aria-label={t('signage.slideSeconds')} type="number" min="5" max="120" defaultValue={screen.slide_seconds} key={`${screen.id}-${screen.slide_seconds}`} disabled={submitting || screen.display_mode === 'queue'} onBlur={(e) => { const value = Number(e.target.value); if (value >= 5 && value <= 120 && value !== screen.slide_seconds) void changeScreen(screen, { slide_seconds: value }) }} /></td>
-                <td><input aria-label={t('signage.showAds')} type="checkbox" checked={screen.ads_enabled} disabled={submitting || screen.display_mode !== 'media'} onChange={(e) => void changeScreen(screen, { ads_enabled: e.target.checked })} /></td>
-                <td>
-                  <button type="button" onClick={() => void handleDelete(screen.id)}>
-                    {t('adminTv.delete')}
+        <div className="admin-tv-screens__list">
+          {screens.map((screen) => (
+            <article key={screen.id} className="admin-tv-screens__card">
+              <header className="admin-tv-screens__card-header">
+                <div className="admin-tv-screens__identity">
+                  <div className="admin-tv-screens__title-row">
+                    <h2>{screen.name}</h2>
+                    <span className={`admin-tv-screens__status admin-tv-screens__status--${tvConnectionStatus(screen, now)}`}>
+                      {t(`adminTv.connection.${tvConnectionStatus(screen, now)}`)}
+                    </span>
+                  </div>
+                  {screen.last_seen_at && Number.isFinite(Date.parse(screen.last_seen_at)) && <small>
+                    {t('adminTv.connection.lastSeen', { time: new Date(screen.last_seen_at).toLocaleString(i18n.language) })}
+                  </small>}
+                </div>
+                <div className="admin-tv-screens__card-actions">
+                  <button type="button" aria-expanded={expandedScreenId === screen.id} aria-controls={`screen-settings-${screen.id}`}
+                    onClick={() => setExpandedScreenId((current) => current === screen.id ? null : screen.id)}>
+                    {t(expandedScreenId === screen.id ? 'adminTv.hideSettings' : 'adminTv.showSettings')}
                   </button>
-                </td>
-              </tr>
-              {screen.display_mode === 'queue' && <tr className="admin-tv-screens__playlist-row"><td colSpan={8}>
-                <div className="admin-tv-screens__board-options">
+                  {!screen.pairing_code && <button type="button" disabled={submitting} onClick={() => void handleUnpair(screen)}>{t('adminTv.unpair')}</button>}
+                  <button type="button" className="admin-tv-screens__delete" disabled={submitting} onClick={() => void handleDelete(screen.id)}>{t('adminTv.delete')}</button>
+                </div>
+              </header>
+
+              <div className="admin-tv-screens__summary">
+                <div><span>{t('signage.screenMode')}</span><strong>{t(`signage.mode${screen.display_mode[0].toUpperCase()}${screen.display_mode.slice(1)}`)}</strong></div>
+                {screen.display_mode === 'queue' && <div><span>{t('adminTv.columns.queue')}</span><strong>{screen.queue_id ? queues.find((queue) => queue.id === screen.queue_id)?.name ?? '—' : t('adminTv.multiQueue')}</strong></div>}
+                {screen.pairing_code && <div className="admin-tv-screens__pairing"><span>{t('adminTv.columns.pairingCode')}</span><code className="admin-tv-screens__code">{screen.pairing_code}</code><small>{t('adminTv.pairingHelp')}</small></div>}
+              </div>
+
+              {expandedScreenId === screen.id && <div id={`screen-settings-${screen.id}`} className="admin-tv-screens__settings">
+                <h3>{t('adminTv.settingsHint')}</h3>
+                <div className="admin-tv-screens__preview-control">
+                  <button type="button" aria-expanded={previewScreenId === screen.id} onClick={() => setPreviewScreenId((current) => current === screen.id ? null : screen.id)}>
+                    {t(previewScreenId === screen.id ? 'adminTv.preview.hide' : 'adminTv.preview.show')}
+                  </button>
+                  {previewScreenId === screen.id && <div className="admin-tv-screens__preview-frame">
+                    <iframe title={t('adminTv.preview.title', { name: screen.name })} src={`/tv/preview/${screen.id}${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ''}`} />
+                  </div>}
+                </div>
+                <div className="admin-tv-screens__fields">
+                  <label>{t('signage.screenMode')}<select value={screen.display_mode} disabled={submitting} onChange={(e) => void changeScreen(screen, { display_mode: e.target.value as TvScreen['display_mode'] })}><option value="queue">{t('signage.modeQueue')}</option><option value="schedule">{t('signage.modeSchedule')}</option><option value="media">{t('signage.modeMedia')}</option></select></label>
+                  <label>{t('adminTv.language')}<select value={screen.language} disabled={submitting} onChange={(e) => void changeLanguage(screen, e.target.value as TvScreen['language'])}><option value="kk">Қазақша</option><option value="ru">Русский</option><option value="en">English</option></select></label>
+                  {screen.display_mode === 'queue' && <label>{t('adminTv.queueBoard.screenSource')}<select value={screen.queue_id ?? ''} disabled={submitting} onChange={(e) => void changeScreen(screen, { queue_id: e.target.value || null })}><option value="">{t('adminTv.multiQueue')}</option>{queues.map((queue) => <option key={queue.id} value={queue.id}>{queue.name}</option>)}</select></label>}
+                  {screen.display_mode !== 'queue' && <label>{t('signage.slideSeconds')}<input type="number" min="5" max="120" defaultValue={screen.slide_seconds} key={`${screen.id}-${screen.slide_seconds}`} disabled={submitting} onBlur={(e) => { const value = Number(e.target.value); if (value >= 5 && value <= 120 && value !== screen.slide_seconds) void changeScreen(screen, { slide_seconds: value }) }} /></label>}
+                  {screen.display_mode === 'media' && <label className="admin-tv-screens__toggle"><input type="checkbox" checked={screen.ads_enabled} disabled={submitting} onChange={(e) => void changeScreen(screen, { ads_enabled: e.target.checked })} />{t('signage.showAds')}</label>}
+                </div>
+                {screen.display_mode === 'queue' && <div className="admin-tv-screens__board-options">
                   {screen.queue_id === null && <fieldset className="admin-tv-screens__playlist">
                     <legend>{t('adminTv.queueBoard.queuesTitle')}</legend>
                     <label><input type="radio" name={`queues-${screen.id}`} checked={screen.queue_selection_mode === 'all'} disabled={submitting} onChange={() => void changeScreen(screen, { queue_selection_mode: 'all' })} />{t('adminTv.queueBoard.allQueues')}</label>
@@ -182,10 +241,8 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                       <small>{t('adminTv.queueBoard.cabinetHint')}</small>
                     </div>}
                   </fieldset>
-                </div>
-              </td></tr>}
-              {screen.display_mode === 'media' && <tr className="admin-tv-screens__playlist-row"><td colSpan={8}>
-                <fieldset className="admin-tv-screens__playlist">
+                </div>}
+                {screen.display_mode === 'media' && <fieldset className="admin-tv-screens__playlist">
                   <legend>{t('adminTv.playlist.title')}</legend>
                   <label><input type="radio" name={`playlist-${screen.id}`} checked={screen.media_playlist_mode === 'all'} disabled={submitting} onChange={() => void changeScreen(screen, { media_playlist_mode: 'all' })} />{t('adminTv.playlist.all')}</label>
                   <label><input type="radio" name={`playlist-${screen.id}`} checked={screen.media_playlist_mode === 'selected'} disabled={submitting} onChange={() => void changeScreen(screen, { media_playlist_mode: 'selected' })} />{t('adminTv.playlist.selected')}</label>
@@ -195,12 +252,11 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                     ))}
                     <small>{t('adminTv.playlist.adsHint')}</small>
                   </div>}
-                </fieldset>
-              </td></tr>}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+                </fieldset>}
+              </div>}
+            </article>
+          ))}
+        </div>
       )}
     </div>
   )

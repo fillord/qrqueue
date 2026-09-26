@@ -8,6 +8,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
+from app.models.cabinet import Cabinet
+from app.models.department import Department, DepartmentScheduleItem
+from app.models.queue import Queue
+from app.models.ticket import Ticket
+from app.models.trial_request import TrialRequest
+from app.models.tv_media import TVMedia
+from app.models.tv_screen import TVScreen
 from app.models.user import User
 
 
@@ -53,6 +60,84 @@ async def list_audit_logs(
     )
     rows = (await db.execute(page_stmt)).all()
 
+    entries = [entry for entry, _ in rows]
+    ids_by_type: dict[str, set[uuid.UUID]] = {}
+    for entry in entries:
+        ids_by_type.setdefault(entry.entity_type, set()).add(entry.entity_id)
+
+    # Resolve the visible page in batches, including archived rows. Audit payloads
+    # take precedence below because they preserve a name recorded at event time.
+    named_models = {
+        "organization": (Organization, Organization.name),
+        "user": (User, User.full_name),
+        "department": (Department, Department.name),
+        "department_schedule_item": (DepartmentScheduleItem, DepartmentScheduleItem.doctor_name),
+        "tv_screen": (TVScreen, TVScreen.name),
+        "tv_media": (TVMedia, TVMedia.title),
+        "trial_request": (TrialRequest, TrialRequest.organization),
+    }
+    names: dict[str, dict[uuid.UUID, str]] = {}
+    for entity_type, (model, label_column) in named_models.items():
+        ids = ids_by_type.get(entity_type)
+        if ids:
+            names[entity_type] = dict((await db.execute(
+                select(model.id, label_column).where(model.id.in_(ids))
+            )).all())
+
+    ticket_ids = ids_by_type.get("ticket", set())
+    tickets = {}
+    if ticket_ids:
+        tickets = {row.id: row for row in (await db.execute(
+            select(Ticket.id, Ticket.display_number, Ticket.queue_id, Ticket.cabinet_id)
+            .where(Ticket.id.in_(ticket_ids))
+        )).all()}
+
+    queue_ids = ids_by_type.get("queue", set()).copy()
+    cabinet_ids = ids_by_type.get("cabinet", set()).copy()
+    for ticket in tickets.values():
+        queue_ids.add(ticket.queue_id)
+        if ticket.cabinet_id:
+            cabinet_ids.add(ticket.cabinet_id)
+    for entry in entries:
+        if entry.entity_type == "ticket" and entry.payload.get("cabinet_id"):
+            try:
+                cabinet_ids.add(uuid.UUID(str(entry.payload["cabinet_id"])))
+            except (TypeError, ValueError):
+                pass
+    queues = dict((await db.execute(select(Queue.id, Queue.name).where(Queue.id.in_(queue_ids)))).all()) if queue_ids else {}
+    cabinets = dict((await db.execute(select(Cabinet.id, Cabinet.label).where(Cabinet.id.in_(cabinet_ids)))).all()) if cabinet_ids else {}
+
+    def label_for(entry: AuditLog) -> str | None:
+        payload = entry.payload or {}
+        if entry.entity_type == "ticket":
+            ticket = tickets.get(entry.entity_id)
+            return ticket.display_number if ticket else payload.get("display_number")
+        snapshot_key = {"organization": "name", "user": "full_name", "queue": "name",
+                        "cabinet": "label", "department": "name", "department_schedule_item": "doctor_name",
+                        "tv_screen": "name", "tv_media": "title"}.get(entry.entity_type)
+        if snapshot_key and isinstance(payload.get(snapshot_key), str):
+            return payload[snapshot_key]
+        if entry.entity_type == "queue":
+            return queues.get(entry.entity_id)
+        if entry.entity_type == "cabinet":
+            return cabinets.get(entry.entity_id)
+        return names.get(entry.entity_type, {}).get(entry.entity_id)
+
+    def ticket_context(entry: AuditLog) -> tuple[str | None, str | None]:
+        ticket = tickets.get(entry.entity_id) if entry.entity_type == "ticket" else None
+        if ticket is None:
+            return None, None
+        queue_name = queues.get(ticket.queue_id)
+        if entry.action == "ticket.created":
+            return queue_name, None
+        cabinet_id = ticket.cabinet_id
+        if entry.payload.get("cabinet_id"):
+            try:
+                cabinet_id = uuid.UUID(str(entry.payload["cabinet_id"]))
+            except (TypeError, ValueError):
+                pass
+        return queue_name, cabinets.get(cabinet_id)
+
     items = [
         {
             "id": entry.id,
@@ -63,6 +148,9 @@ async def list_audit_logs(
             "action": entry.action,
             "entity_type": entry.entity_type,
             "entity_id": entry.entity_id,
+            "entity_label": label_for(entry),
+            "queue_name": ticket_context(entry)[0],
+            "cabinet_label": ticket_context(entry)[1],
             "payload": entry.payload,
             # asyncpg hands INET back as ipaddress.IPv4Address/IPv6Address,
             # not str — the schema wants a plain string.

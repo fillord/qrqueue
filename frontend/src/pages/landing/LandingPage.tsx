@@ -6,7 +6,6 @@ import {
   GraduationCap,
   Heartbeat,
   IdentificationCard,
-  Monitor,
   QrCode,
   Scan as ScanIcon,
   ShieldCheck,
@@ -85,6 +84,7 @@ export default function LandingPage() {
     <div className="landing">
       <section className="landing-hero">
         <div className="landing-hero__content">
+          <p className="landing-hero__eyebrow"><span aria-hidden="true" />{t('landing.hero.eyebrow')}</p>
           <h1 className="landing-hero__title">{t('landing.hero.title')}</h1>
           <p className="landing-hero__subtitle">{t('landing.hero.subtitle')}</p>
           <div className="landing-hero__actions">
@@ -96,22 +96,27 @@ export default function LandingPage() {
             </a>
           </div>
         </div>
-        <div className="hero-visual" aria-hidden="true">
-          <div className="hero-visual__tile">
-            <QrCode size={32} weight="bold" />
-            <span className="hero-visual__label">{t('landing.hero.visual.qrLabel')}</span>
+        <div className="hero-visual" aria-label={t('landing.hero.visual.previewLabel')}>
+          <div className="hero-visual__orbit" aria-hidden="true" />
+          <div className="hero-visual__callout hero-visual__callout--screen">
+            <span>{t('landing.hero.visual.screen')}</span><strong>A-042 → 108</strong>
           </div>
-          <div className="hero-visual__connector" />
-          <div className="hero-visual__tile hero-visual__tile--accent">
-            <Ticket size={32} weight="bold" />
-            <span className="hero-visual__value">A-042</span>
-            <span className="hero-visual__label">{t('landing.hero.visual.ticketLabel')}</span>
+          <div className="hero-visual__phone">
+            <div className="hero-visual__phone-header"><span>{t('landing.hero.visual.organization')}</span><span>09:41</span></div>
+            <div className="hero-visual__phone-body">
+              <span className="hero-visual__phone-label">{t('landing.hero.visual.ticketLabel')}</span>
+              <strong className="hero-visual__phone-number">A-042</strong>
+              <span className="hero-visual__phone-status"><i aria-hidden="true" />{t('landing.hero.visual.status')}</span>
+              <dl>
+                <div><dt>{t('landing.hero.visual.queue')}</dt><dd>{t('landing.hero.visual.queueName')}</dd></div>
+                <div><dt>{t('landing.hero.visual.ahead')}</dt><dd>{t('landing.hero.visual.aheadValue')}</dd></div>
+                <div><dt>{t('landing.hero.visual.estimate')}</dt><dd>{t('landing.hero.visual.estimateValue')}</dd></div>
+              </dl>
+              <p>{t('landing.hero.visual.waitHint')}</p>
+            </div>
           </div>
-          <div className="hero-visual__connector" />
-          <div className="hero-visual__tile">
-            <span className="hero-visual__pulse" />
-            <Monitor size={32} weight="bold" />
-            <span className="hero-visual__label">{t('landing.hero.visual.callLabel')}</span>
+          <div className="hero-visual__callout hero-visual__callout--room">
+            <span>{t('landing.hero.visual.room')}</span><strong>{t('landing.hero.visual.roomStatus')}</strong>
           </div>
         </div>
       </section>

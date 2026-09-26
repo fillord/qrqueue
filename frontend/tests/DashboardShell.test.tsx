@@ -35,3 +35,14 @@ it.each(['admin', 'sa'] as const)('%s can hide the sidebar while keeping the wor
   fireEvent.click(screen.getByRole('button', { name: 'Show menu' }))
   expect(screen.getByRole('navigation', { name: 'Dashboard sections' })).toBeTruthy()
 })
+
+it('keeps the active admin section open and lets another section expand', () => {
+  mount('admin')
+  const work = screen.getByText('Queue operations').closest('details')
+  const tv = screen.getByText('TV displays').closest('details')
+  expect(work?.open).toBe(true)
+  expect(tv?.open).toBe(false)
+  fireEvent.click(screen.getByText('TV displays'))
+  expect(tv?.open).toBe(true)
+  expect(screen.getByRole('link', { name: 'TV screens' })).toBeTruthy()
+})

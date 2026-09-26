@@ -10,6 +10,51 @@ export type TicketStatus =
 
 export type QueueStatus = 'open' | 'paused' | 'closed'
 
+export interface AdminHomeData {
+  organization_name: string
+  queues: { id: string; name: string; status: QueueStatus; waiting_count: number }[]
+  cabinet_count: number
+  operator_count: number
+  has_operator_assignment: boolean
+  paired_queue_screen_count: number
+  paired_screen_count: number
+  online_screen_count: number
+  offline_screen_count: number
+}
+
+export interface AdminProblem {
+  code: 'queue_not_open' | 'no_cabinet' | 'long_wait' | 'screen_offline'
+  severity: 'critical' | 'warning'
+  name: string
+  queue_id: string | null
+  screen_id: string | null
+  waiting_count: number | null
+  wait_minutes: number | null
+}
+
+export interface AdminProblemsData {
+  generated_at: string
+  items: AdminProblem[]
+}
+
+export interface DailyReportData {
+  day: string
+  organization_name: string
+  timezone: string
+  issued_count: number
+  served_count: number
+  no_show_count: number
+  left_count: number
+  active_count: number
+  avg_wait_seconds: number | null
+  avg_serving_seconds: number | null
+  by_queue: {
+    queue_id: string; name: string; issued_count: number; served_count: number
+    no_show_count: number; left_count: number; active_count: number; avg_wait_seconds: number | null
+  }[]
+  by_operator: { operator_id: string; full_name: string; served_count: number }[]
+}
+
 export type CabinetStatus = 'free' | 'busy' | 'paused' | 'offline'
 
 export type UserRole = 'superadmin' | 'org_admin' | 'operator' | 'registrar'
@@ -28,6 +73,8 @@ export interface CabinetInfo {
 }
 
 export interface TicketDetail extends TicketSummary {
+  organization_name: string
+  queue_name: string
   position: number | null
   queue_status: QueueStatus
   now_serving: string | null
@@ -158,6 +205,13 @@ export interface TvQueueState {
   waiting_count: number
 }
 
+export interface TvRecentCall {
+  ticket_id: string
+  display_number: string
+  cabinet_label: string | null
+  queue_name: string
+}
+
 export interface TvState {
   organization_name: string
   logo_url: string | null
@@ -165,6 +219,7 @@ export interface TvState {
   language: 'kk' | 'ru' | 'en'
   is_hall_screen: boolean
   queues: TvQueueState[]
+  recent_calls: TvRecentCall[]
   timezone: string
   display_mode: 'queue' | 'schedule' | 'media'
   slide_seconds: number
@@ -278,6 +333,9 @@ export interface AuditLogItem {
   action: string
   entity_type: string
   entity_id: string
+  entity_label?: string | null
+  queue_name?: string | null
+  cabinet_label?: string | null
   payload: Record<string, unknown>
   ip: string | null
   created_at: string

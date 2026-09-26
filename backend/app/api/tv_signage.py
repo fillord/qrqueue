@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -183,7 +184,7 @@ async def create_schedule_item(
     db.add(item)
     await db.flush()
     await _audit(db, actor, org_id, "department.schedule_created", "department_schedule_item", item.id,
-                 {"department_id": str(department_id), "doctor_name": item.doctor_name})
+                 {"department_id": str(department_id), **jsonable_encoder(payload.model_dump())})
     _updated(db, org_id, "signage.updated")
     await db.commit()
     return item
@@ -204,7 +205,7 @@ async def update_schedule_item(
     for key, value in changes.items():
         setattr(item, key, value)
     await _audit(db, actor, org_id, "department.schedule_updated", "department_schedule_item", item.id,
-                 {"department_id": str(department_id), "fields": sorted(changes)})
+                 {"department_id": str(department_id), **jsonable_encoder(changes)})
     _updated(db, org_id, "signage.updated")
     await db.commit()
     return item
@@ -217,9 +218,12 @@ async def delete_schedule_item(
     org_id: uuid.UUID = Depends(current_organization_id),
 ):
     item = await _item(db, department_id, item_id, org_id)
+    snapshot = {"department_id": str(department_id), "doctor_name": item.doctor_name,
+                "service_name": item.service_name, "room": item.room, "weekday": item.weekday,
+                "starts_at": item.starts_at, "ends_at": item.ends_at}
     await db.delete(item)
     await _audit(db, actor, org_id, "department.schedule_deleted", "department_schedule_item", item_id,
-                 {"department_id": str(department_id)})
+                 jsonable_encoder(snapshot))
     _updated(db, org_id, "signage.updated")
     await db.commit()
 

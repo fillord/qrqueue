@@ -86,6 +86,13 @@ class TVQueueState(BaseModel):
     waiting_count: int
 
 
+class TVRecentCall(BaseModel):
+    ticket_id: uuid.UUID
+    display_number: str
+    cabinet_label: str | None
+    queue_name: str
+
+
 class TVStateOut(BaseModel):
     organization_name: str
     logo_url: str | None
@@ -93,6 +100,7 @@ class TVStateOut(BaseModel):
     language: Language
     is_hall_screen: bool
     queues: list[TVQueueState]
+    recent_calls: list[TVRecentCall]
     timezone: str
     display_mode: Literal["queue", "schedule", "media"]
     slide_seconds: int

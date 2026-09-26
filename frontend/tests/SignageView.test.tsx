@@ -15,7 +15,7 @@ it('shows all seven weekdays at once on a narrow screen, then switches departmen
   vi.stubGlobal('innerHeight', 800)
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
     slide_seconds: 5, ads_enabled: true,
     departments: [
       { id: 'one', name: 'Кардиология', entries: [{ id: 'e1', department_id: 'one',
@@ -49,7 +49,7 @@ it('eventually shows every doctor when one weekday spans several pages', () => {
   vi.setSystemTime(new Date('2026-09-21T03:00:00Z'))
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
     slide_seconds: 5, ads_enabled: false, media: [],
     departments: [{ id: 'one', name: 'Кардиология', entries: Array.from({ length: 8 }, (_, index) => ({
       id: `doctor-${index}`, department_id: 'one', doctor_name: `Врач ${index + 1}`,
@@ -72,7 +72,7 @@ it('rotates media independently and never overlays its title', () => {
   vi.useFakeTimers()
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], timezone: 'Asia/Almaty', display_mode: 'media',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
     slide_seconds: 5, ads_enabled: true, departments: [],
     media: [
       { id: 'poster', title: 'Объявление', kind: 'advertisement', mime_type: 'image/png', url: '/api/tv/media/poster' },
@@ -94,7 +94,7 @@ it('rotates media independently and never overlays its title', () => {
 it('loops one video continuously with a blurred background layer', () => {
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], timezone: 'Asia/Almaty', display_mode: 'media',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
     slide_seconds: 5, ads_enabled: false, departments: [],
     media: [{ id: 'vertical', title: 'Vertical', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/vertical' }],
   }

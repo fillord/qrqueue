@@ -1,7 +1,8 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,21 +10,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import current_admin, current_organization_id, get_in_org_or_404
 from app.db import get_db
 from app.redis import get_redis
-from app.models.cabinet import Cabinet
+from app.clock import utcnow
+from app.models.cabinet import Cabinet, CabinetOperator
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.tv_screen import TVScreen
 from app.models.user import User
 from app.schemas.analytics import AnalyticsOut
+from app.schemas.admin_home import AdminHomeOut
+from app.schemas.admin_operations import AdminProblemsOut, DailyReportOut
 from app.schemas.audit import AuditLogPageOut
 from app.schemas.cabinet import CabinetCreate, CabinetOut, CabinetUpdate
 from app.schemas.organization import OrganizationOut, OrganizationSelfUpdate
 from app.schemas.qr import QRBatchOut
 from app.schemas.queue import QueueCreate, QueueOut, QueueUpdate, ScheduleEntryOut, ScheduleReplace
 from app.schemas.staff import StaffCreate, StaffOut, StaffUpdate
-from app.schemas.tv import TVScreenCreate, TVScreenUpdate, TVScreenOut
+from app.schemas.tv import TVScreenCreate, TVScreenUpdate, TVScreenOut, TVStateOut
 from app.services.analytics import get_analytics
+from app.services.admin_operations import daily_report_xlsx, get_admin_problems, get_daily_report
 from app.services.audit_query import list_audit_logs
 from app.services.cabinets import (
     archive_cabinet,
@@ -46,7 +51,8 @@ from app.services.queues import (
     update_queue,
 )
 from app.services.staff import archive_org_user, create_org_user, restore_org_user, update_org_user
-from app.services.tv_screens import create_tv_screen, delete_tv_screen
+from app.services.tv_screens import create_tv_screen, delete_tv_screen, unpair_tv_screen
+from app.services.tv_state import build_tv_state
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -56,6 +62,92 @@ async def _get_organization(db: AsyncSession, organization_id: uuid.UUID) -> Org
     if org is None or org.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return org
+
+
+@router.get("/home", response_model=AdminHomeOut)
+async def get_admin_home_route(
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    org = await _get_organization(db, organization_id)
+    pairs = await list_queues_with_waiting_counts(db, organization_id)
+    active_queues = [(queue, waiting) for queue, waiting in pairs if queue.is_active]
+    queue_ids = [queue.id for queue, _ in active_queues]
+
+    cabinet_ids = list((await db.scalars(select(Cabinet.id).where(
+        Cabinet.organization_id == organization_id, Cabinet.deleted_at.is_(None),
+        Cabinet.is_active.is_(True), Cabinet.queue_id.in_(queue_ids),
+    ))).all()) if queue_ids else []
+    operator_ids = list((await db.scalars(select(User.id).where(
+        User.organization_id == organization_id, User.role == UserRole.operator,
+        User.deleted_at.is_(None), User.is_active.is_(True),
+    ))).all())
+    has_assignment = False
+    if cabinet_ids and operator_ids:
+        has_assignment = await db.scalar(select(CabinetOperator.cabinet_id).where(
+            CabinetOperator.cabinet_id.in_(cabinet_ids),
+            CabinetOperator.user_id.in_(operator_ids),
+        ).limit(1)) is not None
+
+    screens = list((await db.scalars(select(TVScreen).where(
+        TVScreen.organization_id == organization_id, TVScreen.device_token.is_not(None),
+    ))).all())
+    online_after = utcnow() - timedelta(seconds=90)
+    online_count = sum(screen.last_seen_at is not None and screen.last_seen_at >= online_after for screen in screens)
+    return {
+        "organization_name": org.name,
+        "queues": [{"id": queue.id, "name": queue.name, "status": queue.status,
+                    "waiting_count": waiting} for queue, waiting in active_queues],
+        "cabinet_count": len(cabinet_ids),
+        "operator_count": len(operator_ids),
+        "has_operator_assignment": has_assignment,
+        "paired_queue_screen_count": sum(screen.display_mode == "queue" for screen in screens),
+        "paired_screen_count": len(screens),
+        "online_screen_count": online_count,
+        "offline_screen_count": len(screens) - online_count,
+    }
+
+
+@router.get("/problems", response_model=AdminProblemsOut)
+async def get_admin_problems_route(
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    await _get_organization(db, organization_id)
+    return await get_admin_problems(db, organization_id)
+
+
+@router.get("/daily-report", response_model=DailyReportOut)
+async def get_daily_report_route(
+    day: date | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    org = await _get_organization(db, organization_id)
+    return await get_daily_report(db, org, day)
+
+
+@router.get("/daily-report.xlsx")
+async def download_daily_report_route(
+    day: date | None = Query(default=None),
+    lang: Literal["ru", "en", "kk"] = Query(default="ru"),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> Response:
+    org = await _get_organization(db, organization_id)
+    report = await get_daily_report(db, org, day)
+    return Response(
+        content=daily_report_xlsx(report, lang),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="queue-report-{report["day"]}.xlsx"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # --- organization ---------------------------------------------------------
@@ -458,6 +550,17 @@ async def list_tv_screens_route(
     return list(result.scalars().all())
 
 
+@router.get("/tv-screens/{screen_id}/preview", response_model=TVStateOut)
+async def preview_tv_screen_route(
+    screen_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> dict:
+    screen = await get_in_org_or_404(db, TVScreen, screen_id, organization_id)
+    return await build_tv_state(db, screen)
+
+
 @router.delete("/tv-screens/{screen_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tv_screen_route(
     screen_id: uuid.UUID,
@@ -468,6 +571,19 @@ async def delete_tv_screen_route(
     screen = await get_in_org_or_404(db, TVScreen, screen_id, organization_id)
     await delete_tv_screen(db, screen, actor)
     await db.commit()
+
+
+@router.post("/tv-screens/{screen_id}/unpair", response_model=TVScreenOut)
+async def unpair_tv_screen_route(
+    screen_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin),
+    organization_id: uuid.UUID = Depends(current_organization_id),
+) -> TVScreen:
+    screen = await get_in_org_or_404(db, TVScreen, screen_id, organization_id)
+    await unpair_tv_screen(db, screen, actor)
+    await db.commit()
+    return screen
 
 
 # --- analytics / audit log ---------------------------------------------------

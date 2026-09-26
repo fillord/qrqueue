@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 from app.schemas.validation import Name, Timezone, Color, PatchModel
@@ -10,6 +11,7 @@ from app.models.enums import Language, Plan
 class OrganizationCreate(BaseModel):
     name: Name
     slug: str | None = None
+    template: Literal["blank", "clinic", "service_center"] = "blank"
     timezone: Timezone = "Asia/Almaty"
     default_language: Language = Language.ru
     logo_url: str | None = None

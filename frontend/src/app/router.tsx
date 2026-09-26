@@ -6,6 +6,9 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminAnalyticsPage from '../pages/admin/AdminAnalyticsPage'
 import AdminAuditLogPage from '../pages/admin/AdminAuditLogPage'
 import AdminCabinetsPage from '../pages/admin/AdminCabinetsPage'
+import AdminHomePage from '../pages/admin/AdminHomePage'
+import AdminProblemsPage from '../pages/admin/AdminProblemsPage'
+import AdminDailyReportPage from '../pages/admin/AdminDailyReportPage'
 import AdminLayout from '../pages/admin/AdminLayout'
 import AdminOrganizationPage from '../pages/admin/AdminOrganizationPage'
 import AdminQueueSchedulePage from '../pages/admin/AdminQueueSchedulePage'
@@ -25,6 +28,7 @@ import SaOrganizationDetailPage from '../pages/superadmin/SaOrganizationDetailPa
 import SaOrganizationsPage from '../pages/superadmin/SaOrganizationsPage'
 import TicketPage from '../pages/ticket/TicketPage'
 import TvPage from '../pages/tv/TvPage'
+import TvPreviewPage from '../pages/tv/TvPreviewPage'
 import TvPairPage from '../pages/tv/TvPairPage'
 import Layout from './Layout'
 import ProtectedRoute from './ProtectedRoute'
@@ -37,6 +41,7 @@ export default function AppRouter() {
       {/* TV screens run fullscreen, chrome-free — no shared app header. */}
       <Route path="/tv/pair" element={<TvPairPage />} />
       <Route path="/tv" element={<TvPage />} />
+      <Route path="/tv/preview/:id" element={<ProtectedRoute role={['org_admin', 'superadmin']}><TvPreviewPage /></ProtectedRoute>} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
@@ -76,7 +81,9 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/admin/analytics" replace />} />
+          <Route index element={<AdminHomePage />} />
+          <Route path="problems" element={<AdminProblemsPage />} />
+          <Route path="daily-report" element={<AdminDailyReportPage />} />
           <Route path="analytics" element={<AdminAnalyticsPage />} />
           <Route path="audit-logs" element={<AdminAuditLogPage />} />
           <Route path="organization" element={<AdminOrganizationPage />} />

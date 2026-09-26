@@ -15,6 +15,9 @@ class AuditLogOut(BaseModel):
     action: str
     entity_type: str
     entity_id: uuid.UUID
+    entity_label: str | None = None
+    queue_name: str | None = None
+    cabinet_label: str | None = None
     payload: dict
     ip: str | None
     created_at: datetime

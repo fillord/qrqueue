@@ -7,8 +7,31 @@ from app.models.audit_log import AuditLog
 from app.models.cabinet import Cabinet
 from app.models.enums import TicketSource, TicketStatus, UserRole
 from app.models.queue import Queue
+from app.models.tv_screen import TVScreen
+from app.models.department import Department
 from app.models.ticket import Ticket
 from tests.utils import login
+
+
+async def test_organization_templates_create_inactive_setup(client, db_session, make_user):
+    sa, password = await make_user(email='template-sa@example.com', role=UserRole.superadmin)
+    await login(client, sa.email, password)
+    for template, expected_screens in [('clinic', 2), ('service_center', 1)]:
+        response = await client.post('/api/sa/organizations', json={
+            'name': f'Template {template}', 'template': template,
+        })
+        assert response.status_code == 201, response.text
+        org_id = response.json()['id']
+        queues = list((await db_session.scalars(select(Queue).where(Queue.organization_id == org_id))).all())
+        cabinets = list((await db_session.scalars(select(Cabinet).where(Cabinet.organization_id == org_id))).all())
+        screens = list((await db_session.scalars(select(TVScreen).where(TVScreen.organization_id == org_id))).all())
+        assert len(queues) == len(cabinets) == 3
+        assert all(not queue.is_active and queue.status.value == 'closed' for queue in queues)
+        assert all(not cabinet.is_active for cabinet in cabinets)
+        assert len(screens) == expected_screens
+        assert len({screen.pairing_code for screen in screens}) == expected_screens
+        departments = list((await db_session.scalars(select(Department).where(Department.organization_id == org_id))).all())
+        assert len(departments) == (1 if template == 'clinic' else 0)
 
 
 async def test_superadmin_manages_and_archives_organization_and_users(client, make_user):

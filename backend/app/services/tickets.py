@@ -606,6 +606,7 @@ async def get_now_serving(db: AsyncSession, queue_id: uuid.UUID) -> str | None:
 
 async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
     queue = await db.get(Queue, ticket.queue_id)
+    organization = await db.get(Organization, ticket.organization_id)
     position = await get_position(db, ticket)
     now_serving = await get_now_serving(db, ticket.queue_id)
 
@@ -617,7 +618,6 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
 
     estimated_wait_seconds = None
     if position is not None:
-        organization = await db.get(Organization, ticket.organization_id)
         avg_seconds = await estimate_wait_seconds(db, queue, organization)
         if avg_seconds is not None:
             capacity = (await db.execute(select(func.count()).select_from(Cabinet).where(
@@ -636,6 +636,8 @@ async def build_ticket_detail(db: AsyncSession, ticket: Ticket) -> dict:
     return {
         "id": ticket.id,
         "queue_id": ticket.queue_id,
+        "organization_name": organization.name,
+        "queue_name": queue.name,
         "display_number": ticket.display_number,
         "status": ticket.status,
         "created_at": ticket.created_at,

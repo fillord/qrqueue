@@ -64,10 +64,11 @@ export function apiGet<T>(path: string, headers?: HeadersInit): Promise<T> {
   return request<T>(path, { headers })
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+export function apiPost<T>(path: string, body?: unknown, headers?: HeadersInit): Promise<T> {
   return request<T>(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers,
   })
 }
 

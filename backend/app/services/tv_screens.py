@@ -121,7 +121,32 @@ async def delete_tv_screen(db: AsyncSession, screen: TVScreen, actor: User) -> N
         entity_type="tv_screen",
         entity_id=screen_id,
         organization_id=organization_id,
+        payload={"name": screen.name},
     )
+
+
+async def unpair_tv_screen(db: AsyncSession, screen: TVScreen, actor: User) -> TVScreen:
+    """Revoke the current device without discarding the screen's configuration."""
+    from app.services.realtime import defer_event, organization_channel
+
+    if screen.device_token is None:
+        raise ServiceError("tv_screen_not_paired", 409)
+    screen.device_token = None
+    screen.pairing_code = await _generate_pairing_code(db)
+    screen.last_seen_at = None
+    await db.flush()
+    await log_action(
+        db,
+        actor_type=AuditActorType.user,
+        actor_id=actor.id,
+        action="tv_screen.unpaired",
+        entity_type="tv_screen",
+        entity_id=screen.id,
+        organization_id=screen.organization_id,
+        payload={"name": screen.name},
+    )
+    defer_event(db, organization_channel(screen.organization_id), "tv_screen.unpaired", screen_id=str(screen.id))
+    return screen
 
 
 async def pair_tv_screen(db: AsyncSession, *, code: str, now: datetime | None = None) -> TVScreen:

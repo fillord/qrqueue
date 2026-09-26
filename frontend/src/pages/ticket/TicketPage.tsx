@@ -20,7 +20,7 @@ export default function TicketPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { ticket: liveTicket, loading, notFound } = useTicket(id)
+  const { ticket: liveTicket, loading, notFound, error: loadError } = useTicket(id)
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -91,7 +91,10 @@ export default function TicketPage() {
   if (loading || !ticket) {
     return (
       <div className="ticket-page">
-        <div className="spinner" aria-hidden="true" />
+        {loadError && !loading ? <div className="ticket-pass ticket-pass__load-error" role="alert">
+          <p>{t('ticket.pass.loadError')}</p>
+          <button type="button" onClick={() => window.location.reload()}>{t('ticket.pass.retry')}</button>
+        </div> : <div className="spinner" aria-hidden="true" />}
       </div>
     )
   }
@@ -99,14 +102,23 @@ export default function TicketPage() {
   const canLeave = ticket.status === 'waiting' || ticket.status === 'called' || ticket.status === 'confirmed'
 
   return (
-    <div className="ticket-page">
-      {ticket.queue_status !== 'open' && (
+    <div className={`ticket-page ticket-page--${ticket.status}`}>
+      <div className="ticket-pass">
+      <header className="ticket-pass__header">
+        <p className="ticket-pass__organization">{ticket.organization_name}</p>
+        <p className="ticket-pass__queue">{ticket.queue_name}</p>
+      </header>
+      {canLeave && ticket.queue_status !== 'open' && (
         <div className={`ticket-page__banner ticket-page__banner--${ticket.queue_status}`}>
           {t(`ticket.queueStatus.${ticket.queue_status}`)}
         </div>
       )}
 
-      <div className="ticket-page__number">{ticket.display_number}</div>
+      <section className="ticket-pass__hero" aria-label={t('ticket.pass.numberLabel')}>
+        <span className="ticket-pass__number-label">{t('ticket.pass.numberLabel')}</span>
+        <strong className="ticket-page__number">{ticket.display_number}</strong>
+        <p className="ticket-pass__state" role="status" aria-live="polite">{t(`ticket.status.${ticket.status}`)}</p>
+      </section>
 
       <StatusBlock ticket={ticket} onRated={setTicket} />
 
@@ -130,6 +142,7 @@ export default function TicketPage() {
       )}
 
       {canLeave && <PushOptInBanner />}
+      </div>
     </div>
   )
 }
@@ -145,44 +158,31 @@ function StatusBlock({
 
   if (ticket.status === 'waiting') {
     return (
-      <div className="ticket-page__info">
-        {ticket.position != null && (
-          <p className="ticket-page__position">
-            {t('ticket.position', { position: ticket.position })}
-          </p>
-        )}
-        {ticket.now_serving && (
-          <p className="ticket-page__now-serving">
-            {t('ticket.nowServing', { number: ticket.now_serving })}
-          </p>
-        )}
-        {ticket.estimated_wait_seconds != null && (
-          <p className="ticket-page__wait-estimate">
-            {t('ticket.waitEstimate', { minutes: Math.max(1, Math.round(ticket.estimated_wait_seconds / 60)) })}
-          </p>
-        )}
-        <p className="ticket-page__status">{t('ticket.status.waiting')}</p>
-      </div>
+      <section className="ticket-pass__details" aria-label={t('ticket.pass.details')}>
+        {ticket.position != null && <div className="ticket-pass__position">
+          <span>{t('ticket.pass.position')}</span><strong>{ticket.position}</strong>
+        </div>}
+        {ticket.now_serving && <div className="ticket-pass__detail-row">
+          <span>{t('ticket.pass.nowServing')}</span><strong>{ticket.now_serving}</strong>
+        </div>}
+        {ticket.estimated_wait_seconds != null && <div className="ticket-pass__detail-row">
+          <span>{t('ticket.pass.estimatedWait')}</span><strong>{t('ticket.pass.minutes', { count: Math.max(1, Math.round(ticket.estimated_wait_seconds / 60)) })}</strong>
+        </div>}
+        <p className="ticket-pass__help">{t('ticket.pass.waitHint')}</p>
+      </section>
     )
   }
 
-  if (ticket.status === 'called' || ticket.status === 'serving') {
-    const label = ticket.cabinet?.label
-    const key = ticket.status === 'called'
-      ? (label ? 'ticket.calledAt' : 'ticket.status.called')
-      : (label ? 'ticket.servingAt' : 'ticket.status.serving')
-
-    return (
-      <div className={`ticket-page__info ticket-page__info--${ticket.status}`}>
-        <p className="ticket-page__called-message">{t(key, { label })}</p>
-      </div>
-    )
+  if (ticket.status === 'called' || ticket.status === 'confirmed' || ticket.status === 'serving') {
+    return <section className="ticket-pass__destination" aria-label={t('ticket.pass.destination')}>
+      {ticket.cabinet ? <><span>{t('ticket.pass.destination')}</span><strong>{ticket.cabinet.label}</strong></> : <p>{t('ticket.pass.waitForCabinet')}</p>}
+      {ticket.status === 'called' && <p>{t('ticket.pass.confirmHint')}</p>}
+    </section>
   }
 
   if (ticket.status === 'served') {
     return (
-      <div className="ticket-page__info">
-        <p className="ticket-page__status">{t('ticket.status.served')}</p>
+      <div className="ticket-pass__completion">
         {ticket.rating == null ? (
           <RatingForm ticketId={ticket.id} onSubmitted={onRated} />
         ) : (
@@ -192,5 +192,5 @@ function StatusBlock({
     )
   }
 
-  return <p className="ticket-page__status">{t(`ticket.status.${ticket.status}`)}</p>
+  return null
 }

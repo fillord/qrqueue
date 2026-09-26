@@ -23,14 +23,17 @@ export default function CabinetFormModal({
   const [queueId, setQueueId] = useState(initial?.queue_id ?? queues[0]?.id ?? '')
   const [submitting, setSubmitting] = useState(false)
 
-  const canSubmit = label.trim() !== '' && (autoCreateQueue || queueId !== '')
+  // The queue list can arrive after this modal opens. Match the selected ID to
+  // the first visible option instead of leaving a hidden empty value behind.
+  const selectedQueueId = queueId || queues[0]?.id || ''
+  const canSubmit = label.trim() !== '' && (autoCreateQueue || selectedQueueId !== '')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      await onSubmit({ label: label.trim(), queue_id: autoCreateQueue ? null : queueId })
+      await onSubmit({ label: label.trim(), queue_id: autoCreateQueue ? null : selectedQueueId })
     } finally {
       setSubmitting(false)
     }
@@ -66,7 +69,7 @@ export default function CabinetFormModal({
             <span>{t('admin.cabinets.form.existingQueue')}</span>
           </label>
           {!autoCreateQueue && (
-            <select value={queueId} onChange={(e) => setQueueId(e.target.value)}>
+            <select value={selectedQueueId} onChange={(e) => setQueueId(e.target.value)}>
               {queues.map((queue) => (
                 <option key={queue.id} value={queue.id}>
                   {queue.name}

@@ -1,7 +1,7 @@
 import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { archiveQueue, createQueue, listQueues, restoreQueue, updateQueue } from '../../api/queues'
 import type { QueueCreatePayload, QueueUpdatePayload } from '../../api/queues'
@@ -20,6 +20,7 @@ const STATUS_TONE: Record<QueueStatus, 'success' | 'warning' | 'danger'> = {
 
 export default function AdminQueuesPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loadError, setLoadError] = useState(false)
   const { toasts, push, dismiss } = useToasts()
   const [queues, setQueues] = useState<AdminQueue[] | null>(null)
@@ -36,6 +37,16 @@ export default function AdminQueuesPage() {
   useEffect(() => {
     void load()
   }, [includeArchived])
+
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return
+    setEditing('new')
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params)
+      next.delete('new')
+      return next
+    }, { replace: true })
+  }, [searchParams, setSearchParams])
 
   async function handleArchive(queue: AdminQueue) {
     if (!window.confirm(t('crud.archiveQueueConfirm', { name: queue.name }))) return

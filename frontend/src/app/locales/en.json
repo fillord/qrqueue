@@ -9,14 +9,28 @@
   },
   "landing": {
     "hero": {
-      "title": "No crowd waiting at the door",
-      "subtitle": "Visitors scan a QR code to join the queue and get notified when they're called. No paper tickets, no queue-jumping.",
-      "ctaPrimary": "Submit a request",
+      "title": "A calmer start to every visit.",
+      "subtitle": "Visitors take a ticket on their phone and know when to come in. Staff manage queues, rooms, and screens in one place.",
+      "eyebrow": "Online queue for clinics and services",
+      "ctaPrimary": "Connect an organization",
       "ctaSecondary": "How it works",
       "visual": {
         "qrLabel": "QR at the counter",
         "ticketLabel": "Your number",
-        "callLabel": "Calling: counter 3"
+        "callLabel": "Calling: counter 3",
+        "previewLabel": "Example visitor ticket",
+        "screen": "Lobby screen",
+        "organization": "North Clinic",
+        "status": "Wait to be called",
+        "queue": "Queue",
+        "queueName": "Blood tests",
+        "ahead": "Ahead of you",
+        "aheadValue": "2 people",
+        "estimate": "Estimated wait",
+        "estimateValue": "8 minutes",
+        "waitHint": "Your room will appear here when you're called",
+        "room": "Room 108",
+        "roomStatus": "In service"
       }
     },
     "howItWorks": {
@@ -121,6 +135,20 @@
     }
   },
   "ticket": {
+    "pass": {
+      "numberLabel": "Your ticket",
+      "details": "Waiting information",
+      "position": "Your place in line",
+      "nowServing": "Now calling",
+      "estimatedWait": "Estimated wait",
+      "minutes": "{{count}} min",
+      "waitHint": "Watch this screen or the hall display for your call.",
+      "destination": "Go to counter",
+      "waitForCabinet": "Watch the display for your counter.",
+      "confirmHint": "When you arrive, tap “I'm here”.",
+      "loadError": "Couldn't update the ticket. Check your internet connection.",
+      "retry": "Retry"
+    },
     "position": "Your position in line: {{position}}",
     "nowServing": "Now serving: {{number}}",
     "queueStatus": {
@@ -198,12 +226,115 @@
   "admin": {
     "nav": {
       "analytics": "Analytics",
-      "auditLogs": "Audit log",
+      "auditLogs": "Activity log",
       "organization": "Organization",
       "queues": "Queues",
       "cabinets": "Counters",
       "staff": "Staff",
-      "tvScreens": "TV screens"
+      "tvScreens": "TV screens",
+      "home": "Home",
+      "problems": "Issues",
+      "dailyReport": "Daily report",
+      "signage": "Schedules and media",
+      "groups": {
+        "management": "Management",
+        "work": "Queue operations",
+        "screens": "TV displays",
+        "reports": "Reports",
+        "settings": "Settings"
+      }
+    },
+    "home": {
+      "welcomeTitle": "Set up your queue",
+      "welcomeIntro": "Five steps to issue tickets and show calls on a screen.",
+      "readyTitle": "Your queues are running",
+      "readyIntro": "Check waiting visitors, queue status, and TV connections.",
+      "setupTitle": "Get ready to serve",
+      "setupIntro": "Create a service queue, a room, and a staff account. Then connect a display.",
+      "progress": "{{done}} of {{total}} complete",
+      "done": "Done",
+      "nextStep": "Next step",
+      "pending": "To do",
+      "steps": {
+        "queue": {
+          "title": "Add a queue",
+          "description": "A queue is a service, such as “Therapy” or “Cash desk”.",
+          "action": "Create queue"
+        },
+        "cabinet": {
+          "title": "Add a room",
+          "description": "This is where staff call visitors from the queue.",
+          "action": "Create room"
+        },
+        "operator": {
+          "title": "Add an operator",
+          "description": "Create an account for a staff member who will call tickets.",
+          "action": "Add operator"
+        },
+        "assignment": {
+          "title": "Assign the operator to a room",
+          "description": "Once assigned, they can see their queue and start serving visitors.",
+          "action": "Assign operator"
+        },
+        "screen": {
+          "title": "Connect a TV display",
+          "description": "Create a queue screen and enter its pairing code on the TV. It will show a QR code.",
+          "action": "Open TV screens"
+        }
+      },
+      "howTitle": "What visitors see",
+      "howIntro": "After setup, the visitor journey is simple:",
+      "how": {
+        "qr": "Scan the TV QR code and choose a queue.",
+        "ticket": "Receive a ticket number on their phone.",
+        "call": "See their call on TV and go to the room."
+      },
+      "today": "Now in your organization",
+      "openAnalytics": "Open analytics",
+      "waiting": "Waiting visitors",
+      "activeQueues": "Active queues",
+      "screensOnline": "TV screens online",
+      "screensOffline": "TV screens offline: {{count}}.",
+      "checkScreens": "Check screens",
+      "queuesNow": "Queue status",
+      "manageQueues": "Manage queues",
+      "queueWaiting": "{{count}} waiting",
+      "reviewSetup": "Review setup",
+      "refreshError": "Could not refresh data.",
+      "retry": "Retry"
+    },
+    "problems": {
+      "title": "Issues to check",
+      "intro": "What is affecting queues and screens right now. Updates every 30 seconds.",
+      "updated": "Checked at {{time}}",
+      "filterLabel": "Filter issues",
+      "filters": { "all": "All: {{count}}", "critical": "Needs attention: {{count}}", "warning": "Warnings: {{count}}" },
+      "severity": { "critical": "Needs attention", "warning": "Warning" },
+      "emptyTitle": "No issues right now",
+      "emptyHint": "No problems detected in active queues or paired screens.",
+      "noMatches": "No issues in this group.",
+      "kind": {
+        "queue_not_open": { "title": "Queue “{{name}}” is stopped", "detail": "Waiting: {{count}}. Check the queue status and schedule.", "action": "Open queue" },
+        "no_cabinet": { "title": "No working counter for “{{name}}”", "detail": "Waiting: {{count}}. Check the counter and operator sign-in.", "action": "Check counters" },
+        "long_wait": { "title": "Long wait in “{{name}}”", "detail": "The first visitor has waited {{minutes}} min; {{count}} are waiting.", "action": "Open queue" },
+        "screen_offline": { "title": "TV “{{name}}” is offline", "detail": "No signal from this screen for over 90 seconds.", "action": "Check screen" }
+      }
+    },
+    "report": {
+      "title": "Daily report",
+      "intro": "Ticket totals for the selected day, by queue and employee.",
+      "day": "Date",
+      "download": "Download Excel",
+      "timezone": "The day is calculated in the {{timezone}} time zone.",
+      "metrics": { "issued_count": "Tickets created", "served_count": "Served", "no_show_count": "No-shows", "left_count": "Left", "active_count": "Still active" },
+      "averages": "Average wait: {{wait}} min · average service: {{service}} min",
+      "queuesTitle": "By queue",
+      "empty": "No tickets were created on this day.",
+      "operatorsTitle": "By employee ({{count}})",
+      "operatorsLabel": "Employee statistics",
+      "noOperators": "No completed services on this day.",
+      "columns": { "queue": "Queue", "operator": "Employee", "issued_count": "Created", "served_count": "Served", "no_show_count": "No-shows", "left_count": "Left", "active_count": "Active", "avg_wait": "Wait, min" },
+      "footnote": "Current statuses of tickets created on this day are shown. A transfer creates another ticket in the target queue and is counted separately."
     },
     "organization": {
       "title": "Organization",
@@ -256,6 +387,171 @@
       "prev": "Previous",
       "next": "Next",
       "pageInfo": "{{from}}–{{to}} of {{total}}",
+      "details": "Details",
+      "queue": "Queue",
+      "cabinet": "Room",
+      "yes": "Yes",
+      "no": "No",
+      "noValue": "Not set",
+      "valueChanged": "Updated",
+      "itemsCount": "{{count}} items",
+      "fields": {
+        "name": "Name",
+        "full_name": "Full name",
+        "email": "Email",
+        "role": "Role",
+        "label": "Room",
+        "title": "Media title",
+        "status": "Status",
+        "is_active": "Active",
+        "processed": "Processed",
+        "source": "Source",
+        "call_count": "Call count",
+        "rating": "Rating",
+        "reason": "Reason",
+        "timezone": "Time zone",
+        "default_language": "Default language",
+        "plan": "Plan",
+        "trial_ends_at": "Trial ends",
+        "one_ticket_per_org": "One ticket per organization",
+        "video_large_upload_enabled": "Videos up to 100 MB",
+        "ticket_prefix": "Ticket prefix",
+        "geo_radius_m": "Location radius, m",
+        "presence_timeout_min": "Confirmation time, min",
+        "daily_ticket_limit": "Daily ticket limit",
+        "slide_seconds": "Slide duration, sec",
+        "ads_enabled": "Ads enabled",
+        "media_playlist_mode": "Playlist",
+        "queue_selection_mode": "Queue selection",
+        "cabinet_selection_mode": "Room selection",
+        "doctor_name": "Doctor",
+        "service_name": "Specialty",
+        "room": "Room",
+        "weekday": "Weekday",
+        "starts_at": "Starts",
+        "ends_at": "Ends",
+        "departments": "Departments",
+        "created_departments": "New departments",
+        "schedule_items": "Schedule entries",
+        "sort_order": "Order",
+        "selected_media_ids": "Selected media",
+        "selected_queue_ids": "Selected queues",
+        "selected_cabinet_ids": "Selected rooms",
+        "schedule": "Schedule intervals",
+        "fields": "Changed fields",
+        "password": "Password",
+        "reset_totp": "Two-factor reset"
+      },
+      "values": {
+        "open": "Open",
+        "paused": "Paused",
+        "closed": "Closed",
+        "free": "Free",
+        "busy": "Busy",
+        "offline": "Offline",
+        "operator": "Operator",
+        "registrar": "Registrar",
+        "org_admin": "Administrator",
+        "superadmin": "Superadmin",
+        "qr": "QR code",
+        "transfer": "Transfer",
+        "trial": "Trial",
+        "basic": "Basic",
+        "pro": "Pro",
+        "all": "All",
+        "selected": "Selected only"
+      },
+      "allActions": "All actions",
+      "unknownAction": "Other action",
+      "unknownEntity": "Other entity",
+      "actions": {
+        "ticket": {
+          "created": "Ticket created",
+          "called": "Visitor called",
+          "recalled": "Visitor called again",
+          "confirmed": "Arrival confirmed",
+          "no_show": "Visitor did not arrive",
+          "returned": "Ticket returned to queue",
+          "serving_started": "Service started",
+          "finished": "Service completed",
+          "transferred": "Ticket transferred to another queue",
+          "left": "Visitor left",
+          "rated": "Service rating received"
+        },
+        "queue": {
+          "created": "Queue created",
+          "updated": "Queue updated",
+          "schedule_updated": "Queue schedule updated",
+          "archived": "Queue archived",
+          "restored": "Queue restored",
+          "auto_opened": "Queue opened on schedule",
+          "auto_closed": "Queue closed on schedule"
+        },
+        "cabinet": {
+          "created": "Room created",
+          "updated": "Room updated",
+          "deactivated": "Room deactivated",
+          "archived": "Room archived",
+          "restored": "Room restored",
+          "operator_assigned": "Operator assigned to room",
+          "operator_unassigned": "Operator unassigned from room",
+          "paused": "Room paused",
+          "resumed": "Room resumed"
+        },
+        "department": {
+          "created": "Department created",
+          "updated": "Department updated",
+          "deleted": "Department deleted",
+          "schedule_imported": "Department schedules imported",
+          "schedule_created": "Schedule entry created",
+          "schedule_updated": "Schedule entry updated",
+          "schedule_deleted": "Schedule entry deleted"
+        },
+        "tv_screen": {
+          "created": "TV screen created",
+          "updated": "TV screen updated",
+          "unpaired": "TV unpaired",
+          "deleted": "TV screen deleted"
+        },
+        "tv_media": {
+          "upload_started": "Video upload started",
+          "upload_completed": "Video upload completed",
+          "updated": "Video or announcement updated",
+          "deleted": "Video or announcement deleted"
+        },
+        "user": {
+          "login": "Signed in",
+          "totp_enabled": "Two-factor authentication enabled",
+          "created": "User created",
+          "updated": "User updated",
+          "deactivated": "User deactivated",
+          "archived": "User archived",
+          "restored": "User restored",
+          "totp_recovered": "Two-factor authentication recovered"
+        },
+        "organization": {
+          "created": "Organization created",
+          "updated": "Organization updated",
+          "deactivated": "Organization deactivated",
+          "archived": "Organization archived",
+          "restored": "Organization restored"
+        },
+        "trial_request": {
+          "updated": "Trial request updated"
+        }
+      },
+      "entities": {
+        "ticket": "Ticket",
+        "queue": "Queue",
+        "cabinet": "Room",
+        "department": "Department",
+        "department_schedule_item": "Schedule entry",
+        "tv_screen": "TV screen",
+        "tv_media": "Video or announcement",
+        "user": "User",
+        "organization": "Organization",
+        "trial_request": "Trial request"
+      },
       "columns": {
         "time": "Time",
         "actor": "Actor",
@@ -293,6 +589,11 @@
         "name": "Name",
         "slug": "Slug",
         "slugPlaceholder": "auto-generated",
+        "template": "Template",
+        "templateBlank": "Empty organization",
+        "templateClinic": "Clinic",
+        "templateService": "Service center",
+        "templateHint": "Templates add queues, cabinets and a display. Queues and cabinets stay disabled until an admin checks them.",
         "cancel": "Cancel",
         "save": "Create"
       },
@@ -532,7 +833,12 @@
     },
     "screen": {
       "nowServing": "Now serving",
-      "noOneCalled": "No one has been called yet",
+      "newCall": "Calling ticket",
+      "currentCalls": "Current calls",
+      "recentCalls": "Recent calls",
+      "latestCall": "Latest call",
+      "previousCall": "Previous call",
+      "noOneCalled": "No current calls",
       "cabinet": "Counter: {{label}}",
       "waiting": "Waiting: {{count}}",
       "scanHint": "Scan to join the queue",
@@ -547,10 +853,14 @@
       "qrUnavailable": "QR temporarily unavailable. Waiting for an update."
     },
     "announce": {
-      "called": "Ticket {{number}}.",
-      "calledWithCabinet": "Ticket {{number}}. {{cabinet}}.",
+      "called": "Ticket {{number}}",
+      "calledWithCabinet": "Ticket {{number}} please proceed to room {{cabinet}}",
       "toggleOn": "Announcements: on",
-      "toggleOff": "Announcements: off"
+      "toggleOff": "Announcements: off",
+      "voiceSettings": "Voice",
+      "voiceChoice": "Announcement voice",
+      "automaticVoice": "Automatic",
+      "previewVoice": "Play sample"
     }
   },
   "registrar": {
@@ -575,13 +885,29 @@
     }
   },
   "adminTv": {
+    "preview": { "show": "Show preview", "hide": "Hide preview", "title": "Preview: {{name}}", "badge": "Preview", "error": "Could not load preview", "noQr": "QR code is available only on the paired TV" },
+    "connection": {
+      "online": "Online",
+      "offline": "Offline",
+      "awaitingPairing": "Awaiting pairing",
+      "lastSeen": "Last signal: {{time}}",
+      "offlineCount": "TV screens offline: {{count}}"
+    },
     "title": "TV screens",
     "namePlaceholder": "Screen name",
     "noQueue": "No queue (hall display)",
+    "multiQueue": "Multiple queues (hall display)",
     "create": "Create",
-    "error": "Couldn't create the screen.",
+    "error": "Couldn't change the screen. Please try again.",
     "empty": "No screens yet.",
     "paired": "Paired",
+    "showSettings": "Settings",
+    "hideSettings": "Collapse",
+    "unpair": "Unpair TV",
+    "unpairConfirm": "Unpair “{{name}}”? The display will close on that TV. Screen settings are saved, and a new pairing code will appear.",
+    "deleteConfirm": "Delete “{{name}}” and its screen settings?",
+    "pairingHelp": "Enter this code on the TV to connect it.",
+    "settingsHint": "Settings for this screen",
     "delete": "Delete",
     "columns": {
       "name": "Name",
@@ -590,6 +916,8 @@
     },
     "language": "Screen language",
     "queueBoard": {
+      "createQueuesTitle": "Select queues for this TV",
+      "createQueuesHint": "After scanning the QR code, visitors choose one of these queues.",
       "screenSource": "Queues shown on screen",
       "queuesTitle": "Queues on the hall display",
       "allQueues": "All active queues",

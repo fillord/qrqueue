@@ -256,7 +256,7 @@ async def ws_tv(
     async def build_message(_event: dict) -> dict | None:
         db.expire_all()
         current_screen = await db.get(TVScreen, screen_id)
-        if current_screen is None or not await screen_organization_is_active(db, current_screen):
+        if current_screen is None or current_screen.device_token != token or not await screen_organization_is_active(db, current_screen):
             raise AccessRevoked
         return TVStateOut.model_validate(await build_tv_state(db, current_screen)).model_dump(
             mode="json"

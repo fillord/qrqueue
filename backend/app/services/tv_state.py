@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +39,28 @@ async def _waiting_count(db: AsyncSession, queue_id: uuid.UUID) -> int:
         .where(Ticket.queue_id == queue_id, Ticket.status == TicketStatus.waiting)
     )
     return result.scalar_one()
+
+
+async def _recent_calls(db: AsyncSession, queue_ids: list[uuid.UUID], organization: Organization,
+                        cabinet_ids: set[uuid.UUID] | None = None) -> list[dict]:
+    if not queue_ids:
+        return []
+    local_now = datetime.now(ZoneInfo(organization.timezone))
+    today_start = datetime.combine(local_now.date(), time.min, tzinfo=local_now.tzinfo).astimezone(timezone.utc)
+    query = (select(Ticket, Cabinet.label, Queue.name)
+             .join(Queue, Queue.id == Ticket.queue_id)
+             .outerjoin(Cabinet, Cabinet.id == Ticket.cabinet_id)
+             .where(Ticket.queue_id.in_(queue_ids), Ticket.called_at >= today_start)
+             .order_by(Ticket.called_at.desc(), Ticket.id.desc())
+             .limit(2))
+    if cabinet_ids is not None:
+        query = query.where(Ticket.cabinet_id.in_(cabinet_ids))
+    result = await db.execute(query)
+    return [
+        {"ticket_id": ticket.id, "display_number": ticket.display_number,
+         "cabinet_label": label, "queue_name": queue_name}
+        for ticket, label, queue_name in result.all()
+    ]
 
 
 async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
@@ -120,6 +144,7 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
         # /tv/qr-batch 409 loop this field exists to fix).
         "is_hall_screen": screen.queue_id is None,
         "queues": queues_out,
+        "recent_calls": await _recent_calls(db, queue_ids, organization, selected_cabinet_ids) if organization else [],
         "timezone": organization.timezone if organization else "Asia/Almaty",
         "display_mode": screen.display_mode,
         "slide_seconds": screen.slide_seconds,

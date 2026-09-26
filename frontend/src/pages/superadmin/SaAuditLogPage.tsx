@@ -5,6 +5,9 @@ import { useSearchParams } from 'react-router-dom'
 
 import { getOrganizations, getSaAuditLogs } from '../../api/superadmin'
 import type { AuditLogPage, Organization } from '../../api/types'
+import AuditActionFilter from '../../components/AuditActionFilter'
+import AuditEntryObject from '../../components/AuditEntryObject'
+import { auditActionLabel } from '../../lib/auditLogPresentation'
 import { formatDateTimeInTimezone } from '../../lib/formatDate'
 
 const PAGE_SIZE = 25
@@ -68,18 +71,10 @@ export default function SaAuditLogPage() {
             ))}
           </select>
         </label>
-        <label>
-          <span>{t('admin.auditLog.action')}</span>
-          <input
-            type="text"
-            value={action}
-            placeholder="ticket.called"
-            onChange={(e) => {
-              setAction(e.target.value)
-              setOffset(0)
-            }}
-          />
-        </label>
+        <AuditActionFilter value={action} onChange={(value) => {
+          setAction(value)
+          setOffset(0)
+        }} />
         <label>
           <span>{t('admin.analytics.from')}</span>
           <input
@@ -126,10 +121,8 @@ export default function SaAuditLogPage() {
                   <td>{formatDateTimeInTimezone(item.created_at, displayTimezone)}</td>
                   <td>{organizations.find((org) => org.id === item.organization_id)?.name ?? '—'}</td>
                   <td>{item.actor_name ?? t(`admin.auditLog.actorType.${item.actor_type}`)}</td>
-                  <td>
-                    <code>{item.action}</code>
-                  </td>
-                  <td>{item.entity_type}</td>
+                  <td>{auditActionLabel(t, item.action)}</td>
+                  <td><AuditEntryObject item={item} /></td>
                 </tr>
               ))}
             </tbody>

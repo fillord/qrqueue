@@ -2,6 +2,7 @@ import Directory from '../../components/Directory'
 import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import { archiveStaff, createStaff, listStaff, restoreStaff, updateStaff } from '../../api/staffAdmin'
 import type { StaffCreatePayload } from '../../api/staffAdmin'
@@ -14,6 +15,7 @@ import StaffFormModal from './StaffFormModal'
 
 export default function AdminUsersPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loadError, setLoadError] = useState(false)
   const { toasts, push, dismiss } = useToasts()
   const [staff, setStaff] = useState<StaffUser[] | null>(null)
@@ -31,6 +33,16 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void load()
   }, [includeArchived])
+
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return
+    setCreating(true)
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params)
+      next.delete('new')
+      return next
+    }, { replace: true })
+  }, [searchParams, setSearchParams])
 
   async function handleCreate(payload: StaffCreatePayload) {
     try {

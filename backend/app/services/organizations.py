@@ -3,7 +3,10 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import AuditActorType
+from app.models.enums import AuditActorType, CabinetStatus, QueueStatus
+from app.models.cabinet import Cabinet
+from app.models.tv_screen import TVScreen
+from app.models.department import Department
 from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.ticket import Ticket
@@ -14,6 +17,15 @@ from app.schemas.organization import OrganizationCreate, OrganizationSelfUpdate,
 from app.services.audit import log_action
 from app.services.realtime import defer_event, organization_channel, queue_channel
 from app.services.slug import generate_unique_slug
+from app.services.tv_screens import _generate_pairing_code
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+_TEMPLATES = {
+    "clinic": (("Регистратура", "Р", "Регистратура"), ("Приём врача", "В", "Кабинет 1"), ("Анализы", "А", "Кабинет 2")),
+    "service_center": (("Консультация", "К", "Окно 1"), ("Приём документов", "Д", "Окно 2"), ("Выдача документов", "Г", "Окно 3")),
+}
 
 
 async def list_organizations(db: AsyncSession) -> list[Organization]:
@@ -39,6 +51,24 @@ async def create_organization(
     )
     db.add(org)
     await db.flush()
+
+    if payload.template != "blank":
+        today = datetime.now(ZoneInfo(payload.timezone)).date()
+        for queue_name, prefix, cabinet_name in _TEMPLATES[payload.template]:
+            queue = Queue(organization_id=org.id, name=queue_name, ticket_prefix=prefix,
+                          status=QueueStatus.closed, counter_date=today, is_active=False)
+            db.add(queue)
+            await db.flush()
+            db.add(Cabinet(organization_id=org.id, queue_id=queue.id, label=cabinet_name,
+                           status=CabinetStatus.offline, is_active=False))
+        db.add(TVScreen(organization_id=org.id, name="Табло очередей",
+                        pairing_code=await _generate_pairing_code(db), language=payload.default_language,
+                        display_mode="queue"))
+        if payload.template == "clinic":
+            db.add(Department(organization_id=org.id, name="Общее отделение"))
+            db.add(TVScreen(organization_id=org.id, name="Расписание",
+                            pairing_code=await _generate_pairing_code(db), language=payload.default_language,
+                            display_mode="schedule"))
 
     await log_action(
         db,

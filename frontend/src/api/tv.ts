@@ -9,6 +9,10 @@ export function getTvState(deviceToken: string): Promise<TvState> {
   return apiGet<TvState>('/api/tv/state', { 'X-Device-Token': deviceToken })
 }
 
+export function sendTvHeartbeat(deviceToken: string): Promise<void> {
+  return apiPost<void>('/api/tv/heartbeat', undefined, { 'X-Device-Token': deviceToken })
+}
+
 export function getTvQrBatch(deviceToken: string): Promise<QrBatch> {
   return apiGet<QrBatch>('/api/tv/qr-batch', { 'X-Device-Token': deviceToken })
 }

@@ -13,6 +13,7 @@ export function getOrganization(id: string): Promise<Organization> {
 export interface OrganizationCreatePayload {
   name: string
   slug?: string
+  template?: 'blank' | 'clinic' | 'service_center'
 }
 
 export function createOrganization(payload: OrganizationCreatePayload): Promise<Organization> {

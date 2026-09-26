@@ -28,6 +28,8 @@ export default function SaOrganizationDetailPage() {
   const [creating, setCreating] = useState(false)
   const [editingOrg, setEditingOrg] = useState(false)
   const [editingAdmin, setEditingAdmin] = useState<StaffUser | null>(null)
+  const [showTv, setShowTv] = useState(false)
+  const [showSignage, setShowSignage] = useState(false)
 
   async function load() {
     setLoadError(false)
@@ -197,14 +199,15 @@ export default function SaOrganizationDetailPage() {
         )}
       </section>
 
-      {!organization.deleted_at && <section className="admin-analytics__section">
-        <h2>{t('admin.nav.tvScreens')}</h2>
-        <AdminTvScreensPage organizationId={id} />
-      </section>}
+      {!organization.deleted_at && <details className="dashboard-detail-panel" onToggle={(event) => setShowTv(event.currentTarget.open)}>
+        <summary>{t('admin.nav.tvScreens')}</summary>
+        {showTv && <AdminTvScreensPage organizationId={id} />}
+      </details>}
 
-      {!organization.deleted_at && <section className="admin-analytics__section">
-        <Suspense fallback={<div className="spinner" aria-hidden="true" />}><AdminSignagePage organizationId={id} /></Suspense>
-      </section>}
+      {!organization.deleted_at && <details className="dashboard-detail-panel" onToggle={(event) => setShowSignage(event.currentTarget.open)}>
+        <summary>{t('admin.nav.signage')}</summary>
+        {showSignage && <Suspense fallback={<div className="spinner" aria-hidden="true" />}><AdminSignagePage organizationId={id} /></Suspense>}
+      </details>}
 
       {creating && <AdminFormModal onSubmit={handleCreateAdmin} onClose={() => setCreating(false)} />}
       {editingOrg && <OrganizationEditModal initial={organization} onSubmit={handleEditOrg} onClose={() => setEditingOrg(false)} />}

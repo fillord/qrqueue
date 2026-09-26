@@ -1,6 +1,7 @@
 import LoadError from '../../components/LoadError'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import { getAdminQueues } from '../../api/admin'
 import { archiveCabinet, createCabinet, listCabinets, restoreCabinet, updateCabinet } from '../../api/cabinets'
@@ -23,6 +24,7 @@ const STATUS_TONE: Record<CabinetStatus, 'success' | 'warning' | 'danger' | 'neu
 
 export default function AdminCabinetsPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loadError, setLoadError] = useState(false)
   const { toasts, push, dismiss } = useToasts()
   const [cabinets, setCabinets] = useState<Cabinet[] | null>(null)
@@ -50,6 +52,22 @@ export default function AdminCabinetsPage() {
   useEffect(() => {
     void load()
   }, [includeArchived])
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setCreating(true)
+    } else if (searchParams.get('assign') === '1') {
+      if (cabinets === null) return
+      const cabinet = cabinets.find((item) => item.is_active && !item.deleted_at && item.queue_id)
+      if (cabinet) setManagingOperatorsFor(cabinet)
+    } else return
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params)
+      next.delete('new')
+      next.delete('assign')
+      return next
+    }, { replace: true })
+  }, [searchParams, setSearchParams, cabinets])
 
   async function handleArchive(cabinet: Cabinet) {
     if (!window.confirm(t('crud.archiveCabinetConfirm', { name: cabinet.label }))) return

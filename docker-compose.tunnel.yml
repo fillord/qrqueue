@@ -1,0 +1,46 @@
+# Add after docker-compose.yml and docker-compose.override.yml for a temporary
+# Cloudflare Tunnel deployment on the same Mac. Docker Compose 2.24.4+ is needed
+# for !override. Only the frontend is reachable on the host, via loopback.
+services:
+  frontend:
+    ports: !override
+      - "127.0.0.1:8080:80"
+    labels: !override
+      - "traefik.enable=false"
+    networks: !override
+      - internal
+
+  backend:
+    ports: !override []
+    volumes: !override []
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    environment:
+      COOKIE_SECURE: "true"
+
+  db:
+    ports: !override []
+
+  db-backup:
+    profiles: !override []
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TRANSPORT_PROTOCOL: http2
+    env_file:
+      - path: .tunnel.env
+        required: false
+    depends_on:
+      - frontend
+    networks:
+      - internal

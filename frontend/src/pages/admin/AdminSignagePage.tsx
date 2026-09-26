@@ -177,15 +177,15 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
     <p className="admin-page__hint">{t('signage.intro')}</p>
     {loadError && <LoadError retry={() => void load()} />}
     {departments === null ? <div className="spinner" aria-hidden="true" /> : <>
-      <section className="signage-admin__section">
-        <h2>{t('signage.importTitle')}</h2>
+      <details className="signage-admin__section signage-admin__disclosure">
+        <summary>{t('signage.importTitle')}</summary>
         <p className="admin-page__hint">{t('signage.importHint')}</p>
         <a href="/templates/weekly-schedule.xlsx" download>{t('signage.downloadTemplate')}</a>
         <form className="signage-admin__upload" onSubmit={(event) => void importSchedule(event)}>
           <label>{t('signage.importFile')}<input ref={importInput} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} required /></label>
           <button type="submit" disabled={busy || !importFile}>{t('signage.importButton')}</button>
         </form>
-      </section>
+      </details>
       <section className="signage-admin__section">
         <h2>{t('signage.departments')}</h2>
         <form className="signage-admin__row" onSubmit={(event) => void saveDepartment(event)}>

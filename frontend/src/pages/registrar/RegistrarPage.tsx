@@ -114,6 +114,7 @@ export default function RegistrarPage() {
               </div>
               <input
                 type="text"
+                aria-label={`${queue.name}: ${t('registrar.notePlaceholder')}`}
                 placeholder={t('registrar.notePlaceholder')}
                 value={notes[queue.id] ?? ''}
                 onChange={(e) => setNotes((prev) => ({ ...prev, [queue.id]: e.target.value }))}

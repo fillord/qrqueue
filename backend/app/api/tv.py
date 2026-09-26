@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update
 
+from app.clock import utcnow
 from app.config import settings
 from app.db import get_db
 from app.media import TV_MEDIA_CHUNK_BYTES
@@ -61,8 +63,17 @@ async def state_route(
     db: AsyncSession = Depends(get_db), screen: TVScreen = Depends(current_tv_screen)
 ) -> dict:
     state = await build_tv_state(db, screen)
+    screen.last_seen_at = utcnow()
     await db.commit()
     return state
+
+
+@router.post("/heartbeat", status_code=204)
+async def heartbeat_route(
+    db: AsyncSession = Depends(get_db), screen: TVScreen = Depends(current_tv_screen)
+) -> None:
+    await db.execute(update(TVScreen).where(TVScreen.id == screen.id).values(last_seen_at=utcnow()))
+    await db.commit()
 
 
 @router.get("/qr-batch", response_model=QRBatchOut)

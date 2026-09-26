@@ -5,7 +5,7 @@ import type { UserRole } from '../api/types'
 import { useAuth } from './AuthContext'
 import { roleHome } from './roleHome'
 
-export default function ProtectedRoute({ role, children }: { role: UserRole; children: ReactNode }) {
+export default function ProtectedRoute({ role, children }: { role: UserRole | UserRole[]; children: ReactNode }) {
   const { status, user } = useAuth()
   const location = useLocation()
 
@@ -21,7 +21,7 @@ export default function ProtectedRoute({ role, children }: { role: UserRole; chi
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  if (user.role !== role) {
+  if (Array.isArray(role) ? !role.includes(user.role) : user.role !== role) {
     return <Navigate to={roleHome(user.role)} replace />
   }
 

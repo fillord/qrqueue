@@ -241,6 +241,29 @@ async def test_tv_ws_rejects_unknown_device_token(override_get_db):
         assert exc_info.value.code == 1008
 
 
+async def test_tv_ws_closes_as_soon_as_admin_unpairs_device(ws_manager_running):
+    run_id = uuid.uuid4().hex[:8]
+    email = f"ws-tv-unpair-{run_id}@example.com"
+    device_token = f"tv-unpair-token-{run_id}"
+    async with async_session_factory() as db:
+        org = await _make_organization_real(db, f"WS Отвязка {run_id}")
+        await _make_user_real(db, email=email, role=UserRole.org_admin, organization_id=org.id)
+        screen = TVScreen(organization_id=org.id, name="Табло", device_token=device_token, language=Language.ru)
+        db.add(screen)
+        await db.commit()
+        screen_id = screen.id
+
+    async with ws_client() as client:
+        await login(client, email, "test-pass-1234")
+        async with aconnect_ws(f"/ws/tv?device_token={device_token}", client) as ws:
+            await asyncio.wait_for(ws.receive_json(), timeout=RECEIVE_TIMEOUT)
+            response = await client.post(f"/api/admin/tv-screens/{screen_id}/unpair")
+            assert response.status_code == 200, response.text
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                await asyncio.wait_for(ws.receive_json(), timeout=RECEIVE_TIMEOUT)
+            assert exc_info.value.code == 1008
+
+
 async def test_tv_ws_sends_snapshot_and_updates_on_call(ws_manager_running):
     run_id = uuid.uuid4().hex[:8]
     email = f"ws-op3-{run_id}@example.com"

@@ -194,6 +194,45 @@
   "auth": {
     "logout": "Выйти"
   },
+  "profile": {
+    "open": "Открыть профиль",
+    "back": "← Назад в кабинет",
+    "title": "Мой профиль",
+    "personal": "Личные данные",
+    "personalHint": "Имя и фото видны вам в кабинете.",
+    "fullName": "Имя и фамилия",
+    "saveName": "Сохранить имя",
+    "nameSaved": "Имя сохранено",
+    "photoChoose": "Загрузить фото",
+    "photoRemove": "Удалить фото",
+    "photoHint": "JPG, PNG или WebP до 2 МБ",
+    "photoSaved": "Фото обновлено",
+    "photoRemoved": "Фото удалено",
+    "security": "Пароль и безопасность",
+    "securityHint": "После смены пароля другие устройства выйдут из аккаунта.",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Повторите новый пароль",
+    "savePassword": "Сменить пароль",
+    "passwordSaved": "Пароль изменён",
+    "emailTitle": "Почта для входа",
+    "emailHint": "Этот адрес используется для входа в систему.",
+    "email": "Электронная почта",
+    "saveEmail": "Сменить почту",
+    "emailSaved": "Почта изменена",
+    "emailManagedByOrgAdmin": "Для изменения почты обратитесь к администратору вашей организации.",
+    "emailManagedBySuperadmin": "Почту администратора организации может изменить только суперадмин.",
+    "errors": {
+      "generic": "Не удалось сохранить изменения. Попробуйте ещё раз.",
+      "invalid_current_password": "Текущий пароль неверный.",
+      "password_unchanged": "Новый пароль должен отличаться от текущего.",
+      "passwordMismatch": "Новые пароли не совпадают.",
+      "email_in_use": "Эта почта уже используется.",
+      "invalid_photo_type": "Выберите файл JPG, PNG или WebP.",
+      "photo_too_large": "Фото должно быть не больше 2 МБ.",
+      "invalid_photo": "Не удалось прочитать фото. Выберите другое изображение."
+    }
+  },
   "login": {
     "title": "Вход для персонала",
     "email": "Email",
@@ -231,6 +270,11 @@
       "queues": "Очереди",
       "cabinets": "Кабинеты",
       "staff": "Сотрудники",
+      "attendance": "Учёт рабочего времени",
+      "attendanceSummary": "Сводка",
+      "attendanceEmployees": "Сотрудники",
+      "attendanceEvents": "Отметки",
+      "attendanceSettings": "Настройки и стойки",
       "tvScreens": "ТВ-экраны",
       "home": "Главная",
       "problems": "Центр проблем",
@@ -409,6 +453,8 @@
         "call_count": "Число вызовов",
         "rating": "Оценка",
         "reason": "Причина",
+        "kind": "Приход или уход",
+        "occurred_at": "Время отметки",
         "timezone": "Часовой пояс",
         "default_language": "Язык по умолчанию",
         "plan": "Тариф",
@@ -455,6 +501,11 @@
         "superadmin": "Суперадминистратор",
         "qr": "QR-код",
         "transfer": "Перевод",
+        "phone": "Телефон",
+        "kiosk": "Стойка",
+        "manual": "Вручную",
+        "in": "Приход",
+        "out": "Уход",
         "trial": "Пробный",
         "basic": "Базовый",
         "pro": "Про",
@@ -527,7 +578,12 @@
           "deactivated": "Пользователь отключён",
           "archived": "Пользователь архивирован",
           "restored": "Пользователь восстановлен",
-          "totp_recovered": "Двухэтапная защита восстановлена"
+          "totp_recovered": "Двухэтапная защита восстановлена",
+          "profile_updated": "Имя в профиле изменено",
+          "password_changed": "Пароль изменён",
+          "email_changed": "Почта суперадмина изменена",
+          "photo_updated": "Фото профиля обновлено",
+          "photo_removed": "Фото профиля удалено"
         },
         "organization": {
           "created": "Организация создана",
@@ -538,6 +594,28 @@
         },
         "trial_request": {
           "updated": "Пробная заявка изменена"
+        },
+        "attendance": {
+          "employee_created": "Сотрудник добавлен в учёт времени",
+          "employee_updated": "Карточка сотрудника изменена",
+          "employee_archived": "Сотрудник архивирован",
+          "employees_imported": "Сотрудники импортированы из Excel",
+          "code_reset": "Личный код сотрудника обновлён",
+          "face_enrolled": "Лицо сотрудника зарегистрировано",
+          "face_submitted": "Заявка на регистрацию лица отправлена",
+          "face_approved": "Регистрация лица подтверждена",
+          "face_rejected": "Заявка на регистрацию лица отклонена",
+          "face_removed": "Данные лица удалены",
+          "settings_updated": "Настройки учёта времени изменены",
+          "enrollment_qr_rotated": "QR регистрации лица заменён",
+          "marked_in": "Приход отмечен",
+          "marked_out": "Уход отмечен",
+          "manual_mark": "Отметка добавлена вручную",
+          "event_corrected": "Отметка исправлена",
+          "kiosk_created": "Стойка создана",
+          "kiosk_paired": "Стойка подключена",
+          "kiosk_unpaired": "Стойка отвязана",
+          "kiosk_archived": "Стойка удалена"
         }
       },
       "entities": {
@@ -550,7 +628,11 @@
         "tv_media": "Ролик или объявление",
         "user": "Пользователь",
         "organization": "Организация",
-        "trial_request": "Пробная заявка"
+        "trial_request": "Пробная заявка",
+        "attendance": "Учёт рабочего времени",
+        "attendance_employee": "Сотрудник",
+        "attendance_event": "Отметка",
+        "attendance_kiosk": "Стойка регистрации"
       },
       "columns": {
         "time": "Время",
@@ -1029,6 +1111,7 @@
     "delete": "Удалить",
     "cancel": "Отмена",
     "deleteDepartmentConfirm": "Удалить отделение «{{name}}» и всё его расписание?",
+    "departmentHasEmployees": "В отделении есть сотрудники. Сначала переведите их в другое отделение или архивируйте карточки.",
     "deleteScheduleConfirm": "Удалить этот приём из расписания?",
     "deleteMediaConfirm": "Удалить «{{name}}» из плейлиста?"
   },

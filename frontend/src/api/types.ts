@@ -105,6 +105,8 @@ export interface User {
   role: UserRole
   organization_id: string | null
   totp_enabled: boolean
+  has_photo: boolean
+  photo_revision: number
 }
 
 export interface TotpSetup {

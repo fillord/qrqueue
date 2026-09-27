@@ -11,3 +11,4 @@ __pycache__/
 .DS_Store
 output/
 tmp/
+backend/face_models/

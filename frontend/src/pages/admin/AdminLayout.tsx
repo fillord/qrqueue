@@ -15,6 +15,15 @@ export default function AdminLayout() {
   return (
     <DashboardShell>
         <NavLink to="/admin" end className={linkClass}>{t('admin.nav.home')}</NavLink>
+        <details className="admin-layout__nav-group" open={pathname.startsWith('/admin/attendance')}>
+          <summary className="admin-layout__nav-heading">{t('admin.nav.attendance')}</summary>
+          <div className="admin-layout__nav-items">
+            <NavLink to="/admin/attendance" end className={linkClass}>{t('admin.nav.attendanceSummary')}</NavLink>
+            <NavLink to="/admin/attendance/employees" className={linkClass}>{t('admin.nav.attendanceEmployees')}</NavLink>
+            <NavLink to="/admin/attendance/events" className={linkClass}>{t('admin.nav.attendanceEvents')}</NavLink>
+            <NavLink to="/admin/attendance/settings" className={linkClass}>{t('admin.nav.attendanceSettings')}</NavLink>
+          </div>
+        </details>
         <details className="admin-layout__nav-group" open={pathname === '/admin' || /^\/admin\/(problems|queues|cabinets|users)(\/|$)/.test(pathname)}>
           <summary className="admin-layout__nav-heading">{t('admin.nav.groups.work')}</summary>
           <div className="admin-layout__nav-items">

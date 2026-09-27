@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
     jwt_cookie_name: str = "access_token"
+    attendance_secret: str | None = None
 
     cookie_secure: bool = False
 
@@ -55,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def totp_required_role_set(self) -> frozenset[str]:
         return frozenset(r.strip() for r in self.totp_required_roles.split(",") if r.strip())
+
+    @property
+    def attendance_signing_secret(self) -> str:
+        return self.attendance_secret or self.jwt_secret
 
 
 @lru_cache

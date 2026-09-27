@@ -30,7 +30,12 @@ export default function Layout() {
         <div className="app-header__right">
           {status === 'authenticated' && user && (
             <div className="app-header__auth">
-              <span className="app-header__user">{user.full_name}</span>
+              <Link className="app-header__profile" to="/profile" aria-label={t('profile.open')}>
+                <span className="app-header__avatar" aria-hidden="true">
+                  {user.has_photo ? <img src={`/api/auth/me/photo?v=${user.photo_revision}`} alt="" /> : user.full_name.trim().slice(0, 1).toLocaleUpperCase()}
+                </span>
+                <span className="app-header__user">{user.full_name}</span>
+              </Link>
               <button type="button" onClick={() => void handleLogout()}>
                 {t('auth.logout')}
               </button>

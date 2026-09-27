@@ -13,6 +13,7 @@ const VISIBLE_FIELDS = [
   'doctor_name', 'service_name', 'room', 'weekday', 'starts_at', 'ends_at',
   'departments', 'created_departments', 'schedule_items', 'sort_order',
   'selected_media_ids', 'selected_queue_ids', 'selected_cabinet_ids',
+  'kind', 'occurred_at',
   'schedule', 'fields', 'password', 'reset_totp',
 ] as const
 
@@ -26,7 +27,7 @@ function AuditValue({ field, value }: { field: string; value: unknown }) {
     return <>{t('admin.auditLog.itemsCount', { count: value.length })}</>
   }
   if (typeof value === 'string') {
-    if (['role', 'status', 'source', 'plan', 'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode'].includes(field)) {
+    if (['role', 'status', 'source', 'kind', 'plan', 'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode'].includes(field)) {
       return <>{t(`admin.auditLog.values.${value}`, { defaultValue: value })}</>
     }
     return <>{value}</>

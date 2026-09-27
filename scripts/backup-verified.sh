@@ -5,7 +5,12 @@ cd "$(dirname "$0")/.."
 umask 077
 mkdir -p backups
 output="${1:-backups/queue-verified-$(date +%Y%m%d-%H%M%S).dump}"
-compose=(docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.tunnel.yml)
+compose=(docker compose -f docker-compose.yml)
+case "${QUEUE_DEPLOYMENT:-mac}" in
+  mac) compose+=(-f docker-compose.override.yml -f docker-compose.tunnel.yml) ;;
+  oracle) compose+=(-f docker-compose.oracle.yml) ;;
+  *) echo "Unknown QUEUE_DEPLOYMENT: ${QUEUE_DEPLOYMENT}" >&2; exit 2 ;;
+esac
 tmp="${output}.partial"
 verify_db="queue_restore_check_$(date +%s)_$$"
 cleanup() {

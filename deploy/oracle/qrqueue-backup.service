@@ -1,0 +1,10 @@
+[Unit]
+Description=Verified PostgreSQL backup for qrqueue
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/qrqueue
+ExecStart=/usr/bin/env QUEUE_DEPLOYMENT=oracle /usr/bin/bash /home/ubuntu/qrqueue/scripts/backup-verified.sh
+UMask=0077

@@ -194,6 +194,45 @@
   "auth": {
     "logout": "Log out"
   },
+  "profile": {
+    "open": "Open profile",
+    "back": "← Back to dashboard",
+    "title": "My profile",
+    "personal": "Personal details",
+    "personalHint": "Your name and photo appear in your dashboard.",
+    "fullName": "Full name",
+    "saveName": "Save name",
+    "nameSaved": "Name saved",
+    "photoChoose": "Upload photo",
+    "photoRemove": "Remove photo",
+    "photoHint": "JPG, PNG or WebP, up to 2 MB",
+    "photoSaved": "Photo updated",
+    "photoRemoved": "Photo removed",
+    "security": "Password and security",
+    "securityHint": "Changing your password signs out your other devices.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "savePassword": "Change password",
+    "passwordSaved": "Password changed",
+    "emailTitle": "Sign-in email",
+    "emailHint": "This address is used to sign in.",
+    "email": "Email address",
+    "saveEmail": "Change email",
+    "emailSaved": "Email changed",
+    "emailManagedByOrgAdmin": "Ask your organization administrator to change your email.",
+    "emailManagedBySuperadmin": "Only a superadmin can change an organization administrator's email.",
+    "errors": {
+      "generic": "Could not save changes. Please try again.",
+      "invalid_current_password": "Current password is incorrect.",
+      "password_unchanged": "Choose a password different from your current one.",
+      "passwordMismatch": "The new passwords do not match.",
+      "email_in_use": "This email is already in use.",
+      "invalid_photo_type": "Choose a JPG, PNG or WebP file.",
+      "photo_too_large": "Photo must be 2 MB or smaller.",
+      "invalid_photo": "Could not read this photo. Choose another image."
+    }
+  },
   "login": {
     "title": "Staff sign in",
     "email": "Email",
@@ -231,6 +270,11 @@
       "queues": "Queues",
       "cabinets": "Counters",
       "staff": "Staff",
+      "attendance": "Attendance",
+      "attendanceSummary": "Overview",
+      "attendanceEmployees": "Employees",
+      "attendanceEvents": "Check-ins",
+      "attendanceSettings": "Settings and kiosks",
       "tvScreens": "TV screens",
       "home": "Home",
       "problems": "Issues",
@@ -409,6 +453,8 @@
         "call_count": "Call count",
         "rating": "Rating",
         "reason": "Reason",
+        "kind": "Arrival or departure",
+        "occurred_at": "Mark time",
         "timezone": "Time zone",
         "default_language": "Default language",
         "plan": "Plan",
@@ -455,6 +501,11 @@
         "superadmin": "Superadmin",
         "qr": "QR code",
         "transfer": "Transfer",
+        "phone": "Phone",
+        "kiosk": "Kiosk",
+        "manual": "Manual",
+        "in": "Arrival",
+        "out": "Departure",
         "trial": "Trial",
         "basic": "Basic",
         "pro": "Pro",
@@ -527,7 +578,12 @@
           "deactivated": "User deactivated",
           "archived": "User archived",
           "restored": "User restored",
-          "totp_recovered": "Two-factor authentication recovered"
+          "totp_recovered": "Two-factor authentication recovered",
+          "profile_updated": "Profile name changed",
+          "password_changed": "Password changed",
+          "email_changed": "Superadmin email changed",
+          "photo_updated": "Profile photo updated",
+          "photo_removed": "Profile photo removed"
         },
         "organization": {
           "created": "Organization created",
@@ -538,6 +594,28 @@
         },
         "trial_request": {
           "updated": "Trial request updated"
+        },
+        "attendance": {
+          "employee_created": "Employee added to attendance",
+          "employee_updated": "Employee details updated",
+          "employee_archived": "Employee archived",
+          "employees_imported": "Employees imported from Excel",
+          "code_reset": "Employee personal code reset",
+          "face_enrolled": "Employee face enrolled",
+          "face_submitted": "Face enrollment request submitted",
+          "face_approved": "Face enrollment approved",
+          "face_rejected": "Face enrollment request rejected",
+          "face_removed": "Face data removed",
+          "settings_updated": "Attendance settings updated",
+          "enrollment_qr_rotated": "Face enrollment QR replaced",
+          "marked_in": "Arrival recorded",
+          "marked_out": "Departure recorded",
+          "manual_mark": "Attendance mark added manually",
+          "event_corrected": "Attendance mark corrected",
+          "kiosk_created": "Kiosk created",
+          "kiosk_paired": "Kiosk paired",
+          "kiosk_unpaired": "Kiosk disconnected",
+          "kiosk_archived": "Kiosk removed"
         }
       },
       "entities": {
@@ -550,7 +628,11 @@
         "tv_media": "Video or announcement",
         "user": "User",
         "organization": "Organization",
-        "trial_request": "Trial request"
+        "trial_request": "Trial request",
+        "attendance": "Attendance",
+        "attendance_employee": "Employee",
+        "attendance_event": "Attendance mark",
+        "attendance_kiosk": "Attendance kiosk"
       },
       "columns": {
         "time": "Time",
@@ -1029,6 +1111,7 @@
     "delete": "Delete",
     "cancel": "Cancel",
     "deleteDepartmentConfirm": "Delete department “{{name}}” and its entire schedule?",
+    "departmentHasEmployees": "This department has employees. Move them to another department or archive their records first.",
     "deleteScheduleConfirm": "Remove these appointment hours from the schedule?",
     "deleteMediaConfirm": "Remove “{{name}}” from the playlist?"
   },

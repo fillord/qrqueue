@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { ApiError } from '../../api/client'
 import { createRegistrarTicket, getRegistrarQueues } from '../../api/registrar'
@@ -94,7 +95,7 @@ export default function RegistrarPage() {
 
   return (
     <div className="registrar-page">
-      <h1>{t('registrar.title')}</h1>
+      <div className="registrar-page__attendance-head"><h1>{t('registrar.title')}</h1><Link to="/attendance/kiosk" target="_blank" rel="noreferrer">{t('admin.nav.attendance')}</Link></div>
 
       {error && <p className="registrar-page__error">{error}</p>}
 

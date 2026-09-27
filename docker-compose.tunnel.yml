@@ -1,6 +1,7 @@
-# Add after docker-compose.yml and docker-compose.override.yml for a temporary
-# Cloudflare Tunnel deployment on the same Mac. Docker Compose 2.24.4+ is needed
-# for !override. Only the frontend is reachable on the host, via loopback.
+# Add after docker-compose.yml and the host-specific override
+# (docker-compose.override.yml on Mac or docker-compose.oracle.yml on Oracle).
+# Docker Compose 2.24.4+ is needed for !override. Only the frontend is
+# reachable on the host, via loopback.
 services:
   frontend:
     ports: !override

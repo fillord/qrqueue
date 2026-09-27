@@ -1,0 +1,14 @@
+# Private staging deployment on an Oracle VM. Use with docker-compose.yml;
+# only SSH can reach the frontend through its loopback-bound port.
+services:
+  frontend:
+    ports: !override
+      - "127.0.0.1:8080:80"
+    labels: !override
+      - "traefik.enable=false"
+    networks: !override
+      - internal
+
+  backend:
+    environment:
+      COOKIE_SECURE: "true"

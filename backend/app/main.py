@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
 from app.api.admin import router as admin_router
+from app.api.attendance import router as attendance_router
 from app.api.auth import router as auth_router
 from app.api.operator import router as operator_router
 from app.api.public import router as public_router
@@ -34,7 +35,9 @@ SCHEDULE_WORKER_INTERVAL_SECONDS = 30
 
 async def bootstrap_superadmin() -> None:
     async with async_session_factory() as db:
-        result = await db.execute(select(User).where(User.email == settings.superadmin_email))
+        # A superadmin may change their email in their profile. Do not create a
+        # second superadmin with the bootstrap address on the next restart.
+        result = await db.execute(select(User).where(User.role == UserRole.superadmin))
         if result.scalar_one_or_none() is not None:
             return
 
@@ -100,6 +103,7 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(attendance_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
 app.include_router(public_router, prefix="/api")
 app.include_router(operator_router, prefix="/api")

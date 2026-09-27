@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPkMixin
@@ -28,3 +28,10 @@ class Organization(UUIDPkMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     video_large_upload_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    attendance_enrollment_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    attendance_enrollment_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    attendance_enrollment_on_kiosk: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    attendance_geo_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    attendance_geo_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    attendance_geo_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    attendance_geo_radius_m: Mapped[int | None] = mapped_column(Integer, nullable=True)

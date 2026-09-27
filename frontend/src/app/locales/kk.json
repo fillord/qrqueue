@@ -195,6 +195,45 @@
   "auth": {
     "logout": "Шығу"
   },
+  "profile": {
+    "open": "Профильді ашу",
+    "back": "← Кабинетке қайту",
+    "title": "Менің профилім",
+    "personal": "Жеке деректер",
+    "personalHint": "Атыңыз бен суретіңіз жеке кабинетте көрсетіледі.",
+    "fullName": "Аты-жөні",
+    "saveName": "Атын сақтау",
+    "nameSaved": "Аты сақталды",
+    "photoChoose": "Сурет жүктеу",
+    "photoRemove": "Суретті өшіру",
+    "photoHint": "JPG, PNG немесе WebP, 2 МБ дейін",
+    "photoSaved": "Сурет жаңартылды",
+    "photoRemoved": "Сурет өшірілді",
+    "security": "Құпиясөз және қауіпсіздік",
+    "securityHint": "Құпиясөз өзгерсе, басқа құрылғылардан шығасыз.",
+    "currentPassword": "Қазіргі құпиясөз",
+    "newPassword": "Жаңа құпиясөз",
+    "confirmPassword": "Жаңа құпиясөзді қайталаңыз",
+    "savePassword": "Құпиясөзді өзгерту",
+    "passwordSaved": "Құпиясөз өзгертілді",
+    "emailTitle": "Кіруге арналған пошта",
+    "emailHint": "Бұл мекенжай жүйеге кіру үшін қолданылады.",
+    "email": "Электрондық пошта",
+    "saveEmail": "Поштаны өзгерту",
+    "emailSaved": "Пошта өзгертілді",
+    "emailManagedByOrgAdmin": "Поштаны өзгерту үшін ұйым әкімшісіне хабарласыңыз.",
+    "emailManagedBySuperadmin": "Ұйым әкімшісінің поштасын тек суперадмин өзгерте алады.",
+    "errors": {
+      "generic": "Өзгерістер сақталмады. Қайталап көріңіз.",
+      "invalid_current_password": "Қазіргі құпиясөз қате.",
+      "password_unchanged": "Жаңа құпиясөз қазіргісінен өзгеше болуы керек.",
+      "passwordMismatch": "Жаңа құпиясөздер сәйкес емес.",
+      "email_in_use": "Бұл пошта қолданылып жатыр.",
+      "invalid_photo_type": "JPG, PNG немесе WebP файлын таңдаңыз.",
+      "photo_too_large": "Сурет 2 МБ-тан аспауы керек.",
+      "invalid_photo": "Сурет оқылмады. Басқа файлды таңдаңыз."
+    }
+  },
   "login": {
     "title": "Персонал үшін кіру",
     "email": "Email",
@@ -232,6 +271,11 @@
       "queues": "Кезектер",
       "cabinets": "Кабинеттер",
       "staff": "Қызметкерлер",
+      "attendance": "Жұмыс уақытын есепке алу",
+      "attendanceSummary": "Шолу",
+      "attendanceEmployees": "Қызметкерлер",
+      "attendanceEvents": "Белгілер",
+      "attendanceSettings": "Баптаулар және тіркеу орындары",
       "tvScreens": "ТВ-экрандар",
       "home": "Басты бет",
       "problems": "Мәселелер орталығы",
@@ -410,6 +454,8 @@
         "call_count": "Шақыру саны",
         "rating": "Бағасы",
         "reason": "Себебі",
+        "kind": "Келу немесе кету",
+        "occurred_at": "Белгі уақыты",
         "timezone": "Уақыт белдеуі",
         "default_language": "Әдепкі тіл",
         "plan": "Тариф",
@@ -456,6 +502,11 @@
         "superadmin": "Бас әкімші",
         "qr": "QR-код",
         "transfer": "Ауыстыру",
+        "phone": "Телефон",
+        "kiosk": "Тіркеу орны",
+        "manual": "Қолмен",
+        "in": "Келу",
+        "out": "Кету",
         "trial": "Сынақ",
         "basic": "Негізгі",
         "pro": "Про",
@@ -528,7 +579,12 @@
           "deactivated": "Пайдаланушы өшірілді",
           "archived": "Пайдаланушы мұрағатталды",
           "restored": "Пайдаланушы қалпына келтірілді",
-          "totp_recovered": "Екі факторлы қорғаныс қалпына келтірілді"
+          "totp_recovered": "Екі факторлы қорғаныс қалпына келтірілді",
+          "profile_updated": "Профильдегі аты өзгертілді",
+          "password_changed": "Құпиясөз өзгертілді",
+          "email_changed": "Суперадминнің поштасы өзгертілді",
+          "photo_updated": "Профиль суреті жаңартылды",
+          "photo_removed": "Профиль суреті өшірілді"
         },
         "organization": {
           "created": "Ұйым жасалды",
@@ -539,6 +595,28 @@
         },
         "trial_request": {
           "updated": "Сынақ өтінімі өзгертілді"
+        },
+        "attendance": {
+          "employee_created": "Қызметкер жұмыс уақытын есепке қосылды",
+          "employee_updated": "Қызметкер деректері өзгертілді",
+          "employee_archived": "Қызметкер мұрағатталды",
+          "employees_imported": "Қызметкерлер Excel файлынан импортталды",
+          "code_reset": "Қызметкердің жеке коды жаңартылды",
+          "face_enrolled": "Қызметкердің беті тіркелді",
+          "face_submitted": "Бетті тіркеу өтінімі жіберілді",
+          "face_approved": "Бетті тіркеу расталды",
+          "face_rejected": "Бетті тіркеу өтінімі қабылданбады",
+          "face_removed": "Бет деректері жойылды",
+          "settings_updated": "Жұмыс уақытын есепке алу баптаулары өзгертілді",
+          "enrollment_qr_rotated": "Бетті тіркеу QR-коды ауыстырылды",
+          "marked_in": "Келу тіркелді",
+          "marked_out": "Кету тіркелді",
+          "manual_mark": "Белгі қолмен қосылды",
+          "event_corrected": "Белгі түзетілді",
+          "kiosk_created": "Тіркеу орны құрылды",
+          "kiosk_paired": "Тіркеу орны қосылды",
+          "kiosk_unpaired": "Тіркеу орны ажыратылды",
+          "kiosk_archived": "Тіркеу орны жойылды"
         }
       },
       "entities": {
@@ -551,7 +629,11 @@
         "tv_media": "Бейне не хабарландыру",
         "user": "Пайдаланушы",
         "organization": "Ұйым",
-        "trial_request": "Сынақ өтінімі"
+        "trial_request": "Сынақ өтінімі",
+        "attendance": "Жұмыс уақытын есепке алу",
+        "attendance_employee": "Қызметкер",
+        "attendance_event": "Белгі",
+        "attendance_kiosk": "Тіркеу орны"
       },
       "columns": {
         "time": "Уақыты",
@@ -1029,6 +1111,7 @@
     "delete": "Жою",
     "cancel": "Болдырмау",
     "deleteDepartmentConfirm": "«{{name}}» бөлімін және оның бүкіл кестесін жою керек пе?",
+    "departmentHasEmployees": "Бұл бөлімде қызметкерлер бар. Алдымен оларды басқа бөлімге ауыстырыңыз немесе мұрағаттаңыз.",
     "deleteScheduleConfirm": "Осы қабылдау уақытын кестеден жою керек пе?",
     "deleteMediaConfirm": "«{{name}}» плейлистен жою керек пе?"
   },

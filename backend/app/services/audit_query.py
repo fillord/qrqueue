@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
+from app.models.attendance import Employee
 from app.models.cabinet import Cabinet
 from app.models.department import Department, DepartmentScheduleItem
 from app.models.queue import Queue
@@ -75,6 +76,7 @@ async def list_audit_logs(
         "tv_screen": (TVScreen, TVScreen.name),
         "tv_media": (TVMedia, TVMedia.title),
         "trial_request": (TrialRequest, TrialRequest.organization),
+        "attendance_employee": (Employee, Employee.full_name),
     }
     names: dict[str, dict[uuid.UUID, str]] = {}
     for entity_type, (model, label_column) in named_models.items():
@@ -114,7 +116,8 @@ async def list_audit_logs(
             return ticket.display_number if ticket else payload.get("display_number")
         snapshot_key = {"organization": "name", "user": "full_name", "queue": "name",
                         "cabinet": "label", "department": "name", "department_schedule_item": "doctor_name",
-                        "tv_screen": "name", "tv_media": "title"}.get(entry.entity_type)
+                        "tv_screen": "name", "tv_media": "title",
+                        "attendance_employee": "full_name", "attendance_event": "full_name"}.get(entry.entity_type)
         if snapshot_key and isinstance(payload.get(snapshot_key), str):
             return payload[snapshot_key]
         if entry.entity_type == "queue":

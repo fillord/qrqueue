@@ -27,6 +27,8 @@ class User(UUIDPkMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    has_photo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    photo_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
 
     @property
     def totp_enabled(self) -> bool:

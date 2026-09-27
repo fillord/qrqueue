@@ -8,6 +8,7 @@ export function apiErrorMessage(err: unknown, t: TFunction): string {
     if (err.code === 'attached_cabinets') return t('crud.attachedCabinets')
     if (err.code === 'archived_queue') return t('crud.archivedQueue')
     if (err.code === 'department_exists') return t('signage.departmentExists')
+    if (err.code === 'department_has_employees') return t('signage.departmentHasEmployees')
     if (err.code === 'media_too_large' || err.code === 'media_chunk_too_large') return t('signage.fileTooLarge')
     if (err.code === 'invalid_media_format' || err.code === 'invalid_media_kind') return t('signage.badFormat')
     if (err.code === 'upload_incomplete' || err.code === 'invalid_chunk_size') return t('signage.uploadIncomplete')

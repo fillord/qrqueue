@@ -15,8 +15,13 @@ import AdminQueueSchedulePage from '../pages/admin/AdminQueueSchedulePage'
 import AdminQueuesPage from '../pages/admin/AdminQueuesPage'
 import AdminTvScreensPage from '../pages/admin/AdminTvScreensPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
+import AdminAttendancePage from '../pages/admin/AdminAttendancePage'
+import AttendanceKioskPage from '../pages/attendance/AttendanceKioskPage'
+import AttendancePhonePage from '../pages/attendance/AttendancePhonePage'
+import AttendanceEnrollPage from '../pages/attendance/AttendanceEnrollPage'
 import LandingPage from '../pages/landing/LandingPage'
 import LoginPage from '../pages/login/LoginPage'
+import ProfilePage from '../pages/profile/ProfilePage'
 import CabinetSelectPage from '../pages/operator/CabinetSelectPage'
 import OperatorQueuePage from '../pages/operator/OperatorQueuePage'
 import RegistrarPage from '../pages/registrar/RegistrarPage'
@@ -42,12 +47,16 @@ export default function AppRouter() {
       <Route path="/tv/pair" element={<TvPairPage />} />
       <Route path="/tv" element={<TvPage />} />
       <Route path="/tv/preview/:id" element={<ProtectedRoute role={['org_admin', 'superadmin']}><TvPreviewPage /></ProtectedRoute>} />
+      <Route path="/attendance/kiosk" element={<AttendanceKioskPage />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/q" element={<ScanPage />} />
         <Route path="/t/:id" element={<TicketPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<ProtectedRoute role={['superadmin', 'org_admin', 'operator', 'registrar']}><ProfilePage /></ProtectedRoute>} />
+        <Route path="/attendance/phone" element={<AttendancePhonePage />} />
+        <Route path="/attendance/enroll" element={<AttendanceEnrollPage />} />
         <Route
           path="/operator"
           element={
@@ -91,6 +100,10 @@ export default function AppRouter() {
           <Route path="queues/:id/schedule" element={<AdminQueueSchedulePage />} />
           <Route path="cabinets" element={<AdminCabinetsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="attendance" element={<AdminAttendancePage section="summary" />} />
+          <Route path="attendance/employees" element={<AdminAttendancePage section="employees" />} />
+          <Route path="attendance/events" element={<AdminAttendancePage section="events" />} />
+          <Route path="attendance/settings" element={<AdminAttendancePage section="settings" />} />
           <Route path="tv-screens" element={<AdminTvScreensPage />} />
           <Route path="signage" element={<Suspense fallback={<div className="spinner" aria-hidden="true" />}><AdminSignagePage /></Suspense>} />
         </Route>

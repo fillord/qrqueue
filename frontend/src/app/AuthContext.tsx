@@ -16,6 +16,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<LoginOutcome>
   completeTotp: (code: string) => Promise<User>
   logout: () => Promise<void>
+  refreshUser: () => Promise<User>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <AuthContext.Provider value={{ user, status, login, completeTotp, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, status, login, completeTotp, logout, refreshUser: finishLogin }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {

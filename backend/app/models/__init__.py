@@ -10,12 +10,15 @@ from app.models.ticket import Ticket
 from app.models.tv_screen import TVScreen
 from app.models.tv_media import TVMedia, TVMediaChunk
 from app.models.user import User
+from app.models.user_profile_photo import UserProfilePhoto
+from app.models.attendance import Employee, AttendanceEvent, AttendanceKiosk
 
 __all__ = [
     "Base",
     "TrialRequest",
     "Organization",
     "User",
+    "UserProfilePhoto",
     "Queue",
     "QueueSchedule",
     "Cabinet",
@@ -29,4 +32,7 @@ __all__ = [
     "TVMedia",
     "TVMediaChunk",
     "AuditLog",
+    "Employee",
+    "AttendanceEvent",
+    "AttendanceKiosk",
 ]

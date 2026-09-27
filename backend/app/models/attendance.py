@@ -1,0 +1,56 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base, UUIDPkMixin
+
+
+class Employee(UUIDPkMixin, Base):
+    __tablename__ = "attendance_employees"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    department: Mapped[str | None] = mapped_column(Text, nullable=True)
+    department_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True, index=True)
+    position: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True)
+    code_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    code_length: Mapped[int] = mapped_column(default=4, nullable=False)
+    face_template: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    face_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pending_face_template: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    pending_face_photo: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    pending_face_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pending_face_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+class AttendanceEvent(UUIDPkMixin, Base):
+    __tablename__ = "attendance_events"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("attendance_employees.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(3), nullable=False)  # in/out
+    source: Mapped[str] = mapped_column(String(10), nullable=False)  # phone/kiosk/manual
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    corrected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    correction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    corrected_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class AttendanceKiosk(UUIDPkMixin, Base):
+    __tablename__ = "attendance_kiosks"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    pairing_code: Mapped[str | None] = mapped_column(String(6), nullable=True, unique=True)
+    token_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily verified PostgreSQL backup for qrqueue
+
+[Timer]
+OnCalendar=*-*-* 20:00:00 UTC
+Persistent=true
+Unit=qrqueue-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -5,14 +5,21 @@ export class ApiError extends Error {
   code: string
   ticketId?: string
   row?: number
+  lastKind?: 'in' | 'out'
+  retryAt?: string
+  employeeName?: string
 
-  constructor(status: number, code: string, ticketId?: string, row?: number) {
+  constructor(status: number, code: string, ticketId?: string, row?: number,
+    attendance?: { lastKind?: 'in' | 'out'; retryAt?: string; employeeName?: string }) {
     super(code)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.ticketId = ticketId
     this.row = row
+    this.lastKind = attendance?.lastKind
+    this.retryAt = attendance?.retryAt
+    this.employeeName = attendance?.employeeName
   }
 }
 
@@ -20,7 +27,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-async function parseErrorDetail(response: Response): Promise<{ code: string; ticketId?: string }> {
+async function parseErrorDetail(response: Response): Promise<{ code: string; ticketId?: string; row?: number; lastKind?: 'in' | 'out'; retryAt?: string; employeeName?: string }> {
   try {
     const body: unknown = await response.json()
     const detail = isRecord(body) ? body.detail : undefined
@@ -31,7 +38,11 @@ async function parseErrorDetail(response: Response): Promise<{ code: string; tic
     if (isRecord(detail)) {
       const code = typeof detail.code === 'string' ? detail.code : 'unknown_error'
       const ticketId = typeof detail.ticket_id === 'string' ? detail.ticket_id : undefined
-      return { code, ticketId }
+      const row = typeof detail.row === 'number' ? detail.row : undefined
+      const lastKind = detail.last_kind === 'in' || detail.last_kind === 'out' ? detail.last_kind : undefined
+      const retryAt = typeof detail.retry_at === 'string' ? detail.retry_at : undefined
+      const employeeName = typeof detail.employee_name === 'string' ? detail.employee_name : undefined
+      return { code, ticketId, row, lastKind, retryAt, employeeName }
     }
   } catch {
     // response body wasn't JSON — fall through to the generic code
@@ -47,11 +58,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    const { code, ticketId } = await parseErrorDetail(response)
+    const { code, ticketId, row, lastKind, retryAt, employeeName } = await parseErrorDetail(response)
     if (response.status === 401) {
       window.dispatchEvent(new Event('api:unauthorized'))
     }
-    throw new ApiError(response.status, code, ticketId)
+    throw new ApiError(response.status, code, ticketId, row, { lastKind, retryAt, employeeName })
   }
 
   if (response.status === 204) {
@@ -83,6 +94,14 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method: 'PUT',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+}
+
+export function apiPutBinary<T>(path: string, body: Blob): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    body,
+    headers: { 'Content-Type': body.type },
   })
 }
 

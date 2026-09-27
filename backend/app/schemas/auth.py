@@ -34,5 +34,21 @@ class UserOut(BaseModel):
     role: UserRole
     organization_id: uuid.UUID | None
     totp_enabled: bool = False
+    has_photo: bool = False
+    photo_revision: int = 0
 
     model_config = {"from_attributes": True}
+
+
+class ProfileNameUpdate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
+
+
+class ProfilePasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ProfileEmailUpdate(BaseModel):
+    current_password: str
+    email: EmailStr

@@ -273,6 +273,8 @@ export interface TvScreen {
   selected_queue_ids: string[]
   cabinet_selection_mode: 'all' | 'selected'
   selected_cabinet_ids: string[]
+  department_selection_mode: 'all' | 'selected'
+  selected_department_ids: string[]
 }
 
 export interface Organization {

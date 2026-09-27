@@ -4,14 +4,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import i18n from '../src/app/i18n'
 import type { TvScreen } from '../src/api/types'
 import { createTvScreen, getAdminCabinets, getAdminQueues, getTvScreens, unpairTvScreen, updateTvScreen } from '../src/api/admin'
-import { listMedia } from '../src/api/signage'
+import { listDepartments, listMedia } from '../src/api/signage'
 import AdminTvScreensPage from '../src/pages/admin/AdminTvScreensPage'
 
 vi.mock('../src/api/admin', () => ({
   createTvScreen: vi.fn(), deleteTvScreen: vi.fn(), getAdminCabinets: vi.fn(), getAdminQueues: vi.fn(),
   getTvScreens: vi.fn(), unpairTvScreen: vi.fn(), updateTvScreen: vi.fn(),
 }))
-vi.mock('../src/api/signage', () => ({ listMedia: vi.fn() }))
+vi.mock('../src/api/signage', () => ({ listDepartments: vi.fn(), listMedia: vi.fn() }))
 
 afterEach(cleanup)
 beforeEach(async () => {
@@ -21,7 +21,9 @@ beforeEach(async () => {
     pairing_code: null, language: 'en', last_seen_at: null, display_mode: 'media',
     slide_seconds: 15, ads_enabled: false, media_playlist_mode: 'all', selected_media_ids: [],
     queue_selection_mode: 'all', selected_queue_ids: [], cabinet_selection_mode: 'all', selected_cabinet_ids: [],
+    department_selection_mode: 'all', selected_department_ids: [],
   }
+  vi.mocked(listDepartments).mockResolvedValue([])
   vi.mocked(getAdminQueues).mockResolvedValue([])
   vi.mocked(getAdminCabinets).mockResolvedValue([])
   vi.mocked(listMedia).mockResolvedValue([
@@ -55,6 +57,7 @@ it('lets an admin select several queues and cabinets for a hall display', async 
     pairing_code: null, language: 'en', last_seen_at: null, display_mode: 'queue',
     slide_seconds: 15, ads_enabled: false, media_playlist_mode: 'all', selected_media_ids: [],
     queue_selection_mode: 'all', selected_queue_ids: [], cabinet_selection_mode: 'all', selected_cabinet_ids: [],
+    department_selection_mode: 'all', selected_department_ids: [],
   }
   vi.mocked(getTvScreens).mockImplementation(async () => [{ ...tv }])
   vi.mocked(updateTvScreen).mockImplementation(async (_id, changes) => {
@@ -123,6 +126,7 @@ it('shows connection state and last signal for TV screens', async () => {
     display_mode: 'media', slide_seconds: 15, ads_enabled: false,
     media_playlist_mode: 'all', selected_media_ids: [], queue_selection_mode: 'all',
     selected_queue_ids: [], cabinet_selection_mode: 'all', selected_cabinet_ids: [],
+    department_selection_mode: 'all', selected_department_ids: [],
   }
   vi.mocked(getTvScreens).mockResolvedValue([
     base,
@@ -144,6 +148,7 @@ it('unpairs a TV without removing its screen settings and shows the new code', a
     display_mode: 'schedule', slide_seconds: 20, ads_enabled: false,
     media_playlist_mode: 'all', selected_media_ids: [], queue_selection_mode: 'all',
     selected_queue_ids: [], cabinet_selection_mode: 'all', selected_cabinet_ids: [],
+    department_selection_mode: 'all', selected_department_ids: [],
   }
   vi.mocked(getTvScreens).mockImplementation(async () => [{ ...paired }])
   vi.mocked(unpairTvScreen).mockImplementation(async () => {
@@ -160,4 +165,39 @@ it('unpairs a TV without removing its screen settings and shows the new code', a
   expect(within(screen.getByRole('article')).getByText('Department schedules')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Unpair TV' })).toBeNull()
   confirm.mockRestore()
+})
+
+it('lets an admin exclude internal departments from a schedule TV', async () => {
+  const tv: TvScreen = {
+    id: 'screen-schedule', organization_id: 'org-1', queue_id: null, name: 'Weekly schedule',
+    pairing_code: null, language: 'ru', last_seen_at: null, display_mode: 'schedule',
+    slide_seconds: 15, ads_enabled: false, media_playlist_mode: 'all', selected_media_ids: [],
+    queue_selection_mode: 'all', selected_queue_ids: [], cabinet_selection_mode: 'all', selected_cabinet_ids: [],
+    department_selection_mode: 'all', selected_department_ids: [],
+  }
+  vi.mocked(listDepartments).mockResolvedValue([
+    { id: 'clinical', organization_id: 'org-1', name: 'Cardiology', sort_order: 0, is_active: true },
+    { id: 'internal', organization_id: 'org-1', name: 'Administration', sort_order: 1, is_active: true },
+  ])
+  vi.mocked(getTvScreens).mockImplementation(async () => [{ ...tv }])
+  vi.mocked(updateTvScreen).mockImplementation(async (_id, changes) => {
+    Object.assign(tv, changes)
+    return { ...tv }
+  })
+
+  render(<AdminTvScreensPage />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
+  fireEvent.click(screen.getByRole('radio', { name: 'Show only checked departments' }))
+  await waitFor(() => expect(updateTvScreen).toHaveBeenCalledWith('screen-schedule', {
+    department_selection_mode: 'selected', selected_department_ids: ['clinical', 'internal'],
+  }, undefined))
+  const options = within(screen.getByRole('group', { name: 'Departments on this TV' }))
+  const internal = await options.findByRole<HTMLInputElement>('checkbox', { name: 'Administration' })
+  await waitFor(() => expect(internal.disabled).toBe(false))
+  fireEvent.click(internal)
+  await waitFor(() => expect(updateTvScreen).toHaveBeenCalledWith('screen-schedule', {
+    selected_department_ids: ['clinical'],
+  }, undefined))
+  expect((await options.findByRole<HTMLInputElement>('checkbox', { name: 'Cardiology' })).checked).toBe(true)
+  expect((await options.findByRole<HTMLInputElement>('checkbox', { name: 'Administration' })).checked).toBe(false)
 })

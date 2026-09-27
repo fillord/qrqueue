@@ -137,6 +137,65 @@ async def test_department_schedule_is_tenant_scoped_and_visible_only_on_schedule
     assert (await client.patch(f"/api/admin/tv-screens/{screen_id}", json={"display_mode": "queue"})).status_code == 404
 
 
+async def test_schedule_tv_shows_only_selected_departments(client, make_user, make_organization):
+    org = await make_organization(name="Schedule Filter Clinic")
+    other_org = await make_organization(name="Other Schedule Clinic")
+    admin, password = await make_user(
+        email="schedule-filter-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    other_admin, other_password = await make_user(
+        email="other-schedule-admin@example.com", role=UserRole.org_admin, organization_id=other_org.id
+    )
+    await login(client, admin.email, password)
+    clinical = (await client.post("/api/admin/departments", json={"name": "Кардиология"})).json()["id"]
+    internal = (await client.post("/api/admin/departments", json={"name": "АХЧ"})).json()["id"]
+    await login(client, other_admin.email, other_password)
+    foreign = (await client.post("/api/admin/departments", json={"name": "Чужое отделение"})).json()["id"]
+    await login(client, admin.email, password)
+
+    screen_response = await client.post("/api/admin/tv-screens", json={
+        "name": "Расписание", "display_mode": "schedule",
+    })
+    assert screen_response.status_code == 201, screen_response.text
+    screen = screen_response.json()
+    assert screen["department_selection_mode"] == "all"
+    token = (await client.post("/api/tv/pair", json={"code": screen["pairing_code"]})).json()["device_token"]
+
+    async def shown_departments():
+        response = await client.get("/api/tv/state", headers={"X-Device-Token": token})
+        assert response.status_code == 200, response.text
+        return {item["id"] for item in response.json()["departments"]}
+
+    assert await shown_departments() == {clinical, internal}
+    selected = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={
+        "department_selection_mode": "selected", "selected_department_ids": [clinical, clinical],
+    })
+    assert selected.status_code == 200, selected.text
+    assert selected.json()["selected_department_ids"] == [clinical]
+    assert await shown_departments() == {clinical}
+    preview = await client.get(f"/api/admin/tv-screens/{screen['id']}/preview")
+    assert {item["id"] for item in preview.json()["departments"]} == {clinical}
+
+    bad_update = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={
+        "selected_department_ids": [foreign],
+    })
+    assert bad_update.status_code == 404
+    assert await shown_departments() == {clinical}
+    assert (await client.post("/api/admin/tv-screens", json={
+        "name": "Чужой", "display_mode": "schedule", "department_selection_mode": "selected",
+        "selected_department_ids": [foreign],
+    })).status_code == 404
+
+    empty = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={
+        "selected_department_ids": [],
+    })
+    assert empty.status_code == 200 and await shown_departments() == set()
+    restored = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={
+        "department_selection_mode": "all",
+    })
+    assert restored.status_code == 200 and await shown_departments() == {clinical, internal}
+
+
 async def test_media_upload_limit_streaming_and_ad_opt_in(client, make_user, make_organization):
     org = await make_organization(name="Media Clinic")
     admin, password = await make_user(

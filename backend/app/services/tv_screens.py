@@ -9,6 +9,7 @@ from app.models.enums import AuditActorType
 from app.models.organization import Organization
 from app.models.queue import Queue
 from app.models.cabinet import Cabinet
+from app.models.department import Department
 from app.models.tv_screen import TVScreen
 from app.models.tv_media import TVMedia
 from app.models.user import User
@@ -53,6 +54,17 @@ async def _checked_cabinet_ids(db: AsyncSession, organization_id, cabinet_ids):
     return selected
 
 
+async def _checked_department_ids(db: AsyncSession, organization_id, department_ids):
+    selected = list(dict.fromkeys(department_ids))
+    if selected:
+        found = (await db.scalars(select(Department.id).where(
+            Department.organization_id == organization_id, Department.id.in_(selected)
+        ))).all()
+        if len(found) != len(selected):
+            raise ServiceError("department_not_found", 404)
+    return selected
+
+
 async def _generate_pairing_code(db: AsyncSession) -> str:
     for _ in range(20):
         code = "".join(secrets.choice(_PAIRING_CODE_ALPHABET) for _ in range(_PAIRING_CODE_LENGTH))
@@ -69,6 +81,7 @@ async def create_tv_screen(
     selected_media_ids = await _checked_media_ids(db, organization.id, payload.selected_media_ids)
     selected_queue_ids = await _checked_queue_ids(db, organization.id, payload.selected_queue_ids)
     selected_cabinet_ids = await _checked_cabinet_ids(db, organization.id, payload.selected_cabinet_ids)
+    selected_department_ids = await _checked_department_ids(db, organization.id, payload.selected_department_ids)
     screen = TVScreen(
         organization_id=organization.id,
         queue_id=payload.queue_id if payload.display_mode == "queue" else None,
@@ -84,6 +97,8 @@ async def create_tv_screen(
         selected_queue_ids=selected_queue_ids,
         cabinet_selection_mode=payload.cabinet_selection_mode,
         selected_cabinet_ids=selected_cabinet_ids,
+        department_selection_mode=payload.department_selection_mode,
+        selected_department_ids=selected_department_ids,
     )
     db.add(screen)
     await db.flush()
@@ -102,7 +117,9 @@ async def create_tv_screen(
                  "queue_selection_mode": payload.queue_selection_mode,
                  "selected_queue_ids": [str(item) for item in selected_queue_ids],
                  "cabinet_selection_mode": payload.cabinet_selection_mode,
-                 "selected_cabinet_ids": [str(item) for item in selected_cabinet_ids]},
+                 "selected_cabinet_ids": [str(item) for item in selected_cabinet_ids],
+                 "department_selection_mode": payload.department_selection_mode,
+                 "selected_department_ids": [str(item) for item in selected_department_ids]},
     )
     return screen
 
@@ -188,12 +205,16 @@ async def update_tv_screen(db, screen, payload, actor):
         changes["selected_cabinet_ids"] = await _checked_cabinet_ids(
             db, screen.organization_id, changes["selected_cabinet_ids"]
         )
+    if "selected_department_ids" in changes:
+        changes["selected_department_ids"] = await _checked_department_ids(
+            db, screen.organization_id, changes["selected_department_ids"]
+        )
     for field, value in changes.items():
         setattr(screen, field, value)
     await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
                      action="tv_screen.updated", entity_type="tv_screen",
                      entity_id=screen.id, organization_id=screen.organization_id,
-                     payload={key: [str(item) for item in value] if key in ("selected_media_ids", "selected_queue_ids", "selected_cabinet_ids")
+                     payload={key: [str(item) for item in value] if key in ("selected_media_ids", "selected_queue_ids", "selected_cabinet_ids", "selected_department_ids")
                               else str(value) if key == "queue_id" and value is not None else value
                               for key, value in changes.items()})
     defer_event(db, organization_channel(screen.organization_id), "tv_screen.updated", screen_id=str(screen.id))

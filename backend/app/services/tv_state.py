@@ -103,10 +103,14 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
     departments_out = []
     media_out = []
     if screen.display_mode == "schedule":
+        selected_department_ids = (set(screen.selected_department_ids or [])
+                                   if screen.department_selection_mode == "selected" else None)
         departments = (await db.scalars(select(Department)
                                         .where(Department.organization_id == screen.organization_id,
                                                Department.is_active.is_(True))
                                         .order_by(Department.sort_order, Department.name))).all()
+        if selected_department_ids is not None:
+            departments = [department for department in departments if department.id in selected_department_ids]
         entries_by_department = {department.id: [] for department in departments}
         if departments:
             entries = (await db.scalars(select(DepartmentScheduleItem)

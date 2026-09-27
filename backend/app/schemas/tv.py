@@ -22,6 +22,8 @@ class TVScreenCreate(BaseModel):
     selected_queue_ids: list[uuid.UUID] = Field(default_factory=list, max_length=500)
     cabinet_selection_mode: Literal["all", "selected"] = "all"
     selected_cabinet_ids: list[uuid.UUID] = Field(default_factory=list, max_length=500)
+    department_selection_mode: Literal["all", "selected"] = "all"
+    selected_department_ids: list[uuid.UUID] = Field(default_factory=list, max_length=500)
 
 
 class TVScreenUpdate(PatchModel):
@@ -38,6 +40,8 @@ class TVScreenUpdate(PatchModel):
     selected_queue_ids: list[uuid.UUID] | None = Field(default=None, max_length=500)
     cabinet_selection_mode: Literal["all", "selected"] | None = None
     selected_cabinet_ids: list[uuid.UUID] | None = Field(default=None, max_length=500)
+    department_selection_mode: Literal["all", "selected"] | None = None
+    selected_department_ids: list[uuid.UUID] | None = Field(default=None, max_length=500)
 
 
 class TVScreenOut(BaseModel):
@@ -57,6 +61,8 @@ class TVScreenOut(BaseModel):
     selected_queue_ids: list[uuid.UUID]
     cabinet_selection_mode: Literal["all", "selected"]
     selected_cabinet_ids: list[uuid.UUID]
+    department_selection_mode: Literal["all", "selected"]
+    selected_department_ids: list[uuid.UUID]
 
     model_config = {"from_attributes": True}
 

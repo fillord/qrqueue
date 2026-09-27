@@ -35,3 +35,5 @@ class TVScreen(UUIDPkMixin, Base):
     selected_queue_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)
     cabinet_selection_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="all")
     selected_cabinet_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)
+    department_selection_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="all")
+    selected_department_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=False, default=list)

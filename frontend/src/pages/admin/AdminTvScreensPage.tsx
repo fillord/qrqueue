@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 
 import { createTvScreen, updateTvScreen, deleteTvScreen, getAdminCabinets, getAdminQueues, getTvScreens, unpairTvScreen } from '../../api/admin'
 import type { AdminQueue, Cabinet, TvScreen } from '../../api/types'
-import { listMedia } from '../../api/signage'
-import type { MediaAsset } from '../../api/signage'
+import { listDepartments, listMedia } from '../../api/signage'
+import type { Department, MediaAsset } from '../../api/signage'
 import { tvConnectionStatus } from '../../lib/tvConnection'
 
 /**
@@ -23,6 +23,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
   const [queues, setQueues] = useState<AdminQueue[]>([])
   const [cabinets, setCabinets] = useState<Cabinet[]>([])
   const [media, setMedia] = useState<MediaAsset[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
   const [language, setLanguage] = useState<TvScreen['language']>('ru')
   const [displayMode, setDisplayMode] = useState<TvScreen['display_mode']>('queue')
   const [name, setName] = useState('')
@@ -37,16 +38,18 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
   async function load() {
     setLoadError(false)
     try {
-    const [screenList, queueList, cabinetList, mediaList] = await Promise.all([
+    const [screenList, queueList, cabinetList, mediaList, departmentList] = await Promise.all([
       getTvScreens(organizationId),
       getAdminQueues(organizationId),
       getAdminCabinets(organizationId),
       listMedia(organizationId),
+      listDepartments(organizationId),
     ])
     setScreens(screenList)
     setQueues(queueList)
     setCabinets(cabinetList)
     setMedia(mediaList)
+    setDepartments(departmentList)
     } catch { setLoadError(true) }
   }
 
@@ -110,7 +113,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
     finally { setSubmitting(false) }
   }
 
-  async function changeScreen(screen: TvScreen, payload: Partial<Pick<TvScreen, 'display_mode' | 'slide_seconds' | 'ads_enabled' | 'media_playlist_mode' | 'selected_media_ids' | 'queue_id' | 'queue_selection_mode' | 'selected_queue_ids' | 'cabinet_selection_mode' | 'selected_cabinet_ids'>>) {
+  async function changeScreen(screen: TvScreen, payload: Partial<Pick<TvScreen, 'display_mode' | 'slide_seconds' | 'ads_enabled' | 'media_playlist_mode' | 'selected_media_ids' | 'queue_id' | 'queue_selection_mode' | 'selected_queue_ids' | 'cabinet_selection_mode' | 'selected_cabinet_ids' | 'department_selection_mode' | 'selected_department_ids'>>) {
     setSubmitting(true)
     try { await updateTvScreen(screen.id, payload, organizationId); await load() }
     catch { setError(true) }
@@ -242,6 +245,17 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                     </div>}
                   </fieldset>
                 </div>}
+                {screen.display_mode === 'schedule' && <fieldset className="admin-tv-screens__playlist">
+                  <legend>{t('adminTv.scheduleDepartments.title')}</legend>
+                  <label><input type="radio" name={`departments-${screen.id}`} checked={screen.department_selection_mode === 'all'} disabled={submitting} onChange={() => void changeScreen(screen, { department_selection_mode: 'all' })} />{t('adminTv.scheduleDepartments.all')}</label>
+                  <label><input type="radio" name={`departments-${screen.id}`} checked={screen.department_selection_mode === 'selected'} disabled={submitting} onChange={() => void changeScreen(screen, { department_selection_mode: 'selected', selected_department_ids: screen.selected_department_ids.length ? screen.selected_department_ids : departments.filter((department) => department.is_active).map((department) => department.id) })} />{t('adminTv.scheduleDepartments.selected')}</label>
+                  {screen.department_selection_mode === 'selected' && <div className="admin-tv-screens__media-options">
+                    {departments.filter((department) => department.is_active).length === 0 ? <p>{t('adminTv.scheduleDepartments.empty')}</p> : departments.filter((department) => department.is_active).map((department) => (
+                      <label key={department.id}><input type="checkbox" checked={screen.selected_department_ids.includes(department.id)} disabled={submitting} onChange={() => void changeScreen(screen, { selected_department_ids: screen.selected_department_ids.includes(department.id) ? screen.selected_department_ids.filter((id) => id !== department.id) : [...screen.selected_department_ids, department.id] })} />{department.name}</label>
+                    ))}
+                    <small>{t('adminTv.scheduleDepartments.hint')}</small>
+                  </div>}
+                </fieldset>}
                 {screen.display_mode === 'media' && <fieldset className="admin-tv-screens__playlist">
                   <legend>{t('adminTv.playlist.title')}</legend>
                   <label><input type="radio" name={`playlist-${screen.id}`} checked={screen.media_playlist_mode === 'all'} disabled={submitting} onChange={() => void changeScreen(screen, { media_playlist_mode: 'all' })} />{t('adminTv.playlist.all')}</label>

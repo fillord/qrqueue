@@ -9,10 +9,10 @@ const VISIBLE_FIELDS = [
   'default_language', 'plan', 'trial_ends_at', 'one_ticket_per_org',
   'video_large_upload_enabled', 'ticket_prefix', 'geo_radius_m',
   'presence_timeout_min', 'daily_ticket_limit', 'slide_seconds', 'ads_enabled',
-  'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode',
+  'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode', 'department_selection_mode',
   'doctor_name', 'service_name', 'room', 'weekday', 'starts_at', 'ends_at',
   'departments', 'created_departments', 'schedule_items', 'sort_order',
-  'selected_media_ids', 'selected_queue_ids', 'selected_cabinet_ids',
+  'selected_media_ids', 'selected_queue_ids', 'selected_cabinet_ids', 'selected_department_ids',
   'kind', 'occurred_at',
   'schedule', 'fields', 'password', 'reset_totp',
 ] as const
@@ -27,7 +27,7 @@ function AuditValue({ field, value }: { field: string; value: unknown }) {
     return <>{t('admin.auditLog.itemsCount', { count: value.length })}</>
   }
   if (typeof value === 'string') {
-    if (['role', 'status', 'source', 'kind', 'plan', 'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode'].includes(field)) {
+    if (['role', 'status', 'source', 'kind', 'plan', 'media_playlist_mode', 'queue_selection_mode', 'cabinet_selection_mode', 'department_selection_mode'].includes(field)) {
       return <>{t(`admin.auditLog.values.${value}`, { defaultValue: value })}</>
     }
     return <>{value}</>

@@ -470,6 +470,7 @@
         "media_playlist_mode": "Playlist",
         "queue_selection_mode": "Queue selection",
         "cabinet_selection_mode": "Room selection",
+        "department_selection_mode": "TV department selection",
         "doctor_name": "Doctor",
         "service_name": "Specialty",
         "room": "Room",
@@ -483,6 +484,7 @@
         "selected_media_ids": "Selected media",
         "selected_queue_ids": "Selected queues",
         "selected_cabinet_ids": "Selected rooms",
+        "selected_department_ids": "Selected departments",
         "schedule": "Schedule intervals",
         "fields": "Changed fields",
         "password": "Password",
@@ -1018,6 +1020,13 @@
       "selected": "Repeat only checked media",
       "empty": "Upload and activate a video or announcement first.",
       "adsHint": "Ads appear on this TV only when Show ads is enabled."
+    },
+    "scheduleDepartments": {
+      "title": "Departments on this TV",
+      "all": "Show all active departments",
+      "selected": "Show only checked departments",
+      "empty": "No active departments yet.",
+      "hint": "Unchecked departments will not appear in this TV's schedule. With none checked, the screen shows an empty schedule message."
     }
   },
   "language": {

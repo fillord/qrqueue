@@ -105,6 +105,7 @@ it('lets an admin switch a media TV to a repeating selection and check clips', a
   expect(screen.queryByRole('radio', { name: 'Repeat only checked media' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Show preview' })).toBeNull()
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
+  expect(screen.queryByRole('spinbutton', { name: 'Seconds per screen' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Show preview' }))
   expect(screen.getByTitle('Preview: Lobby media').getAttribute('src')).toBe('/tv/preview/screen-1')
   fireEvent.click(screen.getByRole('button', { name: 'Hide preview' }))

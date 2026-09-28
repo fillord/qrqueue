@@ -87,6 +87,8 @@ it('rotates media independently and never overlays its title', () => {
   expect(video?.getAttribute('src')).toBe('/api/tv/media/film')
   expect(container.querySelector('video.tv-media__backdrop')?.getAttribute('src')).toBe('/api/tv/media/film')
   expect(screen.queryByText('Ролик')).toBeNull()
+  act(() => vi.advanceTimersByTime(15_000))
+  expect(container.querySelector('video.tv-media__foreground')?.getAttribute('src')).toBe('/api/tv/media/film')
   fireEvent.ended(video!)
   expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
 })

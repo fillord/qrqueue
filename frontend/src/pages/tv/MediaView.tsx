@@ -6,6 +6,8 @@ import type { TvState } from '../../api/types'
 function playMuted(video: HTMLVideoElement) {
   video.muted = true
   video.defaultMuted = true
+  video.controls = false
+  video.removeAttribute('controls')
   const attempt = video.play()
   if (attempt) void attempt.catch(() => undefined)
 }
@@ -33,12 +35,25 @@ export default function MediaView({ state }: { state: TvState }) {
       if (!video) return
       playMuted(video)
     }
-    const timers = [0, 500, 1500, 4000].map((delay) => window.setTimeout(tryPlay, delay))
+    const timers = [0, 500, 1500, 4000, 8000, 15000].map((delay) => window.setTimeout(tryPlay, delay))
+    const retry = window.setInterval(() => {
+      const video = videoRef.current
+      if (video && video.paused && !video.ended) tryPlay()
+    }, 5000)
     const resume = () => { if (document.visibilityState === 'visible') tryPlay() }
     document.addEventListener('visibilitychange', resume)
+    window.addEventListener('focus', tryPlay)
+    window.addEventListener('pageshow', tryPlay)
+    window.addEventListener('keydown', tryPlay)
+    window.addEventListener('pointerdown', tryPlay)
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer))
+      window.clearInterval(retry)
       document.removeEventListener('visibilitychange', resume)
+      window.removeEventListener('focus', tryPlay)
+      window.removeEventListener('pageshow', tryPlay)
+      window.removeEventListener('keydown', tryPlay)
+      window.removeEventListener('pointerdown', tryPlay)
     }
   }, [current?.id, current?.mime_type])
 
@@ -46,7 +61,9 @@ export default function MediaView({ state }: { state: TvState }) {
 
   return <main className="tv-media__content" aria-label={current.title}>
     {current.mime_type.startsWith('video/') ? (
-      <video className="tv-media__foreground" key={current.id} ref={videoRef} autoPlay muted playsInline loop={playlist.length === 1} preload="auto" src={current.url}
+      <video className="tv-media__foreground" key={current.id} ref={videoRef} autoPlay muted playsInline controls={false}
+        disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback" loop={playlist.length === 1} preload="auto" src={current.url}
+        onLoadedMetadata={(event) => playMuted(event.currentTarget)}
         onLoadedData={(event) => playMuted(event.currentTarget)}
         onCanPlay={(event) => playMuted(event.currentTarget)}
         onEnded={() => setIndex((value) => value + 1)}

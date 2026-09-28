@@ -17,11 +17,13 @@ export default function MediaView({ state }: { state: TvState }) {
   const [index, setIndex] = useState(0)
   const [failedIds, setFailedIds] = useState<string[]>([])
   const videoRef = useRef<HTMLVideoElement>(null)
+  const advancingRef = useRef(false)
   const playlistKey = JSON.stringify(state.media)
   const playlist = useMemo(() => state.media.filter((item) => !failedIds.includes(item.id)), [playlistKey, failedIds])
   const current = playlist[index % playlist.length]
 
   useEffect(() => { setIndex(0); setFailedIds([]) }, [playlistKey])
+  useEffect(() => { advancingRef.current = false }, [current?.id])
   useEffect(() => {
     if (!current || current.mime_type.startsWith('video/')) return
     const timer = window.setTimeout(() => setIndex((value) => value + 1), state.slide_seconds * 1000)
@@ -59,14 +61,34 @@ export default function MediaView({ state }: { state: TvState }) {
 
   if (!current) return <main className="tv-media__empty">{t('signage.noMediaContent')}</main>
 
+  const advance = () => {
+    if (advancingRef.current) return
+    advancingRef.current = true
+    setIndex((value) => value + 1)
+  }
+
+  const finishVideo = (video: HTMLVideoElement) => {
+    if (playlist.length > 1) {
+      advance()
+      return
+    }
+    video.currentTime = 0
+    playMuted(video)
+  }
+
   return <main className="tv-media__content" aria-label={current.title}>
     {current.mime_type.startsWith('video/') ? (
       <video className="tv-media__foreground" key={current.id} ref={videoRef} autoPlay muted playsInline controls={false}
-        disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback" loop={playlist.length === 1} preload="auto" src={current.url}
+        disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback" preload="auto" src={current.url}
         onLoadedMetadata={(event) => playMuted(event.currentTarget)}
         onLoadedData={(event) => playMuted(event.currentTarget)}
         onCanPlay={(event) => playMuted(event.currentTarget)}
-        onEnded={() => setIndex((value) => value + 1)}
+        onTimeUpdate={(event) => {
+          const video = event.currentTarget
+          if (playlist.length > 1 && Number.isFinite(video.duration) && video.duration > 0
+            && video.currentTime >= video.duration - 0.5) advance()
+        }}
+        onEnded={(event) => finishVideo(event.currentTarget)}
         onError={() => setFailedIds((ids) => ids.includes(current.id) ? ids : [...ids, current.id])} />
     ) : (
       <>

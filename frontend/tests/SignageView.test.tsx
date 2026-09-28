@@ -1,12 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import '../src/app/i18n'
 import type { TvState } from '../src/api/types'
 import MediaView from '../src/pages/tv/MediaView'
 import ScheduleView from '../src/pages/tv/ScheduleView'
 
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
+beforeEach(() => { vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 it('shows all seven weekdays at once on a narrow screen, then switches departments', () => {
   vi.useFakeTimers()
@@ -85,7 +86,7 @@ it('rotates media independently and never overlays its title', () => {
   act(() => vi.advanceTimersByTime(5000))
   const video = container.querySelector('video.tv-media__foreground')
   expect(video?.getAttribute('src')).toBe('/api/tv/media/film')
-  expect(container.querySelector('video.tv-media__backdrop')?.getAttribute('src')).toBe('/api/tv/media/film')
+  expect(container.querySelectorAll('video')).toHaveLength(1)
   expect(screen.queryByText('Ролик')).toBeNull()
   act(() => vi.advanceTimersByTime(15_000))
   expect(container.querySelector('video.tv-media__foreground')?.getAttribute('src')).toBe('/api/tv/media/film')
@@ -93,7 +94,8 @@ it('rotates media independently and never overlays its title', () => {
   expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
 })
 
-it('loops one video continuously with a blurred background layer', () => {
+it('loops one video continuously using a single TV decoder', () => {
+  vi.useFakeTimers()
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
     is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
@@ -102,9 +104,9 @@ it('loops one video continuously with a blurred background layer', () => {
   }
   const { container } = render(<MediaView state={state} />)
   const foreground = container.querySelector<HTMLVideoElement>('video.tv-media__foreground')
-  const backdrop = container.querySelector<HTMLVideoElement>('video.tv-media__backdrop')
   expect(foreground?.loop).toBe(true)
-  expect(backdrop?.loop).toBe(true)
   expect(foreground?.src).toContain('/api/tv/media/vertical')
-  expect(backdrop?.src).toBe(foreground?.src)
+  expect(container.querySelectorAll('video')).toHaveLength(1)
+  act(() => vi.advanceTimersByTime(4000))
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
 })

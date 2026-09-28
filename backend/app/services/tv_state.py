@@ -131,7 +131,8 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
                                   .order_by(TVMedia.sort_order, TVMedia.created_at))).all()
         media_out = [
             {"id": item.id, "title": item.title, "kind": item.kind,
-             "mime_type": item.mime_type, "url": f"/api/tv/media/{item.id}"}
+             "mime_type": item.mime_type,
+             "url": f"/api/tv/media/{item.id}?v={item.size_bytes}"}
             for item in media if (selected_ids is None or item.id in selected_ids)
             and (item.kind != "advertisement" or screen.ads_enabled)
         ]

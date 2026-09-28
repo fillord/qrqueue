@@ -238,6 +238,7 @@ async def test_media_upload_limit_streaming_and_ad_opt_in(client, make_user, mak
     assert (await client.patch(f"/api/admin/tv-screens/{screen.json()['id']}", json={"ads_enabled": True})).status_code == 200
     state = (await client.get("/api/tv/state", headers={"X-Device-Token": device_token})).json()
     assert state["media"][0]["id"] == media_id
+    assert state["media"][0]["url"] == f"/api/tv/media/{media_id}?v={len(data)}"
 
     await login(client, superadmin.email, superadmin_password)
     upgraded = await client.patch(f"/api/sa/organizations/{org.id}", json={"video_large_upload_enabled": True})

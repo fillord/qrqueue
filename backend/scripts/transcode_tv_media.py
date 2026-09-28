@@ -5,10 +5,14 @@ import argparse
 import asyncio
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 from sqlalchemy import delete, select
+
+# Allow direct execution with `python scripts/transcode_tv_media.py`.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import async_session_factory
 from app.media import TV_MEDIA_CHUNK_BYTES

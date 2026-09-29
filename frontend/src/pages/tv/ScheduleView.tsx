@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { TvDepartmentState, TvState } from '../../api/types'
@@ -20,8 +19,12 @@ function makeSlides(state: TvState, rowsPerPage: number): Slide[] {
     const rows = groupDoctorSchedule(department.entries)
     const pages: DoctorScheduleRow[][] = []
     if (rows.length === 0) pages.push([])
-    for (let rowStart = 0; rowStart < rows.length; rowStart += rowsPerPage) {
-      pages.push(rows.slice(rowStart, rowStart + rowsPerPage))
+    const pageCount = Math.ceil(rows.length / rowsPerPage)
+    let rowStart = 0
+    for (let page = 0; page < pageCount; page += 1) {
+      const rowsOnPage = Math.floor(rows.length / pageCount) + (page < rows.length % pageCount ? 1 : 0)
+      pages.push(rows.slice(rowStart, rowStart + rowsOnPage))
+      rowStart += rowsOnPage
     }
     for (let page = 0; page < pages.length; page += 1) {
       slides.push({ key: `department-${department.id}-${page}`, department,
@@ -39,8 +42,8 @@ export default function ScheduleView({ state }: { state: TvState }) {
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const [tableHeight, setTableHeight] = useState(0)
   const today = weekdayIn(state.timezone, now)
-  const fallbackHeight = viewport.height - 220
-  const rowMinHeight = viewport.width < 1100 ? 64 : 48
+  const fallbackHeight = viewport.height - 140
+  const rowMinHeight = viewport.width < 1100 ? 56 : 60
   const rowsPerPage = Math.max(1, Math.floor(((tableHeight || fallbackHeight) - 44) / rowMinHeight))
   const programKey = JSON.stringify(state.departments)
   const slides = useMemo(() => makeSlides(state, rowsPerPage), [programKey, rowsPerPage])
@@ -74,9 +77,6 @@ export default function ScheduleView({ state }: { state: TvState }) {
 
   const time = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, hour: '2-digit', minute: '2-digit' }).format(now)
   const date = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now)
-  const visibleRows = Math.max(1, slide?.rows.length ?? 1)
-  const tableStyle = { '--schedule-rows': visibleRows } as CSSProperties
-
   return <div className="tv-signage">
     <div className="tv-signage__meta"><span>{t('signage.weekSchedule')}</span><span className="tv-signage__datetime">{date}<time>{time}</time></span></div>
     {!slide ? <div className="tv-signage__empty">{t('signage.noScheduleContent')}</div> : (
@@ -84,7 +84,7 @@ export default function ScheduleView({ state }: { state: TvState }) {
         <div className="tv-signage__heading"><h1>{slide.department.name}</h1>
           {slide.pages > 1 && <span className="tv-signage__page">{slide.page + 1} / {slide.pages}</span>}
         </div>
-        <div className="tv-signage__table-wrap" ref={tableWrapRef}><table className="tv-signage__table" style={tableStyle} aria-label={t('signage.scheduleFor', { name: slide.department.name })}>
+        <div className="tv-signage__table-wrap" ref={tableWrapRef}><table className="tv-signage__table" aria-label={t('signage.scheduleFor', { name: slide.department.name })}>
           <thead><tr><th>{t('signage.doctor')}</th><th>{t('signage.specialty')}</th><th>{t('signage.room')}</th>
             {WEEKDAYS.map((weekday) => <th className={weekday === today ? 'tv-signage__today' : ''} key={weekday}>{t(`signage.shortWeekdays.${weekday}`)}</th>)}
           </tr></thead>

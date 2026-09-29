@@ -87,6 +87,23 @@ it('fits fourteen doctors on one 1080p department slide with normal-sized text',
   expect(container.querySelector<HTMLElement>('.tv-signage__table')!.style.fontSize).toBe('')
 })
 
+it('keeps five doctors together on a scaled TV viewport', () => {
+  vi.stubGlobal('innerWidth', 960)
+  vi.stubGlobal('innerHeight', 540)
+  const state: TvState = {
+    organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
+    slide_seconds: 5, ads_enabled: false, media: [],
+    departments: [{ id: 'one', name: 'Женская консультация', entries: Array.from({ length: 5 }, (_, index) => ({
+      id: `doctor-${index}`, department_id: 'one', doctor_name: `Doctor ${index + 1}`,
+      service_name: null, room: null, weekday: 0, starts_at: '09:00:00', ends_at: '17:00:00', sort_order: index,
+    })) }],
+  }
+  const { container } = render(<ScheduleView state={state} />)
+  expect(screen.getAllByRole('row')).toHaveLength(6)
+  expect(container.querySelector('.tv-signage__page')).toBeNull()
+})
+
 it('moves only the overflow doctors to the next page', () => {
   vi.useFakeTimers()
   vi.stubGlobal('innerWidth', 1920)
@@ -102,11 +119,12 @@ it('moves only the overflow doctors to the next page', () => {
   }
   render(<ScheduleView state={state} />)
   expect(screen.getByText('1 / 2')).toBeTruthy()
-  expect(screen.getByText('Doctor 17')).toBeTruthy()
-  expect(screen.queryByText('Doctor 18')).toBeNull()
+  expect(screen.getByText('Doctor 10')).toBeTruthy()
+  expect(screen.queryByText('Doctor 11')).toBeNull()
   act(() => vi.advanceTimersByTime(5000))
   expect(screen.getByText('2 / 2')).toBeTruthy()
-  expect(screen.getByText('Doctor 18')).toBeTruthy()
+  expect(screen.getByText('Doctor 11')).toBeTruthy()
+  expect(screen.getAllByRole('row')).toHaveLength(11)
 })
 
 it('rotates an announcement into a YouTube clip and advances when the clip ends', async () => {

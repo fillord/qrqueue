@@ -3104,7 +3104,9 @@ textarea:focus {
 .tv-signage__schedule h1 { min-width: 0; font-size: clamp(1.65rem, 3.1vw, 3.5rem); line-height: 1.12; letter-spacing: -.025em; margin: 0; }
 .tv-signage__page { flex: 0 0 auto; color: var(--tv-muted); font-size: clamp(.8rem, 1vw, 1.15rem); }
 .tv-signage__table-wrap { flex: 1; min-height: 0; overflow: hidden; border: 1px solid #354259; border-radius: 12px; background: rgba(255,255,255,.045); }
-.tv-signage__table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: clamp(.72rem, 1.05vw, 1.45rem); line-height: 1.2; }
+.tv-signage__table { width: 100%; height: 100%; table-layout: fixed; border-collapse: collapse; font-size: clamp(.72rem, 1.05vw, 1.45rem); line-height: 1.2; }
+.tv-signage__table thead { height: clamp(38px, 6vh, 64px); }
+.tv-signage__table tbody tr { height: calc((100% - clamp(38px, 6vh, 64px)) / var(--schedule-rows, 1)); }
 .tv-signage__table th, .tv-signage__table td { padding: clamp(4px, .7vh, 10px) clamp(2px, .4vw, 8px); border-bottom: 1px solid #354259; text-align: left; vertical-align: middle; overflow-wrap: anywhere; }
 .tv-signage__table th { background: rgba(255,255,255,.075); color: var(--tv-accent); font-weight: 750; }
 .tv-signage__table th:first-child { width: 20%; }
@@ -3114,7 +3116,7 @@ textarea:focus {
 .tv-signage__table tbody tr:last-child td { border-bottom: 0; }
 .tv-signage__table .tv-signage__doctor { font-weight: 740; }
 .tv-signage__table .tv-signage__today { background: rgba(255,255,255,.1); }
-.tv-signage__slot { display: block; color: var(--tv-text); font-size: clamp(.65rem, .92vw, 1.2rem); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tv-signage__slot { display: block; color: var(--tv-text); font-size: .88em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tv-signage__no-appointments, .tv-signage__empty { color: var(--tv-muted); font-size: clamp(1.3rem, 2vw, 2.2rem); }
 .tv-signage__empty { flex: 1; display: grid; place-items: center; text-align: center; }
 .tv-screen--media { height: 100dvh; min-height: 100dvh; overflow: hidden; background: #03070e; }
@@ -3131,6 +3133,9 @@ textarea:focus {
 .tv-media__content video::-webkit-media-controls-play-button { display: none !important; -webkit-appearance: none; }
 .tv-media__backdrop { position: absolute; inset: -48px; width: calc(100% + 96px); height: calc(100% + 96px); object-fit: cover; filter: blur(36px) brightness(.55); pointer-events: none; }
 .tv-media__foreground { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.tv-media__youtube, .tv-media__youtube iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.tv-media__start { position: absolute; z-index: 2; left: 50%; bottom: 8%; transform: translateX(-50%); padding: .8rem 1.2rem; border-radius: .8rem; background: #fff; color: #12382e; font-size: clamp(1rem, 1.5vw, 1.5rem); }
+.tv-media__error { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; color: #fff; text-align: center; background: #13382f; }
 .tv-media__empty { flex: 1; display: grid; place-items: center; padding: 2rem; color: var(--tv-muted); text-align: center; font-size: clamp(1.2rem, 2vw, 2rem); }
 
 .admin-tv-screens__playlist-row td { background: var(--color-surface-muted); }

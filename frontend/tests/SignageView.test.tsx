@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import '../src/app/i18n'
@@ -69,98 +69,93 @@ it('eventually shows every doctor when one weekday spans several pages', () => {
   expect(seen.size).toBe(8)
 })
 
-it('rotates media independently and never overlays its title', () => {
+it('keeps three doctors in one full-height department slide', () => {
+  vi.stubGlobal('innerWidth', 1920)
+  vi.stubGlobal('innerHeight', 1080)
+  const state: TvState = {
+    organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'schedule',
+    slide_seconds: 5, ads_enabled: false, media: [],
+    departments: [{ id: 'one', name: 'Therapy', entries: Array.from({ length: 3 }, (_, index) => ({
+      id: `doctor-${index}`, department_id: 'one', doctor_name: `Doctor ${index + 1}`,
+      service_name: null, room: null, weekday: 0, starts_at: '09:00:00', ends_at: '17:00:00', sort_order: index,
+    })) }],
+  }
+  const { container } = render(<ScheduleView state={state} />)
+  expect(screen.getAllByRole('row')).toHaveLength(4)
+  expect(container.querySelector('.tv-signage__page')).toBeNull()
+  expect(parseFloat(container.querySelector<HTMLElement>('.tv-signage__table')!.style.fontSize)).toBeGreaterThan(2)
+})
+
+it('rotates an announcement into a YouTube clip and advances when the clip ends', async () => {
   vi.useFakeTimers()
+  let config: any
+  let player: any
+  vi.stubGlobal('YT', {
+    PlayerState: { ENDED: 0, PLAYING: 1 },
+    Player: class {
+      constructor(_host: HTMLElement, options: any) { config = options; player = this }
+      getIframe() { return document.createElement('iframe') }
+      mute() {}
+      playVideo() {}
+      destroy() {}
+      seekTo() {}
+      getPlaylist() { return [] }
+      getPlaylistIndex() { return 0 }
+    },
+  })
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
     is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
     slide_seconds: 5, ads_enabled: true, departments: [],
     media: [
       { id: 'poster', title: 'Объявление', kind: 'advertisement', mime_type: 'image/png', url: '/api/tv/media/poster' },
-      { id: 'film', title: 'Ролик', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/film' },
+      { id: 'film', title: 'Ролик', kind: 'youtube_video', mime_type: 'text/youtube', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
     ],
   }
   const { container } = render(<MediaView state={state} />)
   expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
-  expect(screen.queryByText('Объявление')).toBeNull()
   act(() => vi.advanceTimersByTime(5000))
+  await act(async () => {})
+  expect(config.videoId).toBe('dQw4w9WgXcQ')
+  expect(config.playerVars.mute).toBe(1)
   expect(container.querySelector('video')).toBeNull()
-  act(() => vi.advanceTimersByTime(500))
-  const video = container.querySelector('video.tv-media__foreground')
-  expect(video?.getAttribute('src')).toBe('/api/tv/media/film')
-  expect(container.querySelectorAll('video')).toHaveLength(1)
-  expect(screen.queryByText('Ролик')).toBeNull()
-  act(() => vi.advanceTimersByTime(15_000))
-  expect(container.querySelector('video.tv-media__foreground')?.getAttribute('src')).toBe('/api/tv/media/film')
-  fireEvent.ended(video!)
-  expect(container.querySelector('video')).toBeNull()
-  act(() => vi.advanceTimersByTime(500))
+  act(() => config.events.onStateChange({ target: player, data: 0 }))
   expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
 })
 
-it('plays every video in order and releases the decoder between clips', () => {
-  vi.useFakeTimers()
+it('plays every item in a YouTube playlist before advancing to the next item', async () => {
+  let config: any
+  let player: any
+  let playlistIndex = 0
+  vi.stubGlobal('YT', {
+    PlayerState: { ENDED: 0, PLAYING: 1 },
+    Player: class {
+      constructor(_host: HTMLElement, options: any) { config = options; player = this }
+      getIframe() { return document.createElement('iframe') }
+      mute() {}
+      playVideo() {}
+      destroy() {}
+      seekTo() {}
+      getPlaylist() { return ['first', 'second'] }
+      getPlaylistIndex() { return playlistIndex }
+    },
+  })
   const state: TvState = {
     organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
     is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
-    slide_seconds: 5, ads_enabled: false, departments: [],
+    slide_seconds: 5, ads_enabled: true, departments: [],
     media: [
-      { id: 'first', title: 'First', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/first' },
-      { id: 'second', title: 'Second', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/second' },
+      { id: 'list', title: 'Плейлист', kind: 'youtube_playlist', mime_type: 'text/youtube', url: 'https://www.youtube.com/embed?listType=playlist&list=PL1234567890' },
+      { id: 'poster', title: 'Объявление', kind: 'advertisement', mime_type: 'image/png', url: '/api/tv/media/poster' },
     ],
   }
-  const { container, rerender } = render(<MediaView state={state} />)
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/first')
-  fireEvent.ended(container.querySelector('video')!)
-  expect(container.querySelector('video')).toBeNull()
-  act(() => vi.advanceTimersByTime(500))
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/second')
-  rerender(<MediaView state={{ ...state, media: state.media.map((item) => ({ ...item })) }} />)
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/second')
-  fireEvent.ended(container.querySelector('video')!)
-  act(() => vi.advanceTimersByTime(500))
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/first')
-  expect(container.querySelectorAll('video')).toHaveLength(1)
-})
-
-it('retries a video that fails once while rotating all videos', () => {
-  vi.useFakeTimers()
-  const state: TvState = {
-    organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
-    slide_seconds: 5, ads_enabled: false, departments: [],
-    media: [
-      { id: 'first', title: 'First', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/first' },
-      { id: 'second', title: 'Second', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/second' },
-    ],
-  }
-  const { container } = render(<MediaView state={state} />)
-  fireEvent.ended(container.querySelector('video')!)
-  act(() => vi.advanceTimersByTime(500))
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/second')
-  fireEvent.error(container.querySelector('video')!)
-  act(() => vi.advanceTimersByTime(500))
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/first')
-  act(() => vi.advanceTimersByTime(30_000))
-  expect(container.querySelector('video')).toBeNull()
-  act(() => vi.advanceTimersByTime(500))
-  expect(container.querySelector('video')?.getAttribute('src')).toBe('/api/tv/media/second')
-})
-
-it('replays one video continuously using a single TV decoder', () => {
-  vi.useFakeTimers()
-  const state: TvState = {
-    organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
-    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
-    slide_seconds: 5, ads_enabled: false, departments: [],
-    media: [{ id: 'vertical', title: 'Vertical', kind: 'video', mime_type: 'video/mp4', url: '/api/tv/media/vertical' }],
-  }
-  const { container } = render(<MediaView state={state} />)
-  const foreground = container.querySelector<HTMLVideoElement>('video.tv-media__foreground')
-  expect(foreground?.src).toContain('/api/tv/media/vertical')
-  expect(container.querySelectorAll('video')).toHaveLength(1)
-  act(() => vi.advanceTimersByTime(4000))
-  fireEvent.ended(foreground!)
-  expect(container.querySelector('video')).toBe(foreground)
-  expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
+  render(<MediaView state={state} />)
+  await act(async () => {})
+  expect(config.playerVars.list).toBe('PL1234567890')
+  act(() => config.events.onStateChange({ target: player, data: 0 }))
+  expect(screen.queryByRole('img', { name: 'Объявление' })).toBeNull()
+  playlistIndex = 1
+  act(() => config.events.onStateChange({ target: player, data: 0 }))
+  expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
 })

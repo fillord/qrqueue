@@ -213,9 +213,9 @@ async def test_media_upload_limit_streaming_and_ad_opt_in(client, make_user, mak
     })
     assert rejected.status_code == 413 and rejected.json()["detail"]["code"] == "media_too_large"
 
-    data = b"\x00\x00\x00\x0cftypisom"
+    data = b"\x89PNG\r\n\x1a\nrest"
     created = await client.post("/api/admin/tv-media", json={
-        "title": "Announcement", "kind": "advertisement", "mime_type": "video/mp4",
+        "title": "Announcement", "kind": "advertisement", "mime_type": "image/png",
         "size_bytes": len(data),
     })
     assert created.status_code == 201, created.text
@@ -227,7 +227,7 @@ async def test_media_upload_limit_streaming_and_ad_opt_in(client, make_user, mak
     assert chunk.json()["uploaded_bytes"] == len(data)
     assert (await client.post(f"/api/admin/tv-media/{media_id}/complete")).status_code == 200
     range_response = await client.get(f"/api/tv/media/{media_id}", headers={"Range": "bytes=4-7"})
-    assert range_response.status_code == 206 and range_response.content == b"ftyp"
+    assert range_response.status_code == 206 and range_response.content == b"\r\n\x1a\n"
     assert range_response.headers["content-range"] == f"bytes 4-7/{len(data)}"
 
     screen = await client.post("/api/admin/tv-screens", json={"name": "Ad board", "display_mode": "media"})
@@ -260,12 +260,12 @@ async def test_media_screen_can_repeat_all_or_only_selected_assets(
     admin, password = await make_user(
         email="playlist-admin@example.com", role=UserRole.org_admin, organization_id=org.id
     )
-    first = TVMedia(organization_id=org.id, title="First", kind="video", mime_type="video/mp4",
-                    size_bytes=1, uploaded_bytes=1, is_ready=True, is_active=True, sort_order=0)
-    second = TVMedia(organization_id=org.id, title="Second", kind="video", mime_type="video/mp4",
-                     size_bytes=1, uploaded_bytes=1, is_ready=True, is_active=True, sort_order=1)
-    foreign = TVMedia(organization_id=other_org.id, title="Foreign", kind="video", mime_type="video/mp4",
-                      size_bytes=1, uploaded_bytes=1, is_ready=True, is_active=True, sort_order=0)
+    first = TVMedia(organization_id=org.id, title="First", kind="youtube_video", youtube_id="dQw4w9WgXcQ", mime_type="text/youtube",
+                    size_bytes=0, uploaded_bytes=0, is_ready=True, is_active=True, sort_order=0)
+    second = TVMedia(organization_id=org.id, title="Second", kind="youtube_playlist", youtube_id="PL1234567890", mime_type="text/youtube",
+                     size_bytes=0, uploaded_bytes=0, is_ready=True, is_active=True, sort_order=1)
+    foreign = TVMedia(organization_id=other_org.id, title="Foreign", kind="youtube_video", youtube_id="dQw4w9WgXcQ", mime_type="text/youtube",
+                      size_bytes=0, uploaded_bytes=0, is_ready=True, is_active=True, sort_order=0)
     db_session.add_all([first, second, foreign])
     await db_session.flush()
     await login(client, admin.email, password)
@@ -284,6 +284,8 @@ async def test_media_screen_can_repeat_all_or_only_selected_assets(
         return [item["id"] for item in state["media"]]
 
     assert await media_ids() == [str(second.id)]
+    state = (await client.get("/api/tv/state", headers={"X-Device-Token": token})).json()
+    assert state["media"][0]["url"] == "https://www.youtube.com/embed?listType=playlist&list=PL1234567890"
     changed = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={"media_playlist_mode": "all"})
     assert changed.status_code == 200 and await media_ids() == [str(first.id), str(second.id)]
     changed = await client.patch(f"/api/admin/tv-screens/{screen['id']}", json={
@@ -298,6 +300,41 @@ async def test_media_screen_can_repeat_all_or_only_selected_assets(
     assert (await client.post("/api/admin/tv-screens", json={
         "name": "Invalid", "display_mode": "media", "selected_media_ids": [str(foreign.id)],
     })).status_code == 404
+
+
+async def test_youtube_links_are_validated_and_legacy_video_is_not_sent_to_tv(
+    client, db_session, make_user, make_organization,
+):
+    org = await make_organization(name="YouTube Clinic")
+    admin, password = await make_user(
+        email="youtube-admin@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    legacy = TVMedia(organization_id=org.id, title="Old server clip", kind="video",
+                     mime_type="video/mp4", size_bytes=1, uploaded_bytes=1,
+                     is_ready=True, is_active=True, sort_order=0)
+    db_session.add(legacy)
+    await db_session.flush()
+    await login(client, admin.email, password)
+    for url in ("https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ",
+                "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "https://www.youtube.com/watch?v=invalid"):
+        response = await client.post("/api/admin/tv-media/youtube", json={"title": "Bad", "url": url})
+        assert response.status_code == 422 and response.json()["detail"]["code"] == "invalid_youtube_url"
+    video = await client.post("/api/admin/tv-media/youtube", json={
+        "title": "YouTube clip", "url": "https://youtu.be/dQw4w9WgXcQ?t=1",
+    })
+    assert video.status_code == 201, video.text
+    assert video.json()["kind"] == "youtube_video" and video.json()["youtube_id"] == "dQw4w9WgXcQ"
+    assert video.json()["size_bytes"] == 0
+    playlist = await client.post("/api/admin/tv-media/youtube", json={
+        "title": "YouTube playlist", "url": "https://www.youtube.com/playlist?list=PL1234567890",
+    })
+    assert playlist.status_code == 201, playlist.text
+    screen = await client.post("/api/admin/tv-screens", json={"name": "YouTube TV", "display_mode": "media"})
+    token = (await client.post("/api/tv/pair", json={"code": screen.json()["pairing_code"]})).json()["device_token"]
+    state = (await client.get("/api/tv/state", headers={"X-Device-Token": token})).json()
+    assert {item["id"] for item in state["media"]} == {video.json()["id"], playlist.json()["id"]}
+    assert next(item["url"] for item in state["media"] if item["id"] == video.json()["id"]) == "https://www.youtube.com/embed/dQw4w9WgXcQ"
 
 
 async def test_media_upload_rejects_mismatched_content_and_other_org_access(

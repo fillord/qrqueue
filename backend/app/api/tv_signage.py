@@ -18,11 +18,12 @@ from app.models.tv_media import TVMedia, TVMediaChunk
 from app.models.user import User
 from app.schemas.tv_signage import (
     DepartmentCreate, DepartmentOut, DepartmentUpdate, ScheduleItemCreate,
-    ScheduleItemOut, ScheduleItemUpdate, TVMediaCreate, TVMediaOut, TVMediaUpdate,
+    ScheduleItemOut, ScheduleItemUpdate, TVMediaCreate, TVMediaOut, TVMediaUpdate, TVYoutubeCreate,
 )
 from app.services.audit import log_action
 from app.services.realtime import defer_event, organization_channel
 from app.services.schedule_import import MAX_IMPORT_BYTES, ScheduleImportError, parse_schedule_workbook
+from app.services.youtube import parse_youtube_url
 
 router = APIRouter(prefix="/admin", tags=["tv-signage"])
 
@@ -256,6 +257,27 @@ async def list_media(
                                   .order_by(TVMedia.sort_order, TVMedia.created_at))).all())
 
 
+@router.post("/tv-media/youtube", response_model=TVMediaOut, status_code=201)
+async def create_youtube_media(
+    payload: TVYoutubeCreate, db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_admin), org_id: uuid.UUID = Depends(current_organization_id),
+):
+    try:
+        kind, youtube_id = parse_youtube_url(payload.url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "invalid_youtube_url"}) from exc
+    media = TVMedia(organization_id=org_id, title=payload.title, kind=kind,
+                    youtube_id=youtube_id, mime_type="text/youtube", size_bytes=0,
+                    uploaded_bytes=0, is_ready=True, is_active=True, sort_order=payload.sort_order)
+    db.add(media)
+    await db.flush()
+    await _audit(db, actor, org_id, "tv_media.youtube_added", "tv_media", media.id,
+                 {"title": media.title, "kind": kind, "youtube_id": youtube_id})
+    _updated(db, org_id, "signage.updated")
+    await db.commit()
+    return media
+
+
 @router.post("/tv-media", response_model=TVMediaOut, status_code=201)
 async def create_media(
     payload: TVMediaCreate, db: AsyncSession = Depends(get_db),
@@ -354,8 +376,6 @@ async def update_media(
 ):
     media = await get_in_org_or_404(db, TVMedia, media_id, org_id)
     changes = payload.model_dump(exclude_unset=True)
-    if changes.get("kind") == "video" and not media.mime_type.startswith("video/"):
-        raise HTTPException(status_code=422, detail={"code": "invalid_media_kind"})
     for key, value in changes.items():
         setattr(media, key, value)
     await _audit(db, actor, org_id, "tv_media.updated", "tv_media", media.id, changes)

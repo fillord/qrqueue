@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { TvScheduleEntry } from '../../api/types'
 import {
-  createDepartment, createScheduleItem, deleteDepartment, deleteMedia, deleteScheduleItem,
+  createDepartment, createScheduleItem, createYoutubeMedia, deleteDepartment, deleteMedia, deleteScheduleItem,
   getMediaLimits, importScheduleFile, listDepartments, listMedia, listSchedule, updateDepartment,
   updateMedia, updateScheduleItem, uploadMediaFile,
 } from '../../api/signage'
@@ -38,7 +38,8 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
   const [file, setFile] = useState<File | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const [mediaTitle, setMediaTitle] = useState('')
-  const [mediaKind, setMediaKind] = useState<MediaAsset['kind']>('video')
+  const [youtubeTitle, setYoutubeTitle] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
   const [progress, setProgress] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -144,14 +145,12 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
   async function upload(event: FormEvent) {
     event.preventDefault()
     if (!file || !mediaTitle.trim() || !limits) return
-    const maxBytes = file.type.startsWith('video/') ? limits.max_video_bytes : limits.max_image_bytes
-    if (file.size > maxBytes) { push(t(limits.large_upload_enabled ? 'signage.fileTooLarge' : 'signage.limitUpgrade')); return }
-    if (!['video/mp4', 'video/webm', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { push(t('signage.badFormat')); return }
-    if (mediaKind === 'video' && !file.type.startsWith('video/')) { push(t('signage.videoOnly')); return }
+    if (file.size > limits.max_image_bytes) { push(t('signage.fileTooLarge')); return }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { push(t('signage.badImageFormat')); return }
     setBusy(true)
     setProgress(0)
     try {
-      await uploadMediaFile(file, mediaTitle.trim(), mediaKind, limits, setProgress, organizationId)
+      await uploadMediaFile(file, mediaTitle.trim(), 'advertisement', limits, setProgress, organizationId)
       setFile(null)
       if (fileInput.current) fileInput.current.value = ''
       setMediaTitle('')
@@ -159,6 +158,19 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
       await load()
     } catch (error) { push(apiErrorMessage(error, t)) }
     finally { setBusy(false); setProgress(null) }
+  }
+
+  async function addYoutube(event: FormEvent) {
+    event.preventDefault()
+    if (!youtubeTitle.trim() || !youtubeUrl.trim()) return
+    setBusy(true)
+    try {
+      await createYoutubeMedia({ title: youtubeTitle.trim(), url: youtubeUrl.trim() }, organizationId)
+      setYoutubeTitle('')
+      setYoutubeUrl('')
+      await load()
+    } catch (error) { push(apiErrorMessage(error, t)) }
+    finally { setBusy(false) }
   }
 
   async function toggleMedia(item: MediaAsset) {
@@ -228,17 +240,27 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
 
       <section className="signage-admin__section">
         <h2>{t('signage.media')}</h2>
-        <p className="admin-page__hint">{t('signage.mediaHint', { limit: Math.round((limits?.max_video_bytes ?? 50 * 1024 * 1024) / 1024 / 1024) })}</p>
+        <p className="admin-page__hint">{t('signage.youtubeHint')}</p>
+        <form className="signage-admin__upload" onSubmit={(event) => void addYoutube(event)}>
+          <label>{t('signage.mediaTitle')}<input value={youtubeTitle} onChange={(event) => setYoutubeTitle(event.target.value)} required /></label>
+          <label>{t('signage.youtubeUrl')}<input type="url" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://www.youtube.com/playlist?list=..." required /></label>
+          <button type="submit" disabled={busy || !youtubeTitle.trim() || !youtubeUrl.trim()}>{t('signage.addYoutube')}</button>
+        </form>
+        <p className="admin-page__hint">{t('signage.imageHint')}</p>
         <form className="signage-admin__upload" onSubmit={(event) => void upload(event)}>
           <label>{t('signage.mediaTitle')}<input value={mediaTitle} onChange={(event) => setMediaTitle(event.target.value)} required /></label>
-          <label>{t('signage.mediaKind')}<select value={mediaKind} onChange={(event) => setMediaKind(event.target.value as MediaAsset['kind'])}><option value="video">{t('signage.kindVideo')}</option><option value="advertisement">{t('signage.kindAd')}</option></select></label>
-          <label>{t('signage.file')}<input ref={fileInput} type="file" accept="video/mp4,video/webm,image/png,image/jpeg,image/webp" onChange={(event) => { const next = event.target.files?.[0] ?? null; setFile(next); if (next && !mediaTitle) setMediaTitle(next.name.replace(/\.[^.]+$/, '')) }} required /></label>
+          <label>{t('signage.file')}<input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const next = event.target.files?.[0] ?? null; setFile(next); if (next && !mediaTitle) setMediaTitle(next.name.replace(/\.[^.]+$/, '')) }} required /></label>
           <button type="submit" disabled={busy || !file || !mediaTitle.trim()}>{t('signage.upload')}</button>
         </form>
         {progress !== null && <div className="signage-admin__progress" role="status">{t('signage.uploadProgress', { percent: Math.round(progress * 100) })}<progress value={progress} max={1} /></div>}
         <p className="admin-page__hint">{t('signage.adsHint')}</p>
         {media.length === 0 ? <p className="admin-page__empty">{t('signage.noMedia')}</p> : <div className="signage-admin__table-wrap"><table className="admin-table"><thead><tr><th>{t('signage.mediaTitle')}</th><th>{t('signage.mediaKind')}</th><th>{t('signage.size')}</th><th>{t('directory.status')}</th><th /></tr></thead><tbody>
-          {media.map((item) => <tr key={item.id}><td>{item.is_ready ? <a href={`/api/tv/media/${item.id}`} target="_blank" rel="noreferrer">{item.title}</a> : item.title}</td><td>{t(item.kind === 'video' ? 'signage.kindVideo' : 'signage.kindAd')}</td><td>{t('signage.sizeMb', { size: (item.size_bytes / 1024 / 1024).toFixed(1) })}</td><td>{!item.is_ready ? t('signage.uploadIncomplete') : item.is_active ? t('admin.users.active') : t('admin.users.inactive')}</td><td className="admin-table__actions"><button type="button" disabled={!item.is_ready} onClick={() => void toggleMedia(item)}>{t(item.is_active ? 'admin.users.deactivate' : 'admin.users.activate')}</button><button type="button" className="admin-action--danger" onClick={() => void removeMedia(item)}>{t('signage.delete')}</button></td></tr>)}
+          {media.map((item) => {
+            const youtubeLink = item.youtube_id ? item.kind === 'youtube_playlist'
+              ? `https://www.youtube.com/playlist?list=${item.youtube_id}`
+              : `https://www.youtube.com/watch?v=${item.youtube_id}` : null
+            return <tr key={item.id}><td>{item.is_ready ? <a href={youtubeLink ?? `/api/tv/media/${item.id}`} target="_blank" rel="noreferrer">{item.title}</a> : item.title}</td><td>{t(item.kind === 'video' || item.mime_type.startsWith('video/') ? 'signage.kindLegacy' : item.kind === 'youtube_video' ? 'signage.kindYoutubeVideo' : item.kind === 'youtube_playlist' ? 'signage.kindYoutubePlaylist' : 'signage.kindAd')}</td><td>{item.youtube_id ? '—' : t('signage.sizeMb', { size: (item.size_bytes / 1024 / 1024).toFixed(1) })}</td><td>{item.kind === 'video' || item.mime_type.startsWith('video/') ? t('signage.legacyInactive') : !item.is_ready ? t('signage.uploadIncomplete') : item.is_active ? t('admin.users.active') : t('admin.users.inactive')}</td><td className="admin-table__actions">{item.kind !== 'video' && !item.mime_type.startsWith('video/') && <button type="button" disabled={!item.is_ready} onClick={() => void toggleMedia(item)}>{t(item.is_active ? 'admin.users.deactivate' : 'admin.users.activate')}</button>}<button type="button" className="admin-action--danger" onClick={() => void removeMedia(item)}>{t('signage.delete')}</button></td></tr>
+          })}
         </tbody></table></div>}
       </section>
     </>}

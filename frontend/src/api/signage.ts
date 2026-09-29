@@ -3,7 +3,7 @@ import type { TvScheduleEntry } from './types'
 
 export interface Department { id: string; organization_id: string; name: string; sort_order: number; is_active: boolean }
 export interface MediaAsset {
-  id: string; organization_id: string; title: string; kind: 'video' | 'advertisement';
+  id: string; organization_id: string; title: string; kind: 'video' | 'advertisement' | 'youtube_video' | 'youtube_playlist'; youtube_id: string | null;
   mime_type: string; size_bytes: number; uploaded_bytes: number; is_ready: boolean;
   is_active: boolean; sort_order: number; created_at: string
 }
@@ -38,7 +38,8 @@ export async function importScheduleFile(file: File, organizationId?: string): P
 export const getMediaLimits = (organizationId?: string) => apiGet<MediaLimits>(`/api/admin/tv-media/limits${suffix(organizationId)}`)
 export const listMedia = (organizationId?: string) => apiGet<MediaAsset[]>(`/api/admin/tv-media${suffix(organizationId)}`)
 export const createMedia = (body: { title: string; kind: MediaAsset['kind']; mime_type: string; size_bytes: number }, organizationId?: string) => apiPost<MediaAsset>(`/api/admin/tv-media${suffix(organizationId)}`, body)
-export const updateMedia = (id: string, body: Partial<Pick<MediaAsset, 'title' | 'kind' | 'sort_order' | 'is_active'>>, organizationId?: string) => apiPatch<MediaAsset>(`/api/admin/tv-media/${id}${suffix(organizationId)}`, body)
+export const createYoutubeMedia = (body: { title: string; url: string }, organizationId?: string) => apiPost<MediaAsset>(`/api/admin/tv-media/youtube${suffix(organizationId)}`, body)
+export const updateMedia = (id: string, body: Partial<Pick<MediaAsset, 'title' | 'sort_order' | 'is_active'>>, organizationId?: string) => apiPatch<MediaAsset>(`/api/admin/tv-media/${id}${suffix(organizationId)}`, body)
 export const deleteMedia = (id: string, organizationId?: string) => apiDelete<void>(`/api/admin/tv-media/${id}${suffix(organizationId)}`)
 export const completeMedia = (id: string, organizationId?: string) => apiPost<MediaAsset>(`/api/admin/tv-media/${id}/complete${suffix(organizationId)}`)
 
@@ -53,7 +54,7 @@ async function sendChunk(id: string, index: number, blob: Blob, organizationId?:
 }
 
 export async function uploadMediaFile(
-  file: File, title: string, kind: MediaAsset['kind'], limits: MediaLimits,
+  file: File, title: string, kind: 'advertisement', limits: MediaLimits,
   onProgress: (ratio: number) => void, organizationId?: string,
 ): Promise<MediaAsset> {
   const asset = await createMedia({ title, kind, mime_type: file.type, size_bytes: file.size }, organizationId)

@@ -10,6 +10,7 @@ export function apiErrorMessage(err: unknown, t: TFunction): string {
     if (err.code === 'department_exists') return t('signage.departmentExists')
     if (err.code === 'department_has_employees') return t('signage.departmentHasEmployees')
     if (err.code === 'media_too_large' || err.code === 'media_chunk_too_large') return t('signage.fileTooLarge')
+    if (err.code === 'invalid_youtube_url') return t('signage.invalidYoutubeUrl')
     if (err.code === 'invalid_media_format' || err.code === 'invalid_media_kind') return t('signage.badFormat')
     if (err.code === 'upload_incomplete' || err.code === 'invalid_chunk_size') return t('signage.uploadIncomplete')
     if (err.code === 'excel_too_large') return t('signage.excelTooLarge')

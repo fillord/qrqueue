@@ -15,7 +15,8 @@ class TVMedia(UUIDPkMixin, Base):
         UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # video or advertisement
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # legacy video, advertisement, youtube_video, youtube_playlist
+    youtube_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     mime_type: Mapped[str] = mapped_column(String(32), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

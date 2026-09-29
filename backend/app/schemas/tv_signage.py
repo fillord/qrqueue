@@ -76,9 +76,14 @@ class TVMediaCreate(BaseModel):
         return self
 
 
+class TVYoutubeCreate(BaseModel):
+    title: Name
+    url: str = Field(min_length=1, max_length=500)
+    sort_order: int = Field(default=0, ge=0, le=10000)
+
+
 class TVMediaUpdate(PatchModel):
     title: Name | None = None
-    kind: Literal["video", "advertisement"] | None = None
     sort_order: int | None = Field(default=None, ge=0, le=10000)
     is_active: bool | None = None
 
@@ -88,6 +93,7 @@ class TVMediaOut(BaseModel):
     organization_id: uuid.UUID
     title: str
     kind: str
+    youtube_id: str | None
     mime_type: str
     size_bytes: int
     uploaded_bytes: int

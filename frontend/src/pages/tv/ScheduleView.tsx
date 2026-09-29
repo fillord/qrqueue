@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { TvDepartmentState, TvState } from '../../api/types'
@@ -35,8 +36,12 @@ export default function ScheduleView({ state }: { state: TvState }) {
   const [now, setNow] = useState(() => new Date())
   const [slideIndex, setSlideIndex] = useState(0)
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  const tableWrapRef = useRef<HTMLDivElement>(null)
+  const [tableHeight, setTableHeight] = useState(0)
   const today = weekdayIn(state.timezone, now)
-  const rowsPerPage = Math.max(2, Math.min(16, Math.floor((viewport.height - 220) / (viewport.width < 1100 ? 78 : 66))))
+  const fallbackHeight = viewport.height - 220
+  const rowMinHeight = viewport.width < 1100 ? 80 : 72
+  const rowsPerPage = Math.max(1, Math.floor(((tableHeight || fallbackHeight) - 52) / rowMinHeight))
   const programKey = JSON.stringify(state.departments)
   const slides = useMemo(() => makeSlides(state, rowsPerPage), [programKey, rowsPerPage])
   const slide = slides[slideIndex % slides.length]
@@ -51,6 +56,14 @@ export default function ScheduleView({ state }: { state: TvState }) {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+  useEffect(() => {
+    const element = tableWrapRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => setTableHeight(element.clientHeight))
+    observer.observe(element)
+    setTableHeight(element.clientHeight)
+    return () => observer.disconnect()
+  }, [slideKey])
 
   useEffect(() => { setSlideIndex(0) }, [programKey, rowsPerPage])
   useEffect(() => {
@@ -61,6 +74,9 @@ export default function ScheduleView({ state }: { state: TvState }) {
 
   const time = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, hour: '2-digit', minute: '2-digit' }).format(now)
   const date = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now)
+  const visibleRows = Math.max(1, slide?.rows.length ?? 1)
+  const tableFontRem = Math.max(.78, Math.min(2.3, 3.9 / Math.sqrt(visibleRows), viewport.width / 750))
+  const tableStyle = { '--schedule-rows': visibleRows, fontSize: `${tableFontRem}rem` } as CSSProperties
 
   return <div className="tv-signage">
     <div className="tv-signage__meta"><span>{t('signage.weekSchedule')}</span><span className="tv-signage__datetime">{date}<time>{time}</time></span></div>
@@ -69,7 +85,7 @@ export default function ScheduleView({ state }: { state: TvState }) {
         <div className="tv-signage__heading"><h1>{slide.department.name}</h1>
           {slide.pages > 1 && <span className="tv-signage__page">{slide.page + 1} / {slide.pages}</span>}
         </div>
-        <div className="tv-signage__table-wrap"><table className="tv-signage__table" aria-label={t('signage.scheduleFor', { name: slide.department.name })}>
+        <div className="tv-signage__table-wrap" ref={tableWrapRef}><table className="tv-signage__table" style={tableStyle} aria-label={t('signage.scheduleFor', { name: slide.department.name })}>
           <thead><tr><th>{t('signage.doctor')}</th><th>{t('signage.specialty')}</th><th>{t('signage.room')}</th>
             {WEEKDAYS.map((weekday) => <th className={weekday === today ? 'tv-signage__today' : ''} key={weekday}>{t(`signage.shortWeekdays.${weekday}`)}</th>)}
           </tr></thead>

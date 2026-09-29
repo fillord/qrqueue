@@ -261,7 +261,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                   <label><input type="radio" name={`playlist-${screen.id}`} checked={screen.media_playlist_mode === 'all'} disabled={submitting} onChange={() => void changeScreen(screen, { media_playlist_mode: 'all' })} />{t('adminTv.playlist.all')}</label>
                   <label><input type="radio" name={`playlist-${screen.id}`} checked={screen.media_playlist_mode === 'selected'} disabled={submitting} onChange={() => void changeScreen(screen, { media_playlist_mode: 'selected' })} />{t('adminTv.playlist.selected')}</label>
                   {screen.media_playlist_mode === 'selected' && <div className="admin-tv-screens__media-options">
-                    {media.filter((item) => item.is_ready && item.is_active).length === 0 ? <p>{t('adminTv.playlist.empty')}</p> : media.filter((item) => item.is_ready && item.is_active).map((item) => (
+                    {media.filter((item) => item.is_ready && item.is_active && (item.kind.startsWith('youtube_') || item.mime_type.startsWith('image/'))).length === 0 ? <p>{t('adminTv.playlist.empty')}</p> : media.filter((item) => item.is_ready && item.is_active && (item.kind.startsWith('youtube_') || item.mime_type.startsWith('image/'))).map((item) => (
                       <label key={item.id}><input type="checkbox" checked={screen.selected_media_ids.includes(item.id)} disabled={submitting} onChange={() => void changeScreen(screen, { selected_media_ids: screen.selected_media_ids.includes(item.id) ? screen.selected_media_ids.filter((id) => id !== item.id) : [...screen.selected_media_ids, item.id] })} />{item.title}</label>
                     ))}
                     <small>{t('adminTv.playlist.adsHint')}</small>

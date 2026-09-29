@@ -13,6 +13,7 @@ from app.models.queue import Queue
 from app.models.ticket import Ticket
 from app.models.tv_screen import TVScreen
 from app.models.tv_media import TVMedia
+from app.services.youtube import youtube_embed_url
 
 _CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving)
 
@@ -132,9 +133,12 @@ async def build_tv_state(db: AsyncSession, screen: TVScreen) -> dict:
         media_out = [
             {"id": item.id, "title": item.title, "kind": item.kind,
              "mime_type": item.mime_type,
-             "url": f"/api/tv/media/{item.id}?v={item.size_bytes}"}
+             "url": youtube_embed_url(item.kind, item.youtube_id) if item.youtube_id
+                    else f"/api/tv/media/{item.id}?v={item.size_bytes}"}
             for item in media if (selected_ids is None or item.id in selected_ids)
             and (item.kind != "advertisement" or screen.ads_enabled)
+            and (item.kind in {"youtube_video", "youtube_playlist"} and item.youtube_id
+                 or item.kind == "advertisement" and item.mime_type.startswith("image/"))
         ]
 
     return {

@@ -27,8 +27,8 @@ beforeEach(async () => {
   vi.mocked(getAdminQueues).mockResolvedValue([])
   vi.mocked(getAdminCabinets).mockResolvedValue([])
   vi.mocked(listMedia).mockResolvedValue([
-    { id: 'clip-1', organization_id: 'org-1', title: 'Clip one', kind: 'video', mime_type: 'video/mp4', size_bytes: 1, uploaded_bytes: 1, is_ready: true, is_active: true, sort_order: 0, created_at: '' },
-    { id: 'clip-2', organization_id: 'org-1', title: 'Clip two', kind: 'video', mime_type: 'video/mp4', size_bytes: 1, uploaded_bytes: 1, is_ready: true, is_active: true, sort_order: 1, created_at: '' },
+    { id: 'clip-1', organization_id: 'org-1', title: 'Clip one', kind: 'youtube_video', youtube_id: 'dQw4w9WgXcQ', mime_type: 'text/youtube', size_bytes: 0, uploaded_bytes: 0, is_ready: true, is_active: true, sort_order: 0, created_at: '' },
+    { id: 'clip-2', organization_id: 'org-1', title: 'Clip two', kind: 'youtube_playlist', youtube_id: 'PL1234567890', mime_type: 'text/youtube', size_bytes: 0, uploaded_bytes: 0, is_ready: true, is_active: true, sort_order: 1, created_at: '' },
   ])
   vi.mocked(getTvScreens).mockImplementation(async () => [{ ...tv }])
   vi.mocked(updateTvScreen).mockImplementation(async (_id, changes) => {

@@ -243,7 +243,7 @@ export interface TvScheduleEntry {
 }
 
 export interface TvDepartmentState { id: string; name: string; entries: TvScheduleEntry[] }
-export interface TvMediaState { id: string; title: string; kind: 'video' | 'advertisement'; mime_type: string; url: string }
+export interface TvMediaState { id: string; title: string; kind: 'youtube_video' | 'youtube_playlist' | 'advertisement'; mime_type: string; url: string }
 
 export interface QrBatchToken {
   token: string

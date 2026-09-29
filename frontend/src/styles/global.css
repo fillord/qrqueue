@@ -3133,7 +3133,7 @@ textarea:focus {
 .tv-media__content video::-webkit-media-controls-play-button { display: none !important; -webkit-appearance: none; }
 .tv-media__backdrop { position: absolute; inset: -48px; width: calc(100% + 96px); height: calc(100% + 96px); object-fit: cover; filter: blur(36px) brightness(.55); pointer-events: none; }
 .tv-media__foreground { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.tv-media__youtube, .tv-media__youtube iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.tv-media__youtube, .tv-media__youtube-player, .tv-media__youtube iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .tv-media__start { position: absolute; z-index: 2; left: 50%; bottom: 8%; transform: translateX(-50%); padding: .8rem 1.2rem; border-radius: .8rem; background: #fff; color: #12382e; font-size: clamp(1rem, 1.5vw, 1.5rem); }
 .tv-media__sound { position: absolute; z-index: 2; right: clamp(16px, 2vw, 38px); bottom: clamp(16px, 3vh, 34px); padding: .7rem 1rem; border: 1px solid #ffffff55; border-radius: .8rem; background: #08111fd9; color: #fff; font-size: clamp(.9rem, 1.1vw, 1.2rem); }
 .tv-media__error { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; color: #fff; text-align: center; background: #13382f; }

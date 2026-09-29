@@ -134,7 +134,11 @@ it('rotates an announcement into a YouTube clip and advances when the clip ends'
   vi.stubGlobal('YT', {
     PlayerState: { ENDED: 0, PLAYING: 1 },
     Player: class {
-      constructor(_host: HTMLElement, options: any) { config = options; player = this }
+      constructor(host: HTMLElement, options: any) {
+        config = options
+        player = this
+        host.replaceWith(document.createElement('iframe'))
+      }
       getIframe() { return document.createElement('iframe') }
       mute() {}
       playVideo() {}

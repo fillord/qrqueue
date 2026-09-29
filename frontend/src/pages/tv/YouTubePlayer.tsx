@@ -76,6 +76,10 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
     if (!itemId) { onFailure(); return }
     void loadYouTubeApi().then((YT) => {
       if (canceled || !host.current) return
+      const container = host.current
+      const mount = document.createElement('div')
+      mount.className = 'tv-media__youtube-player'
+      container.replaceChildren(mount)
       const playerVars: Record<string, string | number> = {
         autoplay: 1, controls: 0, mute: 1, playsinline: 1, rel: 0,
         origin: window.location.origin,
@@ -90,7 +94,7 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
         playerVars.loop = 1
         playerVars.playlist = itemId
       }
-      player.current = new YT.Player(host.current, {
+      player.current = new YT.Player(mount, {
         ...(isPlaylist ? {} : { videoId: itemId }), playerVars,
         events: {
           onReady: (event) => {
@@ -139,8 +143,10 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
     }).catch(() => { if (!canceled) { setUnavailable(true); onFailure() } })
     return () => {
       canceled = true
-      player.current?.destroy()
+      const current = player.current
       player.current = null
+      try { current?.destroy() } catch { /* The TV browser may already have removed the iframe. */ }
+      host.current?.replaceChildren()
     }
   }, [item.id, itemId, isPlaylist, repeat])
 

@@ -140,6 +140,8 @@ it('rotates an announcement into a YouTube clip and advances when the clip ends'
       playVideo() {}
       destroy() {}
       seekTo() {}
+      getPlayerState() { return 1 }
+      playVideoAt() {}
       getPlaylist() { return [] }
       getPlaylistIndex() { return 0 }
     },
@@ -177,6 +179,8 @@ it('plays every item in a YouTube playlist before advancing to the next item', a
       playVideo() {}
       destroy() {}
       seekTo() {}
+      getPlayerState() { return 1 }
+      playVideoAt() {}
       getPlaylist() { return ['first', 'second'] }
       getPlaylistIndex() { return playlistIndex }
     },
@@ -198,4 +202,38 @@ it('plays every item in a YouTube playlist before advancing to the next item', a
   playlistIndex = 1
   act(() => config.events.onStateChange({ target: player, data: 0 }))
   expect(screen.getByRole('img', { name: 'Объявление' })).toBeTruthy()
+})
+
+it('restarts a single YouTube playlist from its first video', async () => {
+  let config: any
+  let player: any
+  const playVideoAt = vi.fn()
+  vi.stubGlobal('YT', {
+    PlayerState: { ENDED: 0, PLAYING: 1 },
+    Player: class {
+      constructor(_host: HTMLElement, options: any) { config = options; player = this }
+      getIframe() { return document.createElement('iframe') }
+      mute() {}
+      playVideo() {}
+      destroy() {}
+      seekTo() {}
+      getPlayerState() { return 1 }
+      nextVideo() {}
+      playVideoAt(index: number) { playVideoAt(index) }
+      getPlaylist() { return ['first', 'second'] }
+      getPlaylistIndex() { return 1 }
+    },
+  })
+  const state: TvState = {
+    organization_name: 'Clinic', logo_url: null, brand_color: null, language: 'ru',
+    is_hall_screen: true, queues: [], recent_calls: [], timezone: 'Asia/Almaty', display_mode: 'media',
+    slide_seconds: 5, ads_enabled: false, departments: [],
+    media: [{ id: 'list', title: 'Плейлист', kind: 'youtube_playlist', mime_type: 'text/youtube',
+      url: 'https://www.youtube.com/embed?listType=playlist&list=PL1234567890' }],
+  }
+  render(<MediaView state={state} />)
+  await act(async () => {})
+  expect(config.playerVars.loop).toBe(0)
+  act(() => config.events.onStateChange({ target: player, data: 0 }))
+  expect(playVideoAt).toHaveBeenCalledWith(0)
 })

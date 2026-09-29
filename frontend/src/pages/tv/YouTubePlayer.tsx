@@ -10,7 +10,9 @@ interface Player {
   seekTo(seconds: number, allowSeekAhead: boolean): void
   getPlaylist(): string[] | undefined
   getPlaylistIndex(): number
+  getPlayerState(): number
   nextVideo(): void
+  playVideoAt(index: number): void
   getIframe(): HTMLIFrameElement
 }
 interface PlayerEvent { target: Player }
@@ -75,7 +77,9 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
       if (isPlaylist) {
         playerVars.listType = 'playlist'
         playerVars.list = itemId
-        playerVars.loop = repeat ? 1 : 0
+        // The TV controls playlist looping itself. YouTube's loop parameter is
+        // unreliable in some embedded TV browsers and can stop on the last item.
+        playerVars.loop = 0
       } else if (repeat) {
         playerVars.loop = 1
         playerVars.playlist = itemId
@@ -98,6 +102,7 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
             if (isPlaylist) {
               const playlist = state.target.getPlaylist() ?? []
               if (playlist.length > 0 && state.target.getPlaylistIndex() < playlist.length - 1) return
+              if (repeat) { state.target.playVideoAt(0); return }
             }
             if (repeat) { state.target.seekTo(0, true); state.target.playVideo() }
             else onComplete()
@@ -120,6 +125,22 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
       player.current = null
     }
   }, [item.id, itemId, isPlaylist, repeat])
+
+  useEffect(() => {
+    if (!repeat) return
+    const retry = window.setInterval(() => {
+      const target = player.current
+      if (!target) return
+      const state = target.getPlayerState()
+      if (state === 0) {
+        if (isPlaylist) target.playVideoAt(0)
+        else { target.seekTo(0, true); target.playVideo() }
+      } else if (state === -1 || state === 2 || state === 5) {
+        target.playVideo()
+      }
+    }, 10_000)
+    return () => window.clearInterval(retry)
+  }, [isPlaylist, repeat])
 
   useEffect(() => {
     if (!blocked) return

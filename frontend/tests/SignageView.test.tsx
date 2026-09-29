@@ -208,12 +208,16 @@ it('restarts a single YouTube playlist from its first video', async () => {
   let config: any
   let player: any
   const playVideoAt = vi.fn()
+  const unMute = vi.fn()
   vi.stubGlobal('YT', {
     PlayerState: { ENDED: 0, PLAYING: 1 },
     Player: class {
       constructor(_host: HTMLElement, options: any) { config = options; player = this }
       getIframe() { return document.createElement('iframe') }
       mute() {}
+      unMute() { unMute() }
+      isMuted() { return false }
+      setVolume() {}
       playVideo() {}
       destroy() {}
       seekTo() {}
@@ -234,6 +238,8 @@ it('restarts a single YouTube playlist from its first video', async () => {
   render(<MediaView state={state} />)
   await act(async () => {})
   expect(config.playerVars.loop).toBe(0)
+  act(() => config.events.onStateChange({ target: player, data: 1 }))
+  expect(unMute).toHaveBeenCalledOnce()
   act(() => config.events.onStateChange({ target: player, data: 0 }))
   expect(playVideoAt).toHaveBeenCalledWith(0)
 })

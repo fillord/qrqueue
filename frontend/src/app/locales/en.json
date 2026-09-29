@@ -1104,6 +1104,7 @@
     "legacyInactive": "Not shown on TVs",
     "youtubeUnavailable": "YouTube could not be opened. Check the connection and embedding permissions.",
     "youtubeStart": "Press OK or space to start the video",
+    "youtubeSound": "Turn on sound",
     "mediaTitle": "Title",
     "mediaKind": "Type",
     "kindVideo": "Video",

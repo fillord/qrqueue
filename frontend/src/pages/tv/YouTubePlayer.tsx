@@ -6,6 +6,9 @@ import type { TvMediaState } from '../../api/types'
 interface Player {
   destroy(): void
   mute(): void
+  unMute(): void
+  isMuted(): boolean
+  setVolume(volume: number): void
   playVideo(): void
   seekTo(seconds: number, allowSeekAhead: boolean): void
   getPlaylist(): string[] | undefined
@@ -58,6 +61,7 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
   const host = useRef<HTMLDivElement>(null)
   const player = useRef<Player | null>(null)
   const [blocked, setBlocked] = useState(false)
+  const [soundBlocked, setSoundBlocked] = useState(false)
   const [unavailable, setUnavailable] = useState(false)
   const itemId = item.url.match(/(?:\/embed\/|[?&]list=)([A-Za-z0-9_-]+)/)?.[1] ?? ''
   const isPlaylist = item.kind === 'youtube_playlist'
@@ -65,7 +69,9 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
   useEffect(() => {
     let canceled = false
     let failedPlaylistItems = 0
+    let attemptedSound = false
     setBlocked(false)
+    setSoundBlocked(false)
     setUnavailable(false)
     if (!itemId) { onFailure(); return }
     void loadYouTubeApi().then((YT) => {
@@ -97,7 +103,19 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
           onStateChange: (event) => {
             if (canceled) return
             const state = event as PlayerStateEvent
-            if (state.data === YT.PlayerState.PLAYING) { failedPlaylistItems = 0; setBlocked(false); setUnavailable(false) }
+            if (state.data === YT.PlayerState.PLAYING) {
+              failedPlaylistItems = 0
+              setBlocked(false)
+              setUnavailable(false)
+              if (!attemptedSound) {
+                attemptedSound = true
+                state.target.setVolume(100)
+                state.target.unMute()
+                window.setTimeout(() => {
+                  if (!canceled) setSoundBlocked(state.target.isMuted())
+                }, 300)
+              }
+            }
             if (state.data !== YT.PlayerState.ENDED) return
             if (isPlaylist) {
               const playlist = state.target.getPlaylist() ?? []
@@ -142,18 +160,31 @@ export default function YouTubePlayer({ item, repeat, onComplete, onFailure }: {
     return () => window.clearInterval(retry)
   }, [isPlaylist, repeat])
 
+  const enableSound = () => {
+    const target = player.current
+    if (!target) return
+    target.setVolume(100)
+    target.unMute()
+    target.playVideo()
+    setSoundBlocked(false)
+  }
+
   useEffect(() => {
-    if (!blocked) return
+    if (!blocked && !soundBlocked) return
     const start = (event: KeyboardEvent) => {
-      if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); player.current?.playVideo() }
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault()
+        enableSound()
+      }
     }
     window.addEventListener('keydown', start)
     return () => window.removeEventListener('keydown', start)
-  }, [blocked])
+  }, [blocked, soundBlocked])
 
   return <>
     <div className="tv-media__youtube" ref={host} />
-    {blocked && <button type="button" className="tv-media__start" onClick={() => player.current?.playVideo()}>{t('signage.youtubeStart')}</button>}
+    {blocked && <button type="button" className="tv-media__start" onClick={enableSound}>{t('signage.youtubeStart')}</button>}
+    {!blocked && soundBlocked && <button type="button" className="tv-media__sound" onClick={enableSound}>{t('signage.youtubeSound')}</button>}
     {unavailable && repeat && <p className="tv-media__error">{t('signage.youtubeUnavailable')}</p>}
   </>
 }

@@ -3104,10 +3104,10 @@ textarea:focus {
 .tv-signage__schedule h1 { min-width: 0; font-size: clamp(1.65rem, 3.1vw, 3.5rem); line-height: 1.12; letter-spacing: -.025em; margin: 0; }
 .tv-signage__page { flex: 0 0 auto; color: var(--tv-muted); font-size: clamp(.8rem, 1vw, 1.15rem); }
 .tv-signage__table-wrap { flex: 1; min-height: 0; overflow: hidden; border: 1px solid #354259; border-radius: 12px; background: rgba(255,255,255,.045); }
-.tv-signage__table { width: 100%; height: 100%; table-layout: fixed; border-collapse: collapse; font-size: clamp(.72rem, 1.05vw, 1.45rem); line-height: 1.2; }
-.tv-signage__table thead { height: clamp(38px, 6vh, 64px); }
-.tv-signage__table tbody tr { height: calc((100% - clamp(38px, 6vh, 64px)) / var(--schedule-rows, 1)); }
-.tv-signage__table th, .tv-signage__table td { padding: clamp(4px, .7vh, 10px) clamp(2px, .4vw, 8px); border-bottom: 1px solid #354259; text-align: left; vertical-align: middle; overflow-wrap: anywhere; }
+.tv-signage__table { width: 100%; height: 100%; table-layout: fixed; border-collapse: collapse; font-size: clamp(.9rem, 1.05vw, 1.2rem); line-height: 1.2; }
+.tv-signage__table thead { height: clamp(36px, 5vh, 52px); }
+.tv-signage__table tbody tr { height: calc((100% - clamp(36px, 5vh, 52px)) / var(--schedule-rows, 1)); }
+.tv-signage__table th, .tv-signage__table td { padding: clamp(3px, .45vh, 7px) clamp(2px, .4vw, 8px); border-bottom: 1px solid #354259; text-align: left; vertical-align: middle; overflow-wrap: anywhere; }
 .tv-signage__table th { background: rgba(255,255,255,.075); color: var(--tv-accent); font-weight: 750; }
 .tv-signage__table th:first-child { width: 20%; }
 .tv-signage__table th:nth-child(2) { width: 13%; }

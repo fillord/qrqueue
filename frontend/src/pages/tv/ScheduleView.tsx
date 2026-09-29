@@ -40,8 +40,8 @@ export default function ScheduleView({ state }: { state: TvState }) {
   const [tableHeight, setTableHeight] = useState(0)
   const today = weekdayIn(state.timezone, now)
   const fallbackHeight = viewport.height - 220
-  const rowMinHeight = viewport.width < 1100 ? 80 : 72
-  const rowsPerPage = Math.max(1, Math.floor(((tableHeight || fallbackHeight) - 52) / rowMinHeight))
+  const rowMinHeight = viewport.width < 1100 ? 64 : 48
+  const rowsPerPage = Math.max(1, Math.floor(((tableHeight || fallbackHeight) - 44) / rowMinHeight))
   const programKey = JSON.stringify(state.departments)
   const slides = useMemo(() => makeSlides(state, rowsPerPage), [programKey, rowsPerPage])
   const slide = slides[slideIndex % slides.length]
@@ -75,8 +75,7 @@ export default function ScheduleView({ state }: { state: TvState }) {
   const time = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, hour: '2-digit', minute: '2-digit' }).format(now)
   const date = new Intl.DateTimeFormat(i18n.language, { timeZone: state.timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now)
   const visibleRows = Math.max(1, slide?.rows.length ?? 1)
-  const tableFontRem = Math.max(.78, Math.min(2.3, 3.9 / Math.sqrt(visibleRows), viewport.width / 750))
-  const tableStyle = { '--schedule-rows': visibleRows, fontSize: `${tableFontRem}rem` } as CSSProperties
+  const tableStyle = { '--schedule-rows': visibleRows } as CSSProperties
 
   return <div className="tv-signage">
     <div className="tv-signage__meta"><span>{t('signage.weekSchedule')}</span><span className="tv-signage__datetime">{date}<time>{time}</time></span></div>

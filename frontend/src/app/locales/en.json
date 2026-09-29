@@ -978,6 +978,7 @@
       "offlineCount": "TV screens offline: {{count}}"
     },
     "title": "TV screens",
+    "nameLabel": "Screen name",
     "namePlaceholder": "Screen name",
     "noQueue": "No queue (hall display)",
     "multiQueue": "Multiple queues (hall display)",

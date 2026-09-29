@@ -113,7 +113,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
     finally { setSubmitting(false) }
   }
 
-  async function changeScreen(screen: TvScreen, payload: Partial<Pick<TvScreen, 'display_mode' | 'slide_seconds' | 'ads_enabled' | 'media_playlist_mode' | 'selected_media_ids' | 'queue_id' | 'queue_selection_mode' | 'selected_queue_ids' | 'cabinet_selection_mode' | 'selected_cabinet_ids' | 'department_selection_mode' | 'selected_department_ids'>>) {
+  async function changeScreen(screen: TvScreen, payload: Partial<Pick<TvScreen, 'name' | 'display_mode' | 'slide_seconds' | 'ads_enabled' | 'media_playlist_mode' | 'selected_media_ids' | 'queue_id' | 'queue_selection_mode' | 'selected_queue_ids' | 'cabinet_selection_mode' | 'selected_cabinet_ids' | 'department_selection_mode' | 'selected_department_ids'>>) {
     setSubmitting(true)
     try { await updateTvScreen(screen.id, payload, organizationId); await load() }
     catch { setError(true) }
@@ -219,6 +219,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                   </div>}
                 </div>
                 <div className="admin-tv-screens__fields">
+                  <label>{t('adminTv.nameLabel')}<input type="text" defaultValue={screen.name} key={`${screen.id}-${screen.name}`} maxLength={200} disabled={submitting} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} onBlur={(e) => { const value = e.currentTarget.value.trim(); if (!value) { e.currentTarget.value = screen.name; return } if (value !== screen.name) void changeScreen(screen, { name: value }) }} /></label>
                   <label>{t('signage.screenMode')}<select value={screen.display_mode} disabled={submitting} onChange={(e) => void changeScreen(screen, { display_mode: e.target.value as TvScreen['display_mode'] })}><option value="queue">{t('signage.modeQueue')}</option><option value="schedule">{t('signage.modeSchedule')}</option><option value="media">{t('signage.modeMedia')}</option></select></label>
                   <label>{t('adminTv.language')}<select value={screen.language} disabled={submitting} onChange={(e) => void changeLanguage(screen, e.target.value as TvScreen['language'])}><option value="kk">Қазақша</option><option value="ru">Русский</option><option value="en">English</option></select></label>
                   {screen.display_mode === 'queue' && <label>{t('adminTv.queueBoard.screenSource')}<select value={screen.queue_id ?? ''} disabled={submitting} onChange={(e) => void changeScreen(screen, { queue_id: e.target.value || null })}><option value="">{t('adminTv.multiQueue')}</option>{queues.map((queue) => <option key={queue.id} value={queue.id}>{queue.name}</option>)}</select></label>}

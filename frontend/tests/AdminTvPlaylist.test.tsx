@@ -120,6 +120,16 @@ it('lets an admin switch a media TV to a repeating selection and check clips', a
   expect(screen.queryByRole('radio', { name: 'Repeat only checked media' })).toBeNull()
 })
 
+it('lets an admin rename a TV screen from its settings', async () => {
+  render(<AdminTvScreensPage />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
+  const nameInput = screen.getByRole('textbox', { name: 'Screen name' })
+  fireEvent.change(nameInput, { target: { value: 'Main lobby' } })
+  fireEvent.blur(nameInput)
+  await waitFor(() => expect(updateTvScreen).toHaveBeenCalledWith('screen-1', { name: 'Main lobby' }, undefined))
+  expect(await screen.findByRole('heading', { name: 'Main lobby' })).toBeTruthy()
+})
+
 it('shows connection state and last signal for TV screens', async () => {
   const base: TvScreen = {
     id: 'online', organization_id: 'org-1', queue_id: null, name: 'Lobby',

@@ -30,6 +30,16 @@ function PasswordJourney({ currentUser }: { currentUser: User }) {
   </>
 }
 
+function OrganizationJourney({ currentUser }: { currentUser: User }) {
+  const { pathname } = useLocation()
+  return <>
+    {pathname === '/admin/organization'
+      ? <form className="admin-organization__form"><h2>Настройки организации</h2></form>
+      : <Link to="/admin/organization">Настройки организации</Link>}
+    <AssistantPet user={currentUser} />
+  </>
+}
+
 describe('AssistantPet', () => {
   afterEach(() => cleanup())
   beforeEach(async () => {
@@ -74,18 +84,16 @@ describe('AssistantPet', () => {
     getStatus.mockResolvedValue({ available: true })
     ask.mockResolvedValue({ answer: 'Откройте «Настройки организации».', source: 'gemini' })
     const aiUser = { ...user, assistant_ai_enabled: true }
-    render(<MemoryRouter initialEntries={['/admin/queues']}>
-      <a href="/admin/organization">Настройки организации</a>
-      <AssistantPet user={aiUser} />
-    </MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/admin/queues']}><OrganizationJourney currentUser={aiUser} /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
     await waitFor(() => expect(getStatus).toHaveBeenCalled())
     fireEvent.change(screen.getByRole('textbox', { name: 'Напишите вопрос о системе' }), { target: { value: 'Где изменить название организации?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Отправить' }))
     await screen.findByText('Откройте «Настройки организации».')
-    fireEvent.click(screen.getByRole('button', { name: 'Показать, куда нажать' }))
-    expect(screen.getByTestId('assistant-tour')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Настройки организации' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти и показать, куда нажать' }))
+    await waitFor(() => expect(screen.getByTestId('assistant-tour')).toBeTruthy())
+    expect(screen.getAllByRole('heading', { name: 'Настройки организации' }).length).toBeGreaterThanOrEqual(2)
+    expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
   })
 
   it('continues a password walkthrough after navigating to profile settings', async () => {
@@ -97,9 +105,7 @@ describe('AssistantPet', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Напишите вопрос о системе' }), { target: { value: 'Как поменять пароль?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Отправить' }))
     await screen.findByText('Откройте настройки профиля.')
-    fireEvent.click(screen.getByRole('button', { name: 'Показать, куда нажать' }))
-    expect(screen.getByRole('heading', { name: 'Настройки профиля' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('link', { name: 'Admin' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти и показать, куда нажать' }))
     await waitFor(() => expect(screen.getByText('Пароль текущего пользователя изменяется в этом блоке.')).toBeTruthy())
     expect(screen.getAllByRole('heading', { name: 'Пароль и безопасность' }).length).toBeGreaterThanOrEqual(2)
   })

@@ -1262,6 +1262,7 @@
     "privacy": "Do not enter visitor names, ticket numbers, passwords or medical details.",
     "action": {
       "show": "Show me where to click",
+      "goAndShow": "Open it and show me where to click",
       "showCurrent": "Show this section"
     },
     "defaultPrompt": "What can I do in this section?",

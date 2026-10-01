@@ -30,38 +30,63 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
 
   useLayoutEffect(() => {
     if (!step) return
-    const target = document.querySelector(step.selector)
-    if (!target) {
-      setRect(null)
-      return
-    }
-    const targetElement = target
-
-    const disclosure = targetElement.closest('details')
-    if (disclosure && !disclosure.open) disclosure.open = true
-
+    let targetElement: Element | null = null
+    let revealed = false
+    let retryTimers: number[] = []
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    targetElement.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' })
+
+    function findTarget(): Element | null {
+      try {
+        const direct = document.querySelector(step.selector)
+        if (direct) return direct
+      } catch { /* a stale selector must not break the guide */ }
+
+      const expected = t(step.titleKey).trim().toLocaleLowerCase()
+      if (!expected) return null
+      const candidates = Array.from(document.querySelectorAll('a, button, summary, [data-assistant-tour]'))
+      return candidates.find((candidate) => {
+        const text = candidate.textContent?.replace(/\s+/g, ' ').trim().toLocaleLowerCase() ?? ''
+        return text === expected || (expected.length > 5 && text.includes(expected))
+      }) ?? null
+    }
 
     function update() {
+      targetElement = findTarget()
+      if (!targetElement) {
+        setRect(null)
+        return
+      }
+      const disclosure = targetElement.closest('details')
+      if (disclosure && !disclosure.open) disclosure.open = true
+      if (!revealed) {
+        revealed = true
+        targetElement.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' })
+      }
       const next = getRect(targetElement)
+      if (next.width <= 2 || next.height <= 2) {
+        setRect(null)
+        return
+      }
       setRect(next)
       setPlacement(next.bottom + 250 < window.innerHeight ? 'below' : 'above')
     }
 
     update()
-    const timer = window.setTimeout(update, reducedMotion ? 0 : 280)
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
-    observer?.observe(targetElement)
+    retryTimers = [80, 240, 600, 1200].map((delay) => window.setTimeout(update, reducedMotion ? 0 : delay))
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    if (targetElement) resizeObserver?.observe(targetElement)
+    const mutationObserver = new MutationObserver(update)
+    mutationObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] })
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
     return () => {
-      window.clearTimeout(timer)
-      observer?.disconnect()
+      retryTimers.forEach((timer) => window.clearTimeout(timer))
+      resizeObserver?.disconnect()
+      mutationObserver.disconnect()
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [step])
+  }, [step, t])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -96,7 +121,7 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
       </div>
       <h2>{t(step.titleKey)}</h2>
       <p>{t(step.bodyKey)}</p>
-      <div className="assistant-tour__instruction"><span aria-hidden="true">↗</span>{t('assistant.tour.clickHint')}</div>
+      <div className={`assistant-tour__instruction${rect ? '' : ' assistant-tour__instruction--searching'}`}><span aria-hidden="true">{rect ? '↗' : '…'}</span>{t(rect ? 'assistant.tour.clickHint' : 'assistant.tour.searching')}</div>
       <div className="assistant-tour__actions">
         <button type="button" className="assistant-tour__close" onClick={onClose}>{t('assistant.tour.close')}</button>
         <span />

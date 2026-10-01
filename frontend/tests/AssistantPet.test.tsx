@@ -3,6 +3,7 @@ import { Link, MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AssistantPet from '../src/components/AssistantPet'
+import AssistantTour from '../src/components/AssistantTour'
 import type { User } from '../src/api/types'
 import i18n from '../src/app/i18n'
 
@@ -101,5 +102,20 @@ describe('AssistantPet', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Admin' }))
     await waitFor(() => expect(screen.getByText('Пароль текущего пользователя изменяется в этом блоке.')).toBeTruthy())
     expect(screen.getAllByRole('heading', { name: 'Пароль и безопасность' }).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('finds a renamed navigation target by its visible label', () => {
+    render(<>
+      <a href="/admin/problems">Центр проблем</a>
+      <AssistantTour
+        steps={[{ selector: '[data-old-selector]', titleKey: 'assistant.pages.problems.title', bodyKey: 'assistant.tour.actions.problemFilters' }]}
+        index={0}
+        onBack={vi.fn()}
+        onNext={vi.fn()}
+        onClose={vi.fn()}
+      />
+    </>)
+    expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
+    expect(document.querySelector('.assistant-tour__shade--full')).toBeFalsy()
   })
 })

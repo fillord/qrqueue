@@ -1271,6 +1271,7 @@
       "startHint": "I will dim the screen and highlight where to click",
       "step": "Step {{current}} of {{total}}",
       "clickHint": "Select the highlighted item or continue to the next step.",
+      "searching": "Finding the right control on this page…",
       "close": "Close",
       "back": "Back",
       "next": "Next",

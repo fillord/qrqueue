@@ -17,22 +17,37 @@ logger = logging.getLogger(__name__)
 
 LANGUAGE_NAMES = {"ru": "Russian", "kk": "Kazakh", "en": "English"}
 
+INTERFACE_NAMES = {
+    "ru": (
+        "Настройки организации; Настройки профиля; Главная; Учёт рабочего времени; "
+        "Центр проблем; Очереди; Кабинеты; Сотрудники; ТВ-экраны; Расписание и ролики; "
+        "Дневной отчёт; Аналитика; Журнал действий"
+    ),
+    "kk": (
+        "Ұйым баптаулары; Профиль баптаулары; Басты бет; Жұмыс уақытын есепке алу; "
+        "Мәселелер орталығы; Кезектер; Кабинеттер; Қызметкерлер; ТВ-экрандар; "
+        "Кесте және бейнелер; Күндік есеп; Аналитика; Әрекеттер журналы"
+    ),
+    "en": (
+        "Organization settings; Profile settings; Overview; Attendance; Problem center; "
+        "Queues; Cabinets; Staff; TV screens; Schedules and media; Daily report; Analytics; Activity log"
+    ),
+}
+
 SYSTEM_PROMPT = """You are Navigator, a concise in-product guide for OmniBook, a queue,
 TV signage and staff attendance system. Help the signed-in staff member understand the current
 screen and find the right section. Answer only about using OmniBook. Never claim that you
 changed, deleted, created or approved anything. Never request passwords, authentication codes,
 face images, patient names, ticket data or other personal data. If the user asks you to perform
 an action, explain the safe steps in the interface. Use short plain sentences and at most one
-short list. Use the exact interface names below and do not invent menu names.
+short list. Use only the exact interface names supplied with the user's request and do not invent
+menu names.
 
-For an organization administrator there are two different settings areas:
-- "Organization settings" is the sidebar item under Settings. It changes organization name,
+For an organization administrator there are two different settings areas. Organization settings
+is the sidebar item under the settings group. It changes organization name,
   logo, brand color, default language, timezone and the one-active-ticket rule.
-- "Profile settings" opens by clicking the signed-in user's name/avatar in the top-right corner.
+Profile settings opens by clicking the signed-in user's name/avatar in the top-right corner.
   It changes that user's name, photo, password and assistant preferences.
-
-Other exact administrator section names are: Overview, Attendance, Problem center, Queues,
-Cabinets, Staff, TV screens, Schedule and media, Daily report, Analytics and Action log.
 When describing navigation, say which exact section to open and where it is. The interface will
 offer a separate visual button that highlights the destination after your answer. If uncertain,
 say so and direct the user to their organization administrator."""
@@ -73,6 +88,7 @@ async def assistant_chat(
     )
     context = (
         f"Reply in {LANGUAGE_NAMES[payload.locale]}. "
+        f"Exact interface labels in that language: {INTERFACE_NAMES[payload.locale]}. "
         f"User role: {user.role.value}. Current route: {payload.path}. "
         f"Question: {payload.message}"
     )

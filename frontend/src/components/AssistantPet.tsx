@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { askAssistant, getAssistantStatus } from '../api/assistant'
 import type { User } from '../api/types'
@@ -41,7 +41,6 @@ type Message = { id: number; kind: 'user' | 'assistant'; text: string; action?: 
 export default function AssistantPet({ user }: { user: User }) {
   const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const guidance = getAssistantGuidance(pathname, user.role)
   const tour = getAssistantTour(pathname, user.role)
   const [open, setOpen] = useState(false)
@@ -124,17 +123,11 @@ export default function AssistantPet({ user }: { user: User }) {
 
   function showAction(action: AssistantAction) {
     setOpen(false)
+    setTourOverride(action.steps)
     try {
       if (action.destination) sessionStorage.setItem(PENDING_TOUR_KEY, JSON.stringify(action.destination))
       else sessionStorage.removeItem(PENDING_TOUR_KEY)
     } catch { /* storage may be disabled */ }
-    if (action.destination) {
-      setTourIndex(null)
-      setTourOverride(null)
-      navigate(action.destination.path)
-      return
-    }
-    setTourOverride(action.steps)
     setTourIndex(0)
   }
 

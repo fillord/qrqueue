@@ -15,13 +15,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 54px;
-  padding: 5px 15px 5px 6px;
-  border: 1px solid #9fc6b3;
+  min-height: 68px;
+  padding: 4px 17px 4px 5px;
+  border: 1px solid #8bb9a4;
   border-radius: 999px;
   background: #fff;
   color: #174e40;
-  box-shadow: 0 12px 32px #174d3c2c;
+  box-shadow: 0 16px 38px #123d3038, inset 0 1px 0 #fff;
   font: inherit;
   font-size: .84rem;
   font-weight: 800;
@@ -29,15 +29,25 @@
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 
-.assistant-pet__button:hover { transform: translateY(-2px); border-color: #4b967a; box-shadow: 0 16px 34px #174d3c35; }
+.assistant-pet__button:hover { transform: translateY(-4px) rotate(-1deg); border-color: #4b967a; box-shadow: 0 20px 44px #174d3c45; }
 .assistant-pet__button:focus-visible, .assistant-pet__panel button:focus-visible, .assistant-pet__panel input:focus-visible, .assistant-pet__bubble button:focus-visible { outline: 3px solid #86bda5; outline-offset: 2px; }
 .assistant-pet__button--open { border-color: #176e5e; }
-.assistant-pet__mark { width: 46px; height: 46px; flex: 0 0 auto; overflow: visible; }
-.assistant-pet__body { fill: #176e5e; stroke: #0e5749; stroke-width: 2; }
-.assistant-pet__face { fill: #f6faf6; }
-.assistant-pet__ear { fill: #8cc8ad; stroke: #176e5e; stroke-width: 3; stroke-linejoin: round; }
-.assistant-pet__smile { fill: none; stroke: #176e5e; stroke-width: 2; stroke-linecap: round; }
-.assistant-pet__badge { fill: #f1be63; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.assistant-pet__mark { width: 60px; height: 60px; flex: 0 0 auto; overflow: visible; filter: drop-shadow(0 5px 5px rgb(12 68 54 / .24)); animation: assistant-pet-float 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+.assistant-pet__shadow { fill: rgb(7 48 38 / .18); filter: blur(1.5px); }
+.assistant-pet__torso, .assistant-pet__head { stroke: #0a5343; stroke-width: 1.5; }
+.assistant-pet__head { filter: drop-shadow(0 3px 2px rgb(0 0 0 / .12)); }
+.assistant-pet__face { stroke: #d8e8e0; stroke-width: 1; }
+.assistant-pet__ear { fill: #4aae87; stroke: #0e604e; stroke-width: 2; stroke-linejoin: round; transform-box: fill-box; transform-origin: bottom center; }
+.assistant-pet__ear--left { animation: assistant-ear-left 5s ease-in-out infinite; }
+.assistant-pet__ear--right { animation: assistant-ear-right 5s ease-in-out infinite; }
+.assistant-pet__tail { fill: none; stroke: #207c64; stroke-width: 7; stroke-linecap: round; transform-box: fill-box; transform-origin: left center; animation: assistant-tail 1.8s ease-in-out infinite alternate; }
+.assistant-pet__paw { fill: #2e8c70; stroke: #0d5948; stroke-width: 1.2; }
+.assistant-pet__eyes { fill: #103c33; transform-box: fill-box; transform-origin: center; animation: assistant-blink 4.6s infinite; }
+.assistant-pet__nose { fill: #17483e; }
+.assistant-pet__smile { fill: none; stroke: #176e5e; stroke-width: 1.7; stroke-linecap: round; }
+.assistant-pet__cheek { fill: #f1a6a0; opacity: .52; }
+.assistant-pet__badge circle { fill: #f5c55e; stroke: #fff; stroke-width: 1.8; }
+.assistant-pet__badge path { fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; }
 
 .assistant-pet__bubble {
   position: relative;
@@ -58,29 +68,31 @@
 .assistant-pet__bubble-tour:hover { background: #105c4e; }
 
 .assistant-pet__panel {
-  width: min(380px, calc(100vw - 28px));
-  max-height: min(680px, calc(100vh - 98px));
+  width: min(410px, calc(100vw - 28px));
+  max-height: min(720px, calc(100vh - 104px));
   overflow: hidden;
-  border: 1px solid #a9c9b8;
-  border-radius: 20px 20px 6px 20px;
+  border: 1px solid #78a994;
+  border-radius: 24px 24px 7px 24px;
   background: #fff;
-  box-shadow: 0 24px 64px #173d3238;
+  box-shadow: 0 28px 80px #102e274d, 0 2px 0 #fff inset;
   animation: assistant-arrive .22s ease both;
 }
-.assistant-pet__panel-head { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 10px 12px; border-bottom: 1px solid var(--color-border); background: #edf6f0; }
+.assistant-pet__panel-head { display: flex; align-items: center; gap: 12px; min-height: 88px; padding: 9px 14px 9px 10px; border-bottom: 1px solid #0d4d40; background: radial-gradient(circle at 18% 0, #3c9d78 0, transparent 34%), linear-gradient(135deg, #176e5e, #0c473d); color: #fff; }
 .assistant-pet__panel-head > span:nth-child(2) { display: grid; min-width: 0; margin-right: auto; }
-.assistant-pet__panel-head strong { font-size: .96rem; }
-.assistant-pet__panel-head small { margin-top: 2px; color: var(--color-text-secondary); font-size: .72rem; }
-.assistant-pet__panel-head > button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--color-text-secondary); font-size: 1.35rem; cursor: pointer; }
-.assistant-pet__panel-head > button:hover { background: #dfece4; color: var(--color-ink); }
-.assistant-pet__mini { display: grid; place-items: center; width: 44px; height: 44px; }
-.assistant-pet__mini .assistant-pet__mark { width: 42px; height: 42px; }
-.assistant-pet__content { max-height: calc(min(680px, calc(100vh - 98px)) - 68px); overflow-y: auto; padding: 16px; }
-.assistant-pet__page-hint { padding: 14px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface-muted); }
+.assistant-pet__panel-head strong { font-size: 1rem; letter-spacing: -.01em; }
+.assistant-pet__panel-head small { display: flex; align-items: center; gap: 6px; margin-top: 3px; color: #d7eee5; font-size: .72rem; }
+.assistant-pet__panel-head small::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #9cf0a8; box-shadow: 0 0 0 3px rgb(156 240 168 / .16); }
+.assistant-pet__panel-head > button { width: 36px; height: 36px; border: 1px solid rgb(255 255 255 / .18); border-radius: 50%; background: rgb(255 255 255 / .08); color: #fff; font-size: 1.35rem; cursor: pointer; }
+.assistant-pet__panel-head > button:hover { background: rgb(255 255 255 / .18); }
+.assistant-pet__mini { display: grid; place-items: center; width: 68px; height: 68px; flex: 0 0 auto; border-radius: 22px; background: linear-gradient(145deg, rgb(255 255 255 / .22), rgb(255 255 255 / .06)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .28); }
+.assistant-pet__mini .assistant-pet__mark { width: 70px; height: 70px; }
+.assistant-pet__content { max-height: calc(min(720px, calc(100vh - 104px)) - 88px); overflow-y: auto; padding: 15px; background-color: #f2f7f4; background-image: radial-gradient(#a9c9ba45 1px, transparent 1px); background-size: 15px 15px; }
+.assistant-pet__page-hint { position: relative; padding: 13px 14px 13px 17px; border: 1px solid #c6dbd0; border-radius: 5px 15px 15px 15px; background: rgb(255 255 255 / .94); box-shadow: 0 5px 14px rgb(21 77 62 / .07); }
+.assistant-pet__page-hint::before { content: ''; position: absolute; top: -1px; left: -7px; border-top: 8px solid #fff; border-left: 8px solid transparent; }
 .assistant-pet__page-hint small { display: block; margin-bottom: 4px; color: #3b7764; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .assistant-pet__page-hint strong { display: block; font-size: .94rem; }
 .assistant-pet__page-hint p { margin: 6px 0 0; color: var(--color-text-secondary); font-size: .83rem; line-height: 1.48; }
-.assistant-pet__suggestion { width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid #b9d3c5; border-radius: 10px; background: #fff; color: #176e5e; font: inherit; font-size: .8rem; font-weight: 750; text-align: left; cursor: pointer; }
+.assistant-pet__suggestion { width: 100%; margin-top: 9px; padding: 10px 12px; border: 1px solid #b9d3c5; border-radius: 14px; background: rgb(255 255 255 / .9); color: #176e5e; font: inherit; font-size: .8rem; font-weight: 750; text-align: left; cursor: pointer; }
 .assistant-pet__suggestion:hover { border-color: #65a88b; background: #edf6f0; }
 .assistant-pet__tour-start { display: flex; align-items: center; gap: 11px; width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 12px; background: #176e5e; color: #fff; font: inherit; text-align: left; cursor: pointer; box-shadow: 0 8px 18px #176e5e25; }
 .assistant-pet__tour-start > span:first-child { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: 50%; background: #fff; color: #176e5e; font-size: 1.25rem; font-weight: 900; }
@@ -88,16 +100,16 @@
 .assistant-pet__tour-start strong { font-size: .84rem; }
 .assistant-pet__tour-start small { color: #dceee6; font-size: .71rem; line-height: 1.35; }
 .assistant-pet__tour-start:hover { background: #105c4e; }
-.assistant-pet__messages { display: grid; gap: 8px; max-height: 220px; margin-top: 12px; overflow-y: auto; }
-.assistant-pet__message { width: fit-content; max-width: 92%; margin: 0; padding: 9px 11px; border-radius: 12px; font-size: .81rem; line-height: 1.46; white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-pet__messages { display: grid; gap: 9px; max-height: 270px; margin: 12px -4px 0; padding: 4px; overflow-y: auto; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: #94b9a8 transparent; }
+.assistant-pet__message { position: relative; width: fit-content; max-width: 88%; margin: 0; padding: 10px 12px; border-radius: 15px; font-size: .81rem; line-height: 1.46; white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 4px 12px rgb(26 77 63 / .08); animation: assistant-message-in .2s ease both; }
 .assistant-pet__message p { margin: 0; }
-.assistant-pet__message--user { justify-self: end; border-bottom-right-radius: 3px; background: #176e5e; color: #fff; }
-.assistant-pet__message--assistant { justify-self: start; border-bottom-left-radius: 3px; background: #edf3ef; color: var(--color-ink); }
+.assistant-pet__message--user { justify-self: end; border: 1px solid #126151; border-bottom-right-radius: 4px; background: linear-gradient(145deg, #21806a, #176e5e); color: #fff; }
+.assistant-pet__message--assistant { justify-self: start; border: 1px solid #d3e2db; border-bottom-left-radius: 4px; background: #fff; color: var(--color-ink); }
 .assistant-pet__message-action { display: block; width: 100%; margin-top: 9px; padding: 8px 10px; border: 1px solid #89b9a3; border-radius: 8px; background: #fff; color: #176e5e; font: inherit; font-size: .76rem; font-weight: 850; text-align: left; cursor: pointer; }
 .assistant-pet__message-action:hover { border-color: #176e5e; background: #f5faf7; }
-.assistant-pet__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 12px; }
-.assistant-pet__form input { min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--color-border-strong); border-radius: 10px; background: #fff; color: var(--color-ink); font: inherit; font-size: .82rem; }
-.assistant-pet__form button { min-height: 42px; padding: 8px 12px; border: 0; border-radius: 10px; background: #176e5e; color: #fff; font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
+.assistant-pet__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin: 13px -4px -3px; padding: 7px; border: 1px solid #c5d9ce; border-radius: 18px; background: #fff; box-shadow: 0 6px 18px rgb(21 77 62 / .10); }
+.assistant-pet__form input { min-width: 0; min-height: 42px; padding: 9px 9px; border: 0; border-radius: 12px; background: #fff; color: var(--color-ink); font: inherit; font-size: .82rem; }
+.assistant-pet__form button { min-height: 42px; padding: 8px 13px; border: 0; border-radius: 13px; background: linear-gradient(145deg, #21806a, #0f5a4c); color: #fff; font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; box-shadow: 0 5px 12px rgb(15 90 76 / .24); }
 .assistant-pet__form button:disabled { opacity: .5; cursor: default; }
 .assistant-pet__offline { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px 11px; border-radius: 10px; background: #f4f6f3; color: var(--color-text-secondary); font-size: .76rem; line-height: 1.4; }
 .assistant-pet__offline a { flex: 0 0 auto; color: #176e5e; font-weight: 800; }
@@ -107,6 +119,16 @@
   from { opacity: 0; transform: translateY(8px) scale(.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+@keyframes assistant-pet-float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-2px) rotate(1deg); }
+}
+@keyframes assistant-tail { from { transform: rotate(-7deg); } to { transform: rotate(10deg); } }
+@keyframes assistant-ear-left { 0%, 86%, 100% { transform: rotate(0); } 91% { transform: rotate(-9deg); } }
+@keyframes assistant-ear-right { 0%, 86%, 100% { transform: rotate(0); } 91% { transform: rotate(9deg); } }
+@keyframes assistant-blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.08); } }
+@keyframes assistant-message-in { from { opacity: 0; transform: translateY(5px) scale(.98); } to { opacity: 1; transform: none; } }
 
 .assistant-tour { position: fixed; inset: 0; z-index: 1800; color: #143d34; }
 .assistant-tour__shade { position: fixed; z-index: 1800; background: rgb(8 27 22 / .70); backdrop-filter: blur(1px); }
@@ -137,17 +159,18 @@
 
 @media (max-width: 560px) {
   .assistant-pet { right: 10px; bottom: 10px; }
-  .assistant-pet__button { min-height: 50px; padding-right: 11px; }
-  .assistant-pet__button .assistant-pet__mark { width: 42px; height: 42px; }
+  .assistant-pet__button { min-height: 60px; padding-right: 11px; }
+  .assistant-pet__button .assistant-pet__mark { width: 54px; height: 54px; }
   .assistant-pet__panel { width: calc(100vw - 20px); max-height: min(640px, calc(100vh - 76px)); border-radius: 18px 18px 4px 18px; }
-  .assistant-pet__content { max-height: calc(min(640px, calc(100vh - 76px)) - 68px); }
+  .assistant-pet__content { max-height: calc(min(640px, calc(100vh - 76px)) - 88px); }
   .assistant-pet__bubble { width: calc(100vw - 20px); }
   .assistant-tour__card { left: 12px !important; right: 12px; bottom: 12px !important; top: auto !important; width: auto; transform: none !important; }
   .assistant-tour__card::before { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-pet__panel, .assistant-pet__bubble { animation: none; }
+  .assistant-pet__panel, .assistant-pet__bubble, .assistant-pet__message { animation: none; }
   .assistant-pet__button { transition: none; }
+  .assistant-pet__mark, .assistant-pet__tail, .assistant-pet__ear, .assistant-pet__eyes { animation: none; }
   .assistant-tour__ring { animation: none; }
 }

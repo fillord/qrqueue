@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { Link, MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AssistantPet from '../src/components/AssistantPet'
@@ -19,6 +19,16 @@ const user: User = {
   assistant_enabled: true, assistant_ai_enabled: false,
 }
 
+function PasswordJourney({ currentUser }: { currentUser: User }) {
+  const { pathname } = useLocation()
+  return <>
+    {pathname === '/profile'
+      ? <section className="profile-card" data-profile-section="security"><h2>Пароль и безопасность</h2></section>
+      : <Link className="app-header__profile" to="/profile">Admin</Link>}
+    <AssistantPet user={currentUser} />
+  </>
+}
+
 describe('AssistantPet', () => {
   afterEach(() => cleanup())
   beforeEach(async () => {
@@ -26,6 +36,7 @@ describe('AssistantPet', () => {
     await i18n.changeLanguage('ru')
     getStatus.mockResolvedValue({ available: false })
     ask.mockReset()
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => 480 })
     Element.prototype.scrollIntoView = vi.fn()
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 100, y: 120, top: 120, left: 100, right: 300, bottom: 164,
@@ -42,6 +53,7 @@ describe('AssistantPet', () => {
     expect(screen.getByText(/Ответы ИИ отключены/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Как создать и запустить очередь?' }))
     expect(screen.getByText(/Для подробного ответа включите ИИ/)).toBeTruthy()
+    expect(document.querySelector<HTMLElement>('.assistant-pet__messages')?.scrollTop).toBe(480)
   })
 
   it('dims the page and highlights the relevant control in guided mode', () => {
@@ -73,5 +85,21 @@ describe('AssistantPet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Показать, куда нажать' }))
     expect(screen.getByTestId('assistant-tour')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Настройки организации' })).toBeTruthy()
+  })
+
+  it('continues a password walkthrough after navigating to profile settings', async () => {
+    getStatus.mockResolvedValue({ available: true })
+    ask.mockResolvedValue({ answer: 'Откройте настройки профиля.', source: 'gemini' })
+    const aiUser = { ...user, assistant_ai_enabled: true }
+    render(<MemoryRouter initialEntries={['/admin/queues']}><PasswordJourney currentUser={aiUser} /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Напишите вопрос о системе' }), { target: { value: 'Как поменять пароль?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }))
+    await screen.findByText('Откройте настройки профиля.')
+    fireEvent.click(screen.getByRole('button', { name: 'Показать, куда нажать' }))
+    expect(screen.getByRole('heading', { name: 'Настройки профиля' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: 'Admin' }))
+    await waitFor(() => expect(screen.getByText('Пароль текущего пользователя изменяется в этом блоке.')).toBeTruthy())
+    expect(screen.getAllByRole('heading', { name: 'Пароль и безопасность' }).length).toBeGreaterThanOrEqual(2)
   })
 })

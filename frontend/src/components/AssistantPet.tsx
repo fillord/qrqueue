@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -9,15 +9,30 @@ import { getAssistantGuidance, getAssistantTour } from '../lib/assistantGuidance
 import AssistantTour from './AssistantTour'
 import './assistant-pet.css'
 
+const PENDING_TOUR_KEY = 'assistant:pending-tour'
+
 function PetMark() {
+  const furId = useId()
+  const faceId = useId()
   return <svg className="assistant-pet__mark" viewBox="0 0 72 72" aria-hidden="true">
-    <path className="assistant-pet__ear" d="M15 25 12 9l16 10M57 25 60 9 44 19" />
-    <path className="assistant-pet__body" d="M36 14c17 0 27 10 27 28 0 15-10 24-27 24S9 57 9 42c0-18 10-28 27-28Z" />
-    <path className="assistant-pet__face" d="M18 36c0-11 8-17 18-17s18 6 18 17c0 12-8 19-18 19s-18-7-18-19Z" />
-    <circle cx="29" cy="36" r="3.3" />
-    <circle cx="43" cy="36" r="3.3" />
-    <path className="assistant-pet__smile" d="M31 45c3 2 7 2 10 0" />
-    <path className="assistant-pet__badge" d="M52 49h12v12H52zM58 51v8M54 55h8" />
+    <defs>
+      <linearGradient id={furId} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#42a680" /><stop offset="1" stopColor="#0e5849" /></linearGradient>
+      <radialGradient id={faceId} cx="38%" cy="28%" r="75%"><stop stopColor="#fff" /><stop offset="1" stopColor="#e1eee7" /></radialGradient>
+    </defs>
+    <ellipse className="assistant-pet__shadow" cx="36" cy="66" rx="22" ry="4" />
+    <path className="assistant-pet__tail" d="M55 48c13-1 13 12 4 13-6 1-8-4-5-7" />
+    <ellipse className="assistant-pet__torso" cx="36" cy="49" rx="20" ry="18" fill={`url(#${furId})`} />
+    <ellipse className="assistant-pet__paw assistant-pet__paw--left" cx="23" cy="61" rx="8" ry="5" />
+    <ellipse className="assistant-pet__paw assistant-pet__paw--right" cx="49" cy="61" rx="8" ry="5" />
+    <path className="assistant-pet__ear assistant-pet__ear--left" d="M17 25 13 7l17 12Z" />
+    <path className="assistant-pet__ear assistant-pet__ear--right" d="m55 25 4-18-17 12Z" />
+    <ellipse className="assistant-pet__head" cx="36" cy="32" rx="25" ry="22" fill={`url(#${furId})`} />
+    <ellipse className="assistant-pet__face" cx="36" cy="35" rx="17" ry="14" fill={`url(#${faceId})`} />
+    <g className="assistant-pet__eyes"><ellipse cx="29" cy="33" rx="2.8" ry="3.6" /><ellipse cx="43" cy="33" rx="2.8" ry="3.6" /></g>
+    <path className="assistant-pet__nose" d="m33 39 3-2 3 2-3 3Z" />
+    <path className="assistant-pet__smile" d="M30 43c3 4 9 4 12 0" />
+    <circle className="assistant-pet__cheek" cx="25" cy="41" r="2.4" /><circle className="assistant-pet__cheek" cx="47" cy="41" r="2.4" />
+    <g className="assistant-pet__badge"><circle cx="52" cy="51" r="8" /><path d="M52 47v8M48 51h8" /></g>
   </svg>
 }
 
@@ -38,6 +53,7 @@ export default function AssistantPet({ user }: { user: User }) {
   const [tourOverride, setTourOverride] = useState<ReturnType<typeof getAssistantTour> | null>(null)
   const activeTour = tourOverride ?? tour
   const inputRef = useRef<HTMLInputElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(0)
 
   useEffect(() => {
@@ -45,9 +61,30 @@ export default function AssistantPet({ user }: { user: User }) {
     let seen = false
     try { seen = sessionStorage.getItem(key) === '1' } catch { /* storage may be disabled */ }
     setBubble(!seen)
-    setTourIndex(null)
-    setTourOverride(null)
+    let resumed = false
+    try {
+      const raw = sessionStorage.getItem(PENDING_TOUR_KEY)
+      if (raw) {
+        const pendingTour = JSON.parse(raw) as { path?: string; steps?: ReturnType<typeof getAssistantTour> }
+        sessionStorage.removeItem(PENDING_TOUR_KEY)
+        if (pendingTour.path === pathname && Array.isArray(pendingTour.steps) && pendingTour.steps.length > 0) {
+          resumed = true
+          setTourOverride(pendingTour.steps)
+          window.setTimeout(() => setTourIndex(0), 120)
+        }
+      }
+    } catch { /* ignore invalid session data */ }
+    if (!resumed) {
+      setTourIndex(null)
+      setTourOverride(null)
+    }
   }, [pathname])
+
+  useEffect(() => {
+    if (!open) return
+    const list = messagesRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }, [messages, open, pending])
 
   useEffect(() => {
     if (!open) return
@@ -87,11 +124,27 @@ export default function AssistantPet({ user }: { user: User }) {
   function showAction(action: AssistantAction) {
     setOpen(false)
     setTourOverride(action.steps)
+    try {
+      if (action.destination) sessionStorage.setItem(PENDING_TOUR_KEY, JSON.stringify(action.destination))
+      else sessionStorage.removeItem(PENDING_TOUR_KEY)
+    } catch { /* storage may be disabled */ }
     setTourIndex(0)
   }
 
+  function closeTour() {
+    try { sessionStorage.removeItem(PENDING_TOUR_KEY) } catch { /* storage may be disabled */ }
+    setTourIndex(null)
+    setTourOverride(null)
+  }
+
   function nextTourStep() {
-    setTourIndex((current) => current === null || current >= activeTour.length - 1 ? null : current + 1)
+    setTourIndex((current) => {
+      if (current === null || current >= activeTour.length - 1) {
+        try { sessionStorage.removeItem(PENDING_TOUR_KEY) } catch { /* storage may be disabled */ }
+        return null
+      }
+      return current + 1
+    })
   }
 
   async function send(event?: FormEvent, suggested?: string) {
@@ -137,7 +190,7 @@ export default function AssistantPet({ user }: { user: User }) {
       index={tourIndex}
       onBack={() => setTourIndex((current) => current === null ? null : Math.max(0, current - 1))}
       onNext={nextTourStep}
-      onClose={() => setTourIndex(null)}
+      onClose={closeTour}
     />}
     <aside className={`assistant-pet${tourIndex !== null ? ' assistant-pet--touring' : ''}`} aria-label={t('assistant.name')}>
     {!open && bubble && <div className="assistant-pet__bubble" role="status">
@@ -166,7 +219,7 @@ export default function AssistantPet({ user }: { user: User }) {
         <button className="assistant-pet__suggestion" type="button" onClick={() => void send(undefined, t(guidance.promptKey))}>
           {t(guidance.promptKey)}
         </button>
-        {messages.length > 0 && <div className="assistant-pet__messages" aria-live="polite">
+        {messages.length > 0 && <div ref={messagesRef} className="assistant-pet__messages" aria-live="polite">
           {messages.map((message) => <div key={message.id} className={`assistant-pet__message assistant-pet__message--${message.kind}`}>
             <p>{message.text}</p>
             {message.action && <button type="button" className="assistant-pet__message-action" onClick={() => showAction(message.action!)}>{t(message.action.labelKey)}</button>}

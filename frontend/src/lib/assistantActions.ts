@@ -4,17 +4,18 @@ import type { AssistantTourStep } from './assistantGuidance'
 export interface AssistantAction {
   labelKey: string
   steps: AssistantTourStep[]
+  destination?: { path: string; steps: AssistantTourStep[] }
 }
 
 const step = (selector: string, titleKey: string, bodyKey: string): AssistantTourStep => ({ selector, titleKey, bodyKey })
 const has = (text: string, ...words: string[]) => words.some((word) => text.includes(word))
 
 function sectionAction(path: string, currentPath: string, navSelector: string, titleKey: string, bodyKey: string, destinationSelector: string): AssistantAction {
+  const destinationSteps = [step(destinationSelector, titleKey, bodyKey)]
   return {
     labelKey: 'assistant.action.show',
-    steps: [currentPath === path
-      ? step(destinationSelector, titleKey, bodyKey)
-      : step(navSelector, titleKey, 'assistant.tour.actions.openSection')],
+    steps: currentPath === path ? destinationSteps : [step(navSelector, titleKey, 'assistant.tour.actions.openSection')],
+    destination: currentPath === path ? undefined : { path, steps: destinationSteps },
   }
 }
 
@@ -22,17 +23,26 @@ export function getAssistantAction(message: string, path: string, role: UserRole
   const text = message.toLocaleLowerCase().replace(/ё/g, 'е')
 
   if (has(text, 'парол', 'password', 'құпиясөз')) {
-    return { labelKey: 'assistant.action.show', steps: [step('.profile-card[data-profile-section="security"], .app-header__profile', 'profile.security', path === '/profile' ? 'assistant.tour.actions.profileSecurity' : 'assistant.tour.actions.openProfileSettings')] }
+    const destinationSteps = [step('.profile-card[data-profile-section="security"]', 'profile.security', 'assistant.tour.actions.profileSecurity')]
+    return path === '/profile'
+      ? { labelKey: 'assistant.action.show', steps: destinationSteps }
+      : { labelKey: 'assistant.action.show', steps: [step('.app-header__profile', 'assistant.pages.profile.title', 'assistant.tour.actions.openProfileSettings')], destination: { path: '/profile', steps: destinationSteps } }
   }
   if (has(text, 'фото', 'аватар', 'профил', 'profile', 'аты-жөн', 'сурет') || (/\bимя\b/u.test(text) && !has(text, 'организац', 'ұйым', 'organization'))) {
     const selector = path === '/profile' ? '.profile-card[data-profile-section="personal"]' : '.app-header__profile'
     const body = path === '/profile' ? 'assistant.tour.actions.profilePersonal' : 'assistant.tour.actions.openProfileSettings'
-    return { labelKey: 'assistant.action.show', steps: [step(selector, 'assistant.pages.profile.title', body)] }
+    const destinationSteps = [step('.profile-card[data-profile-section="personal"]', 'assistant.pages.profile.title', 'assistant.tour.actions.profilePersonal')]
+    return path === '/profile'
+      ? { labelKey: 'assistant.action.show', steps: destinationSteps }
+      : { labelKey: 'assistant.action.show', steps: [step(selector, 'assistant.pages.profile.title', body)], destination: { path: '/profile', steps: destinationSteps } }
   }
   if (has(text, 'помощник', 'бот', 'assistant', 'navigator', 'көмекші', 'жасанды интеллект') || /\bии\b/u.test(text)) {
     const selector = path === '/profile' ? '.profile-card--assistant' : '.app-header__profile'
     const body = path === '/profile' ? 'assistant.tour.actions.profileSettings' : 'assistant.tour.actions.openProfileSettings'
-    return { labelKey: 'assistant.action.show', steps: [step(selector, 'assistant.pages.profile.title', body)] }
+    const destinationSteps = [step('.profile-card--assistant', 'assistant.pages.profile.title', 'assistant.tour.actions.profileSettings')]
+    return path === '/profile'
+      ? { labelKey: 'assistant.action.show', steps: destinationSteps }
+      : { labelKey: 'assistant.action.show', steps: [step(selector, 'assistant.pages.profile.title', body)], destination: { path: '/profile', steps: destinationSteps } }
   }
 
   if (role === 'org_admin') {

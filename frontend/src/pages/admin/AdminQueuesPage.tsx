@@ -100,7 +100,7 @@ export default function AdminQueuesPage() {
         <h1>{t('admin.queues.title')}</h1>
         <div className="admin-page__header-actions">
           <button type="button" className="admin-button--secondary" onClick={() => setIncludeArchived(!includeArchived)}>{t(includeArchived ? 'crud.hideArchived' : 'crud.showArchived')}</button>
-          <button type="button" onClick={() => setEditing('new')}>{t('admin.queues.create')}</button>
+          <button type="button" data-assistant-tour="create-queue" onClick={() => setEditing('new')}>{t('admin.queues.create')}</button>
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export default function AdminQueuesPage() {
       ) : queues.length === 0 ? (
         <p className="admin-page__empty">{t('admin.queues.empty')}</p>
       ) : (
-        <table className="admin-table">
+        <table className="admin-table" data-assistant-tour="queue-list">
           <thead>
             <tr>
               <th>{t('admin.queues.columns.name')}</th>

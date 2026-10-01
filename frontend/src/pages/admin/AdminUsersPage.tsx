@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
         <h1>{t('admin.users.title')}</h1>
         <div className="admin-table__actions">
           <button type="button" className="admin-button--secondary" onClick={() => setIncludeArchived(!includeArchived)}>{t(includeArchived ? 'crud.hideArchived' : 'crud.showArchived')}</button>
-          <button type="button" onClick={() => setCreating(true)}>{t('admin.users.create')}</button>
+          <button type="button" data-assistant-tour="create-user" onClick={() => setCreating(true)}>{t('admin.users.create')}</button>
         </div>
       </div>
 

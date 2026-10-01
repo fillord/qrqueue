@@ -4,7 +4,8 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { askAssistant, getAssistantStatus } from '../api/assistant'
 import type { User } from '../api/types'
-import { getAssistantGuidance } from '../lib/assistantGuidance'
+import { getAssistantGuidance, getAssistantTour } from '../lib/assistantGuidance'
+import AssistantTour from './AssistantTour'
 import './assistant-pet.css'
 
 function PetMark() {
@@ -25,12 +26,14 @@ export default function AssistantPet({ user }: { user: User }) {
   const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
   const guidance = getAssistantGuidance(pathname, user.role)
+  const tour = getAssistantTour(pathname, user.role)
   const [open, setOpen] = useState(false)
   const [bubble, setBubble] = useState(false)
   const [configured, setConfigured] = useState<boolean | null>(null)
   const [question, setQuestion] = useState('')
   const [pending, setPending] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
+  const [tourIndex, setTourIndex] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const idRef = useRef(0)
 
@@ -39,6 +42,7 @@ export default function AssistantPet({ user }: { user: User }) {
     let seen = false
     try { seen = sessionStorage.getItem(key) === '1' } catch { /* storage may be disabled */ }
     setBubble(!seen)
+    setTourIndex(null)
   }, [pathname])
 
   useEffect(() => {
@@ -53,11 +57,11 @@ export default function AssistantPet({ user }: { user: User }) {
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape' && tourIndex === null) setOpen(false)
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [])
+  }, [tourIndex])
 
   function dismissBubble() {
     setBubble(false)
@@ -67,6 +71,16 @@ export default function AssistantPet({ user }: { user: User }) {
   function openPanel() {
     dismissBubble()
     setOpen(true)
+  }
+
+  function startTour() {
+    dismissBubble()
+    setOpen(false)
+    setTourIndex(0)
+  }
+
+  function nextTourStep() {
+    setTourIndex((current) => current === null || current >= tour.length - 1 ? null : current + 1)
   }
 
   async function send(event?: FormEvent, suggested?: string) {
@@ -103,11 +117,20 @@ export default function AssistantPet({ user }: { user: User }) {
     }
   }
 
-  return <aside className="assistant-pet" aria-label={t('assistant.name')}>
+  return <>
+    {tourIndex !== null && <AssistantTour
+      steps={tour}
+      index={tourIndex}
+      onBack={() => setTourIndex((current) => current === null ? null : Math.max(0, current - 1))}
+      onNext={nextTourStep}
+      onClose={() => setTourIndex(null)}
+    />}
+    <aside className={`assistant-pet${tourIndex !== null ? ' assistant-pet--touring' : ''}`} aria-label={t('assistant.name')}>
     {!open && bubble && <div className="assistant-pet__bubble" role="status">
       <button className="assistant-pet__bubble-close" type="button" onClick={dismissBubble} aria-label={t('assistant.dismiss')}>×</button>
       <strong>{t(guidance.titleKey)}</strong>
       <span>{t(guidance.hintKey)}</span>
+      <button className="assistant-pet__bubble-tour" type="button" onClick={startTour}>{t('assistant.tour.start')}</button>
     </div>}
 
     {open && <section className="assistant-pet__panel" role="dialog" aria-label={t('assistant.name')}>
@@ -122,6 +145,10 @@ export default function AssistantPet({ user }: { user: User }) {
           <strong>{t(guidance.titleKey)}</strong>
           <p>{t(guidance.hintKey)}</p>
         </div>
+        <button className="assistant-pet__tour-start" type="button" onClick={startTour}>
+          <span aria-hidden="true">↗</span>
+          <span><strong>{t('assistant.tour.start')}</strong><small>{t('assistant.tour.startHint')}</small></span>
+        </button>
         <button className="assistant-pet__suggestion" type="button" onClick={() => void send(undefined, t(guidance.promptKey))}>
           {t(guidance.promptKey)}
         </button>
@@ -145,4 +172,5 @@ export default function AssistantPet({ user }: { user: User }) {
       <span>{open ? t('assistant.close') : t('assistant.ask')}</span>
     </button>
   </aside>
+  </>
 }

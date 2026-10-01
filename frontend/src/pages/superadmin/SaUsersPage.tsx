@@ -72,7 +72,7 @@ export default function SaUsersPage() {
     <div className="admin-page__header"><h1>{t('directory.users')}</h1><div className="admin-table__actions">
       <button type="button" className="admin-button--secondary" onClick={() => setIncludeArchived(!includeArchived)}>{t(includeArchived ? 'crud.hideArchived' : 'crud.showArchived')}</button>
       <button type="button" className="admin-button--secondary" disabled={loading} onClick={() => void load()}>{t('admin.trials.refresh')}</button>
-      <button type="button" onClick={() => setCreating(true)}>{t('crud.createUser')}</button>
+      <button type="button" data-assistant-tour="create-user" onClick={() => setCreating(true)}>{t('crud.createUser')}</button>
     </div></div>
     <p className="admin-page__hint">{t('directory.usersHint')}</p>
     {error && <LoadError retry={() => void load()} />}

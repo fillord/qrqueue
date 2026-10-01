@@ -105,7 +105,7 @@ export default function AdminCabinetsPage() {
         <h1>{t('admin.cabinets.title')}</h1>
         <div className="admin-page__header-actions">
           <button type="button" className="admin-button--secondary" onClick={() => setIncludeArchived(!includeArchived)}>{t(includeArchived ? 'crud.hideArchived' : 'crud.showArchived')}</button>
-          <button type="button" onClick={() => setCreating(true)}>{t('admin.cabinets.create')}</button>
+          <button type="button" data-assistant-tour="create-cabinet" onClick={() => setCreating(true)}>{t('admin.cabinets.create')}</button>
         </div>
       </div>
 
@@ -114,7 +114,7 @@ export default function AdminCabinetsPage() {
       ) : cabinets.length === 0 ? (
         <p className="admin-page__empty">{t('admin.cabinets.empty')}</p>
       ) : (
-        <table className="admin-table">
+        <table className="admin-table" data-assistant-tour="cabinet-list">
           <thead>
             <tr>
               <th>{t('admin.cabinets.columns.label')}</th>

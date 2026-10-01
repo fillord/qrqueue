@@ -131,7 +131,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
     <div className="admin-tv-screens">
       <h1>{t('adminTv.title')}</h1>
 
-      <form className="admin-tv-screens__form" onSubmit={(e) => void handleSubmit(e)}>
+      <form className="admin-tv-screens__form" data-assistant-tour="create-screen" onSubmit={(e) => void handleSubmit(e)}>
         <input
           type="text"
           placeholder={t('adminTv.namePlaceholder')}
@@ -177,7 +177,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
       ) : screens.length === 0 ? (
         <p>{t('adminTv.empty')}</p>
       ) : (
-        <div className="admin-tv-screens__list">
+        <div className="admin-tv-screens__list" data-assistant-tour="screen-list">
           {screens.map((screen) => (
             <article key={screen.id} className="admin-tv-screens__card">
               <header className="admin-tv-screens__card-header">

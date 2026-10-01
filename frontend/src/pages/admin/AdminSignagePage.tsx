@@ -189,7 +189,7 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
     <p className="admin-page__hint">{t('signage.intro')}</p>
     {loadError && <LoadError retry={() => void load()} />}
     {departments === null ? <div className="spinner" aria-hidden="true" /> : <>
-      <details className="signage-admin__section signage-admin__disclosure">
+      <details className="signage-admin__section signage-admin__disclosure" data-assistant-tour="schedule-import">
         <summary>{t('signage.importTitle')}</summary>
         <p className="admin-page__hint">{t('signage.importHint')}</p>
         <a href="/templates/weekly-schedule.xlsx" download>{t('signage.downloadTemplate')}</a>
@@ -198,7 +198,7 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
           <button type="submit" disabled={busy || !importFile}>{t('signage.importButton')}</button>
         </form>
       </details>
-      <section className="signage-admin__section">
+      <section className="signage-admin__section" data-assistant-tour="departments">
         <h2>{t('signage.departments')}</h2>
         <form className="signage-admin__row" onSubmit={(event) => void saveDepartment(event)}>
           <input aria-label={t('signage.departmentName')} value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} placeholder={t('signage.departmentName')} required />
@@ -238,7 +238,7 @@ export default function AdminSignagePage({ organizationId }: { organizationId?: 
         </tbody></table></div>}
       </section>}
 
-      <section className="signage-admin__section">
+      <section className="signage-admin__section" data-assistant-tour="media">
         <h2>{t('signage.media')}</h2>
         <p className="admin-page__hint">{t('signage.youtubeHint')}</p>
         <form className="signage-admin__upload" onSubmit={(event) => void addYoutube(event)}>

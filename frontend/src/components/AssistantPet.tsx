@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { askAssistant, getAssistantStatus } from '../api/assistant'
 import type { User } from '../api/types'
+import { getAssistantAction, type AssistantAction } from '../lib/assistantActions'
 import { getAssistantGuidance, getAssistantTour } from '../lib/assistantGuidance'
 import AssistantTour from './AssistantTour'
 import './assistant-pet.css'
@@ -20,7 +21,7 @@ function PetMark() {
   </svg>
 }
 
-type Message = { id: number; kind: 'user' | 'assistant'; text: string }
+type Message = { id: number; kind: 'user' | 'assistant'; text: string; action?: AssistantAction }
 
 export default function AssistantPet({ user }: { user: User }) {
   const { t, i18n } = useTranslation()
@@ -34,6 +35,8 @@ export default function AssistantPet({ user }: { user: User }) {
   const [pending, setPending] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [tourIndex, setTourIndex] = useState<number | null>(null)
+  const [tourOverride, setTourOverride] = useState<ReturnType<typeof getAssistantTour> | null>(null)
+  const activeTour = tourOverride ?? tour
   const inputRef = useRef<HTMLInputElement>(null)
   const idRef = useRef(0)
 
@@ -43,6 +46,7 @@ export default function AssistantPet({ user }: { user: User }) {
     try { seen = sessionStorage.getItem(key) === '1' } catch { /* storage may be disabled */ }
     setBubble(!seen)
     setTourIndex(null)
+    setTourOverride(null)
   }, [pathname])
 
   useEffect(() => {
@@ -76,11 +80,18 @@ export default function AssistantPet({ user }: { user: User }) {
   function startTour() {
     dismissBubble()
     setOpen(false)
+    setTourOverride(null)
+    setTourIndex(0)
+  }
+
+  function showAction(action: AssistantAction) {
+    setOpen(false)
+    setTourOverride(action.steps)
     setTourIndex(0)
   }
 
   function nextTourStep() {
-    setTourIndex((current) => current === null || current >= tour.length - 1 ? null : current + 1)
+    setTourIndex((current) => current === null || current >= activeTour.length - 1 ? null : current + 1)
   }
 
   async function send(event?: FormEvent, suggested?: string) {
@@ -90,12 +101,14 @@ export default function AssistantPet({ user }: { user: User }) {
     const userMessage: Message = { id: ++idRef.current, kind: 'user', text }
     setMessages((current) => [...current, userMessage])
     setQuestion('')
+    const action = getAssistantAction(text, pathname, user.role, tour)
 
     if (!user.assistant_ai_enabled || configured === false) {
       setMessages((current) => [...current, {
         id: ++idRef.current,
         kind: 'assistant',
         text: `${t(guidance.hintKey)} ${t('assistant.localOnlyAnswer')}`,
+        action,
       }])
       return
     }
@@ -104,13 +117,14 @@ export default function AssistantPet({ user }: { user: User }) {
     const locale = (['ru', 'kk', 'en'].includes(i18n.language.slice(0, 2)) ? i18n.language.slice(0, 2) : 'ru') as 'ru' | 'kk' | 'en'
     try {
       const result = await askAssistant(text, pathname, locale)
-      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: result.answer }])
+      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: result.answer, action }])
     } catch {
       setConfigured(false)
       setMessages((current) => [...current, {
         id: ++idRef.current,
         kind: 'assistant',
         text: `${t(guidance.hintKey)} ${t('assistant.unavailableAnswer')}`,
+        action,
       }])
     } finally {
       setPending(false)
@@ -119,7 +133,7 @@ export default function AssistantPet({ user }: { user: User }) {
 
   return <>
     {tourIndex !== null && <AssistantTour
-      steps={tour}
+      steps={activeTour}
       index={tourIndex}
       onBack={() => setTourIndex((current) => current === null ? null : Math.max(0, current - 1))}
       onNext={nextTourStep}
@@ -153,7 +167,10 @@ export default function AssistantPet({ user }: { user: User }) {
           {t(guidance.promptKey)}
         </button>
         {messages.length > 0 && <div className="assistant-pet__messages" aria-live="polite">
-          {messages.map((message) => <p key={message.id} className={`assistant-pet__message assistant-pet__message--${message.kind}`}>{message.text}</p>)}
+          {messages.map((message) => <div key={message.id} className={`assistant-pet__message assistant-pet__message--${message.kind}`}>
+            <p>{message.text}</p>
+            {message.action && <button type="button" className="assistant-pet__message-action" onClick={() => showAction(message.action!)}>{t(message.action.labelKey)}</button>}
+          </div>)}
           {pending && <p className="assistant-pet__message assistant-pet__message--assistant">{t('assistant.thinking')}</p>}
         </div>}
         {user.assistant_ai_enabled && configured !== false ? <form className="assistant-pet__form" onSubmit={(event) => void send(event)}>

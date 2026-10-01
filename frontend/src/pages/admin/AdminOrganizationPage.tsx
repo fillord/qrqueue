@@ -71,7 +71,7 @@ export default function AdminOrganizationPage() {
     <div className="admin-page admin-organization">
       <h1>{t('admin.organization.title')}</h1>
 
-      <form className="admin-organization__form" onSubmit={(e) => void handleSubmit(e)}>
+      <form className="admin-organization__form" data-assistant-tour="organization-settings" onSubmit={(e) => void handleSubmit(e)}>
         <label>
           <span>{t('admin.organization.name')}</span>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />

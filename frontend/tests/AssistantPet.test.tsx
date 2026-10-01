@@ -7,9 +7,10 @@ import type { User } from '../src/api/types'
 import i18n from '../src/app/i18n'
 
 const getStatus = vi.fn()
+const ask = vi.fn()
 vi.mock('../src/api/assistant', () => ({
   getAssistantStatus: () => getStatus(),
-  askAssistant: vi.fn(),
+  askAssistant: (...args: unknown[]) => ask(...args),
 }))
 
 const user: User = {
@@ -24,6 +25,7 @@ describe('AssistantPet', () => {
     sessionStorage.clear()
     await i18n.changeLanguage('ru')
     getStatus.mockResolvedValue({ available: false })
+    ask.mockReset()
     Element.prototype.scrollIntoView = vi.fn()
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 100, y: 120, top: 120, left: 100, right: 300, bottom: 164,
@@ -53,5 +55,23 @@ describe('AssistantPet', () => {
     expect(screen.getByText('Шаг 1 из 2')).toBeTruthy()
     expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
     expect(screen.getByText(/Нажмите на подсвеченный элемент/)).toBeTruthy()
+  })
+
+  it('offers a visual destination after an AI answer and uses exact settings names', async () => {
+    getStatus.mockResolvedValue({ available: true })
+    ask.mockResolvedValue({ answer: 'Откройте «Настройки организации».', source: 'gemini' })
+    const aiUser = { ...user, assistant_ai_enabled: true }
+    render(<MemoryRouter initialEntries={['/admin/queues']}>
+      <a href="/admin/organization">Настройки организации</a>
+      <AssistantPet user={aiUser} />
+    </MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
+    await waitFor(() => expect(getStatus).toHaveBeenCalled())
+    fireEvent.change(screen.getByRole('textbox', { name: 'Напишите вопрос о системе' }), { target: { value: 'Где изменить название организации?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }))
+    await screen.findByText('Откройте «Настройки организации».')
+    fireEvent.click(screen.getByRole('button', { name: 'Показать, куда нажать' }))
+    expect(screen.getByTestId('assistant-tour')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Настройки организации' })).toBeTruthy()
   })
 })

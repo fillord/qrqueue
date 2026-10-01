@@ -22,6 +22,7 @@ const GUIDE: { match: (path: string) => boolean; value: AssistantGuidance }[] = 
   { match: (p) => p === '/admin/queues', value: { titleKey: 'assistant.pages.queues.title', hintKey: 'assistant.pages.queues.hint', promptKey: 'assistant.pages.queues.prompt' } },
   { match: (p) => p.startsWith('/admin/queues/'), value: { titleKey: 'assistant.pages.schedule.title', hintKey: 'assistant.pages.schedule.hint', promptKey: 'assistant.pages.schedule.prompt' } },
   { match: (p) => p === '/admin/cabinets', value: { titleKey: 'assistant.pages.cabinets.title', hintKey: 'assistant.pages.cabinets.hint', promptKey: 'assistant.pages.cabinets.prompt' } },
+  { match: (p) => p === '/admin/organization', value: { titleKey: 'assistant.pages.organizationSettings.title', hintKey: 'assistant.pages.organizationSettings.hint', promptKey: 'assistant.pages.organizationSettings.prompt' } },
   { match: (p) => p === '/admin', value: { titleKey: 'assistant.pages.adminHome.title', hintKey: 'assistant.pages.adminHome.hint', promptKey: 'assistant.pages.adminHome.prompt' } },
   { match: (p) => p === '/sa/organizations' || p.startsWith('/sa/organizations/'), value: { titleKey: 'assistant.pages.organizations.title', hintKey: 'assistant.pages.organizations.hint', promptKey: 'assistant.pages.organizations.prompt' } },
   { match: (p) => p === '/sa/users', value: { titleKey: 'assistant.pages.allUsers.title', hintKey: 'assistant.pages.allUsers.hint', promptKey: 'assistant.pages.allUsers.prompt' } },
@@ -49,8 +50,9 @@ const pageStep = (selector: string, page: string, action: string): AssistantTour
 
 export function getAssistantTour(path: string, role: UserRole): AssistantTourStep[] {
   if (path === '/profile') return [
+    pageStep('.profile-card[data-profile-section="personal"]', 'profile', 'profilePersonal'),
+    pageStep('.profile-card[data-profile-section="security"]', 'profile', 'profileSecurity'),
     pageStep('.profile-card--assistant', 'profile', 'profileSettings'),
-    pageStep('.profile-card--assistant .profile-card__switch:first-of-type', 'profile', 'assistantSwitch'),
   ]
   if (path === '/admin/problems') return [pageStep('.admin-problems__filters', 'problems', 'problemFilters')]
   if (path === '/admin/tv-screens') return [
@@ -79,6 +81,7 @@ export function getAssistantTour(path: string, role: UserRole): AssistantTourSte
     pageStep('[data-assistant-tour="create-cabinet"]', 'cabinets', 'createCabinet'),
     pageStep('[data-assistant-tour="cabinet-list"], .admin-page', 'cabinets', 'manageRows'),
   ]
+  if (path === '/admin/organization') return [pageStep('.admin-organization__form', 'organizationSettings', 'organizationSettings')]
   if (path === '/admin') return [
     pageStep('[href="/admin/problems"]', 'problems', 'openSection'),
     pageStep('[href="/admin/queues"]', 'queues', 'openSection'),

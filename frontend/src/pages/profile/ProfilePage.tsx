@@ -128,7 +128,7 @@ export default function ProfilePage() {
     {(notice || error) && <div className={`profile-page__message${error ? ' profile-page__message--error' : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</div>}
 
     <div className="profile-page__grid">
-      <section className="profile-card">
+      <section className="profile-card" data-profile-section="personal">
         <div className="profile-card__heading"><h2>{t('profile.personal')}</h2><p>{t('profile.personalHint')}</p></div>
         <div className="profile-card__photo-row">
           <div className="profile-card__mini-avatar" aria-hidden="true">
@@ -153,7 +153,7 @@ export default function ProfilePage() {
         </form>
       </section>
 
-      <section className="profile-card">
+      <section className="profile-card" data-profile-section="security">
         <div className="profile-card__heading"><h2>{t('profile.security')}</h2><p>{t('profile.securityHint')}</p></div>
         <form onSubmit={(event) => void savePassword(event)}>
           <label className="profile-card__field"><span>{t('profile.currentPassword')}</span>
@@ -169,7 +169,7 @@ export default function ProfilePage() {
         </form>
       </section>
 
-      <section className="profile-card profile-card--email">
+      <section className="profile-card profile-card--email" data-profile-section="email">
         <div className="profile-card__heading"><h2>{t('profile.emailTitle')}</h2><p>{t('profile.emailHint')}</p></div>
         {user.role === 'superadmin' ? <form onSubmit={(event) => void saveEmail(event)}>
           <label className="profile-card__field"><span>{t('profile.email')}</span>

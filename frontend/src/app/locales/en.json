@@ -199,9 +199,9 @@
     "logout": "Log out"
   },
   "profile": {
-    "open": "Open profile",
+    "open": "Open profile settings",
     "back": "← Back to dashboard",
-    "title": "My profile",
+    "title": "Profile settings",
     "personal": "Personal details",
     "personalHint": "Your name and photo appear in your dashboard.",
     "fullName": "Full name",
@@ -279,7 +279,7 @@
     "nav": {
       "analytics": "Analytics",
       "auditLogs": "Activity log",
-      "organization": "Organization",
+      "organization": "Organization settings",
       "queues": "Queues",
       "cabinets": "Counters",
       "staff": "Staff",
@@ -1260,6 +1260,10 @@
     "localOnlyAnswer": "Enable AI in your profile for a detailed answer.",
     "unavailableAnswer": "AI is unavailable now, so I am showing the built-in hint.",
     "privacy": "Do not enter visitor names, ticket numbers, passwords or medical details.",
+    "action": {
+      "show": "Show me where to click",
+      "showCurrent": "Show this section"
+    },
     "defaultPrompt": "What can I do in this section?",
     "tour": {
       "label": "Step-by-step guide",
@@ -1274,6 +1278,10 @@
       "actions": {
         "openSection": "Select this item to open the required section.",
         "profileSettings": "Your assistant preferences are located here.",
+        "openProfileSettings": "Select your name or photo in the top-right corner to open profile settings.",
+        "profilePersonal": "Change the current user's name and photo here.",
+        "profileSecurity": "Change the current user's password in this block.",
+        "organizationSettings": "Change the organization name, logo, color, language, timezone and ticket rules here.",
         "assistantSwitch": "Use this switch to show or completely hide the assistant.",
         "problemFilters": "Use the filters to review critical problems first.",
         "createScreen": "Enter a name and display mode, then create the screen.",
@@ -1320,6 +1328,11 @@
         "title": "Profile settings",
         "hint": "Change your name, photo, password and assistant preferences. Email changes depend on your role.",
         "prompt": "How do I configure the assistant?"
+      },
+      "organizationSettings": {
+        "title": "Organization settings",
+        "hint": "This section controls organization details and shared rules.",
+        "prompt": "What can I change in organization settings?"
       },
       "problems": {
         "title": "Problem center",

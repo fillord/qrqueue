@@ -17,23 +17,23 @@ function PetMark() {
   const faceId = useId()
   return <svg className="assistant-pet__mark" viewBox="0 0 72 72" aria-hidden="true">
     <defs>
-      <linearGradient id={furId} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#42a680" /><stop offset="1" stopColor="#0e5849" /></linearGradient>
-      <radialGradient id={faceId} cx="38%" cy="28%" r="75%"><stop stopColor="#fff" /><stop offset="1" stopColor="#e1eee7" /></radialGradient>
+      <linearGradient id={furId} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#75d7b1" /><stop offset="1" stopColor="#218369" /></linearGradient>
+      <linearGradient id={faceId} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#f7fffc" /><stop offset="1" stopColor="#d8efe6" /></linearGradient>
     </defs>
-    <ellipse className="assistant-pet__shadow" cx="36" cy="66" rx="22" ry="4" />
-    <path className="assistant-pet__tail" d="M55 48c13-1 13 12 4 13-6 1-8-4-5-7" />
-    <ellipse className="assistant-pet__torso" cx="36" cy="49" rx="20" ry="18" fill={`url(#${furId})`} />
-    <ellipse className="assistant-pet__paw assistant-pet__paw--left" cx="23" cy="61" rx="8" ry="5" />
-    <ellipse className="assistant-pet__paw assistant-pet__paw--right" cx="49" cy="61" rx="8" ry="5" />
-    <path className="assistant-pet__ear assistant-pet__ear--left" d="M17 25 13 7l17 12Z" />
-    <path className="assistant-pet__ear assistant-pet__ear--right" d="m55 25 4-18-17 12Z" />
-    <ellipse className="assistant-pet__head" cx="36" cy="32" rx="25" ry="22" fill={`url(#${furId})`} />
-    <ellipse className="assistant-pet__face" cx="36" cy="35" rx="17" ry="14" fill={`url(#${faceId})`} />
-    <g className="assistant-pet__eyes"><ellipse cx="29" cy="33" rx="2.8" ry="3.6" /><ellipse cx="43" cy="33" rx="2.8" ry="3.6" /></g>
-    <path className="assistant-pet__nose" d="m33 39 3-2 3 2-3 3Z" />
-    <path className="assistant-pet__smile" d="M30 43c3 4 9 4 12 0" />
-    <circle className="assistant-pet__cheek" cx="25" cy="41" r="2.4" /><circle className="assistant-pet__cheek" cx="47" cy="41" r="2.4" />
-    <g className="assistant-pet__badge"><circle cx="52" cy="51" r="8" /><path d="M52 47v8M48 51h8" /></g>
+    <ellipse className="assistant-pet__shadow" cx="36" cy="67" rx="21" ry="3.5" />
+    <path className="assistant-pet__antenna" d="M36 13V7" />
+    <circle className="assistant-pet__antenna-light" cx="36" cy="5" r="3" />
+    <path className="assistant-pet__arm assistant-pet__arm--left" d="M19 45c-8 1-8 11-3 14" />
+    <path className="assistant-pet__arm assistant-pet__arm--right" d="M53 45c8 1 8 11 3 14" />
+    <rect className="assistant-pet__body" x="18" y="38" width="36" height="25" rx="12" fill={`url(#${furId})`} />
+    <rect className="assistant-pet__foot" x="21" y="58" width="12" height="8" rx="4" />
+    <rect className="assistant-pet__foot" x="39" y="58" width="12" height="8" rx="4" />
+    <rect className="assistant-pet__head" x="10" y="12" width="52" height="38" rx="17" fill={`url(#${furId})`} />
+    <rect className="assistant-pet__face" x="17" y="19" width="38" height="23" rx="10" fill={`url(#${faceId})`} />
+    <g className="assistant-pet__eyes"><circle cx="28" cy="30" r="3.2" /><circle cx="44" cy="30" r="3.2" /></g>
+    <path className="assistant-pet__smile" d="M30 36c3.5 3 8.5 3 12 0" />
+    <circle className="assistant-pet__chest-light" cx="36" cy="50" r="4" />
+    <path className="assistant-pet__chest-mark" d="M36 47.5v5M33.5 50h5" />
   </svg>
 }
 

@@ -120,6 +120,85 @@
 .assistant-pet__dock button:active { transform: translateY(1px); }
 .assistant-pet__button--open { display: none; }
 
+/* Floating robot: the assistant has no window chrome; replies hover like thoughts. */
+.assistant-pet__button {
+  min-height: 82px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.assistant-pet__button:hover { transform: translateY(-4px); border-color: transparent; box-shadow: none; }
+.assistant-pet__button > span { padding: 8px 12px; border: 1px solid #9ccab6; border-radius: 999px; background: rgb(255 255 255 / .92); box-shadow: 0 9px 26px rgb(22 79 62 / .16); color: #174e40; backdrop-filter: blur(12px); }
+.assistant-pet__button .assistant-pet__mark { width: 80px; height: 80px; }
+.assistant-pet__mark { filter: drop-shadow(0 8px 7px rgb(12 68 54 / .22)); }
+.assistant-pet__head, .assistant-pet__body { stroke: #176b58; stroke-width: 1.4; }
+.assistant-pet__face { stroke: #b9dccd; stroke-width: 1; }
+.assistant-pet__antenna { fill: none; stroke: #287c66; stroke-width: 2.5; stroke-linecap: round; }
+.assistant-pet__antenna-light { fill: #f5c75d; stroke: #fff7dc; stroke-width: 1.2; animation: assistant-antenna 1.8s ease-in-out infinite alternate; }
+.assistant-pet__arm { fill: none; stroke: #268269; stroke-width: 7; stroke-linecap: round; }
+.assistant-pet__arm--left { transform-box: fill-box; transform-origin: right top; animation: assistant-robot-wave 4.5s ease-in-out infinite; }
+.assistant-pet__foot { fill: #20745f; stroke: #155b4b; stroke-width: 1; }
+.assistant-pet__eyes { fill: #174f43; }
+.assistant-pet__smile { stroke: #287563; stroke-width: 1.8; }
+.assistant-pet__chest-light { fill: #f4c65b; stroke: #fff5d5; stroke-width: 1.2; }
+.assistant-pet__chest-mark { fill: none; stroke: #fff; stroke-width: 1.4; stroke-linecap: round; }
+
+.assistant-pet__panel {
+  width: min(390px, calc(100vw - 24px));
+  max-height: calc(100dvh - 28px);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  box-shadow: none;
+}
+.assistant-pet__panel-head { display: none; }
+.assistant-pet__content { max-height: calc(100dvh - 28px); overflow-y: auto; padding: 12px 10px 8px; scrollbar-width: none; }
+.assistant-pet__content::-webkit-scrollbar { display: none; }
+.assistant-pet__response {
+  z-index: 2;
+  padding: 16px 18px;
+  border: 1px solid rgb(104 155 134 / .72);
+  border-radius: 26px;
+  background: rgb(255 255 255 / .90);
+  color: #183d34;
+  box-shadow: 0 18px 46px rgb(18 64 51 / .18), inset 0 1px 0 #fff;
+  backdrop-filter: blur(16px);
+}
+.assistant-pet__response::before, .assistant-pet__response::after { content: ''; position: absolute; z-index: -1; border: 1px solid rgb(104 155 134 / .72); border-top: 0; border-left: 0; border-radius: 50%; background: rgb(255 255 255 / .92); }
+.assistant-pet__response::before { right: 45px; bottom: -18px; width: 28px; height: 28px; }
+.assistant-pet__response::after { right: 27px; bottom: -32px; width: 14px; height: 14px; }
+.assistant-pet__response small { color: #657d75; }
+.assistant-pet__response small span { color: #327b66; }
+.assistant-pet__response > p { color: #173f34; font-size: .9rem; font-weight: 650; }
+.assistant-pet__thinking { color: #2d8b70 !important; }
+.assistant-pet__suggestion { color: #18715b; }
+.assistant-pet__suggestion:hover { color: #0f5746; }
+.assistant-pet__message-action { border-color: #8fc4ad; background: #f5fbf8; color: #176e5e; }
+.assistant-pet__message-action:hover { border-color: #52977d; background: #eaf6f0; color: #104f42; }
+.assistant-pet__form { z-index: 3; margin: 12px 18px 0; border-color: rgb(111 157 138 / .68); background: rgb(255 255 255 / .91); box-shadow: 0 12px 34px rgb(18 64 51 / .16); backdrop-filter: blur(14px); }
+.assistant-pet__form input { color: #173f34; }
+.assistant-pet__form input::placeholder { color: #71877f; }
+.assistant-pet__form button { background: #2a8d70; color: #fff; }
+.assistant-pet__form button:hover { background: #176e5e; }
+.assistant-pet__stage { min-height: 168px; flex: 0 0 168px; margin-top: -2px; }
+.assistant-pet__stage::before { width: 170px; height: 110px; background: radial-gradient(circle, rgb(50 139 106 / .15), transparent 70%); }
+.assistant-pet__stage .assistant-pet__mark { width: 145px; height: 145px; filter: drop-shadow(0 16px 14px rgb(22 80 62 / .26)); }
+.assistant-pet__stage .assistant-pet__shadow { fill: rgb(21 76 59 / .18); }
+.assistant-pet__messages { z-index: 3; max-height: 178px; margin: -8px 14px 12px; padding: 5px 14px; border: 1px solid rgb(111 157 138 / .64); border-radius: 20px; background: rgb(255 255 255 / .91); box-shadow: 0 14px 36px rgb(18 64 51 / .16); backdrop-filter: blur(14px); }
+.assistant-pet__message { border-color: #dcebe4; }
+.assistant-pet__message small { color: #52806f; }
+.assistant-pet__message p, .assistant-pet__message--assistant p { color: #284a40; }
+.assistant-pet__offline { z-index: 3; margin: -5px 16px 12px; border-color: #a8cbbb; background: rgb(255 255 255 / .92); color: #5c746c; box-shadow: 0 10px 28px rgb(18 64 51 / .12); }
+.assistant-pet__offline a { color: #176e5e; }
+.assistant-pet__dock { z-index: 3; margin-top: -8px; padding: 4px 7px; border: 1px solid rgb(119 158 142 / .54); border-radius: 999px; background: rgb(255 255 255 / .88); box-shadow: 0 10px 30px rgb(18 64 51 / .14); backdrop-filter: blur(14px); }
+.assistant-pet__dock button { width: 46px; height: 39px; border-right-color: #d7e6df; color: #42685a; }
+.assistant-pet__dock button:first-child { border-left: 0; }
+.assistant-pet__dock button:last-child { border-right: 0; }
+.assistant-pet__dock button:hover, .assistant-pet__dock button.is-active { color: #176e5e; background: #edf7f2; }
+
 @keyframes assistant-arrive {
   from { opacity: 0; transform: translateY(8px) scale(.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -130,6 +209,8 @@
   50% { transform: translateY(-2px) rotate(1deg); }
 }
 @keyframes assistant-tail { from { transform: rotate(-7deg); } to { transform: rotate(10deg); } }
+@keyframes assistant-antenna { from { filter: drop-shadow(0 0 1px #f4c65b); } to { filter: drop-shadow(0 0 5px #f4c65b); } }
+@keyframes assistant-robot-wave { 0%, 78%, 100% { transform: rotate(0); } 84% { transform: rotate(18deg); } 90% { transform: rotate(-8deg); } 95% { transform: rotate(12deg); } }
 @keyframes assistant-ear-left { 0%, 86%, 100% { transform: rotate(0); } 91% { transform: rotate(-9deg); } }
 @keyframes assistant-ear-right { 0%, 86%, 100% { transform: rotate(0); } 91% { transform: rotate(9deg); } }
 @keyframes assistant-blink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.08); } }
@@ -165,13 +246,13 @@
 
 @media (max-width: 560px) {
   .assistant-pet { right: 10px; bottom: 10px; }
-  .assistant-pet__button { min-height: 60px; padding-right: 11px; }
-  .assistant-pet__button .assistant-pet__mark { width: 54px; height: 54px; }
-  .assistant-pet__panel { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 24px 24px 4px 24px; }
-  .assistant-pet__content { max-height: calc(100dvh - 78px); padding-inline: 12px; }
+  .assistant-pet__button { min-height: 72px; padding: 0; }
+  .assistant-pet__button .assistant-pet__mark { width: 70px; height: 70px; }
+  .assistant-pet__panel { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+  .assistant-pet__content { max-height: calc(100dvh - 20px); padding-inline: 6px; }
   .assistant-pet__response { padding: 15px 16px; border-radius: 22px; }
-  .assistant-pet__stage { min-height: 180px; flex-basis: 180px; }
-  .assistant-pet__stage .assistant-pet__mark { width: 138px; height: 138px; }
+  .assistant-pet__stage { min-height: 150px; flex-basis: 150px; }
+  .assistant-pet__stage .assistant-pet__mark { width: 126px; height: 126px; }
   .assistant-pet__bubble { width: calc(100vw - 20px); }
   .assistant-tour__card { left: 12px !important; right: 12px; bottom: 12px !important; top: auto !important; width: auto; transform: none !important; }
   .assistant-tour__card::before { display: none; }
@@ -180,6 +261,6 @@
 @media (prefers-reduced-motion: reduce) {
   .assistant-pet__panel, .assistant-pet__bubble, .assistant-pet__message { animation: none; }
   .assistant-pet__button { transition: none; }
-  .assistant-pet__mark, .assistant-pet__tail, .assistant-pet__ear, .assistant-pet__eyes { animation: none; }
+  .assistant-pet__mark, .assistant-pet__tail, .assistant-pet__ear, .assistant-pet__eyes, .assistant-pet__antenna-light, .assistant-pet__arm { animation: none; }
   .assistant-tour__ring { animation: none; }
 }

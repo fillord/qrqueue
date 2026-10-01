@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useId, useRef, useState } from 'react'
+import { ArrowUp, CaretDown, ClockCounterClockwise, MapTrifold, PencilSimple } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -49,12 +50,16 @@ export default function AssistantPet({ user }: { user: User }) {
   const [question, setQuestion] = useState('')
   const [pending, setPending] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
+  const [composerOpen, setComposerOpen] = useState(true)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [tourIndex, setTourIndex] = useState<number | null>(null)
   const [tourOverride, setTourOverride] = useState<ReturnType<typeof getAssistantTour> | null>(null)
   const activeTour = tourOverride ?? tour
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(0)
+  const latestAssistant = [...messages].reverse().find((message) => message.kind === 'assistant')
+  const latestUser = [...messages].reverse().find((message) => message.kind === 'user')
 
   useEffect(() => {
     const key = `assistant-hint:${pathname}`
@@ -84,7 +89,7 @@ export default function AssistantPet({ user }: { user: User }) {
     if (!open) return
     const list = messagesRef.current
     if (list) list.scrollTop = list.scrollHeight
-  }, [messages, open, pending])
+  }, [historyOpen, messages, open, pending])
 
   useEffect(() => {
     if (!open) return
@@ -111,6 +116,7 @@ export default function AssistantPet({ user }: { user: User }) {
 
   function openPanel() {
     dismissBubble()
+    setComposerOpen(messages.length === 0)
     setOpen(true)
   }
 
@@ -159,6 +165,8 @@ export default function AssistantPet({ user }: { user: User }) {
     const userMessage: Message = { id: ++idRef.current, kind: 'user', text }
     setMessages((current) => [...current, userMessage])
     setQuestion('')
+    setComposerOpen(false)
+    setHistoryOpen(false)
     const action = getAssistantAction(text, pathname, user.role, tour)
 
     if (!user.assistant_ai_enabled || configured === false) {
@@ -208,38 +216,49 @@ export default function AssistantPet({ user }: { user: User }) {
 
     {open && <section className="assistant-pet__panel" role="dialog" aria-label={t('assistant.name')}>
       <header className="assistant-pet__panel-head">
-        <span className="assistant-pet__mini"><PetMark /></span>
+        <span className="assistant-pet__presence" aria-hidden="true" />
         <span><strong>{t('assistant.name')}</strong><small>{t('assistant.subtitle')}</small></span>
-        <button type="button" onClick={() => setOpen(false)} aria-label={t('assistant.close')}>×</button>
+        <button type="button" onClick={() => setOpen(false)} aria-label={t('assistant.close')}><CaretDown size={20} weight="bold" /></button>
       </header>
       <div className="assistant-pet__content">
-        <div className="assistant-pet__page-hint">
-          <small>{t('assistant.onThisPage')}</small>
-          <strong>{t(guidance.titleKey)}</strong>
-          <p>{t(guidance.hintKey)}</p>
-        </div>
-        <button className="assistant-pet__tour-start" type="button" onClick={startTour}>
-          <span aria-hidden="true">↗</span>
-          <span><strong>{t('assistant.tour.start')}</strong><small>{t('assistant.tour.startHint')}</small></span>
-        </button>
-        <button className="assistant-pet__suggestion" type="button" onClick={() => void send(undefined, t(guidance.promptKey))}>
-          {t(guidance.promptKey)}
-        </button>
-        {messages.length > 0 && <div ref={messagesRef} className="assistant-pet__messages" aria-live="polite">
-          {messages.map((message) => <div key={message.id} className={`assistant-pet__message assistant-pet__message--${message.kind}`}>
-            <p>{message.text}</p>
-            {message.action && <button type="button" className="assistant-pet__message-action" onClick={() => showAction(message.action!)}>{t(message.action.labelKey)}</button>}
-          </div>)}
-          {pending && <p className="assistant-pet__message assistant-pet__message--assistant">{t('assistant.thinking')}</p>}
-        </div>}
-        {user.assistant_ai_enabled && configured !== false ? <form className="assistant-pet__form" onSubmit={(event) => void send(event)}>
+        <section className="assistant-pet__response" aria-live="polite">
+          {latestAssistant ? <>
+            {latestUser && <small><span>{t('assistant.yourQuestion')}</span>{latestUser.text}</small>}
+            <p>{latestAssistant.text}</p>
+            {latestAssistant.action && <button type="button" className="assistant-pet__message-action" onClick={() => showAction(latestAssistant.action!)}>{t(latestAssistant.action.labelKey)}</button>}
+          </> : <>
+            <small><span>{t('assistant.onThisPage')}</span>{t(guidance.titleKey)}</small>
+            <p>{t(guidance.hintKey)}</p>
+            <button className="assistant-pet__suggestion" type="button" onClick={() => void send(undefined, t(guidance.promptKey))}>{t(guidance.promptKey)}</button>
+          </>}
+          {pending && <p className="assistant-pet__thinking">{t('assistant.thinking')}</p>}
+        </section>
+
+        {composerOpen && user.assistant_ai_enabled && configured !== false && <form className="assistant-pet__form" onSubmit={(event) => void send(event)}>
           <input ref={inputRef} value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={600} placeholder={t('assistant.placeholder')} aria-label={t('assistant.placeholder')} />
-          <button type="submit" disabled={pending || question.trim().length < 2}>{t('assistant.send')}</button>
-        </form> : <div className="assistant-pet__offline">
+          <button type="submit" disabled={pending || question.trim().length < 2} aria-label={t('assistant.send')}><ArrowUp size={20} weight="bold" /></button>
+        </form>}
+
+        <div className="assistant-pet__stage" aria-hidden="true"><PetMark /></div>
+
+        {historyOpen && messages.length > 0 && <div ref={messagesRef} className="assistant-pet__messages" aria-label={t('assistant.history')}>
+          {messages.map((message) => <div key={message.id} className={`assistant-pet__message assistant-pet__message--${message.kind}`}>
+            <small>{t(message.kind === 'user' ? 'assistant.you' : 'assistant.name')}</small>
+            <p>{message.text}</p>
+          </div>)}
+        </div>}
+
+        {(!user.assistant_ai_enabled || configured === false) && <div className="assistant-pet__offline">
           <span>{user.assistant_ai_enabled ? t('assistant.freeAiUnavailable') : t('assistant.aiDisabled')}</span>
           <Link to="/profile">{t('assistant.openSettings')}</Link>
         </div>}
-        <p className="assistant-pet__privacy">{t('assistant.privacy')}</p>
+
+        <nav className="assistant-pet__dock" aria-label={t('assistant.controls')}>
+          <button type="button" onClick={() => { setComposerOpen(true); window.setTimeout(() => inputRef.current?.focus(), 50) }} aria-label={t('assistant.newQuestion')} title={t('assistant.newQuestion')}><PencilSimple size={23} /></button>
+          <button type="button" className={historyOpen ? 'is-active' : ''} onClick={() => setHistoryOpen((value) => !value)} aria-label={t(historyOpen ? 'assistant.hideHistory' : 'assistant.history')} title={t(historyOpen ? 'assistant.hideHistory' : 'assistant.history')}><ClockCounterClockwise size={23} /></button>
+          <button type="button" onClick={startTour} aria-label={t('assistant.tour.start')} title={t('assistant.tour.start')}><MapTrifold size={23} /></button>
+          <button type="button" onClick={() => setOpen(false)} aria-label={t('assistant.close')} title={t('assistant.close')}><CaretDown size={23} /></button>
+        </nav>
       </div>
     </section>}
 

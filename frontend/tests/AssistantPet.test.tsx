@@ -64,6 +64,7 @@ describe('AssistantPet', () => {
     expect(screen.getByText(/Ответы ИИ отключены/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Как создать и запустить очередь?' }))
     expect(screen.getByText(/Для подробного ответа включите ИИ/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'История разговора' }))
     expect(document.querySelector<HTMLElement>('.assistant-pet__messages')?.scrollTop).toBe(480)
   })
 

@@ -137,6 +137,11 @@ export default function AssistantPet({ user }: { user: User }) {
     setTourOverride(null)
   }
 
+  function dismissCurrentTourStep() {
+    setTourIndex(null)
+    setTourOverride(null)
+  }
+
   function nextTourStep() {
     setTourIndex((current) => {
       if (current === null || current >= activeTour.length - 1) {
@@ -191,6 +196,7 @@ export default function AssistantPet({ user }: { user: User }) {
       onBack={() => setTourIndex((current) => current === null ? null : Math.max(0, current - 1))}
       onNext={nextTourStep}
       onClose={closeTour}
+      onTargetClick={dismissCurrentTourStep}
     />}
     <aside className={`assistant-pet${tourIndex !== null ? ' assistant-pet--touring' : ''}`} aria-label={t('assistant.name')}>
     {!open && bubble && <div className="assistant-pet__bubble" role="status">

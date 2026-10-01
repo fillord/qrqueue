@@ -78,6 +78,21 @@ describe('AssistantPet', () => {
     expect(screen.getByText('Шаг 1 из 2')).toBeTruthy()
     expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
     expect(screen.getByText(/Нажмите на подсвеченный элемент/)).toBeTruthy()
+    fireEvent.click(document.querySelector('.assistant-tour__shade')!)
+    expect(screen.queryByTestId('assistant-tour')).toBeNull()
+  })
+
+  it('lets the highlighted control receive the click and removes the dimming', () => {
+    const onClick = vi.fn()
+    render(<MemoryRouter initialEntries={['/admin/queues']}>
+      <button type="button" data-assistant-tour="create-queue" onClick={onClick}>Создать очередь</button>
+      <AssistantPet user={user} />
+    </MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
+    fireEvent.click(screen.getByRole('button', { name: /Показать на странице/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Создать очередь' }))
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(screen.queryByTestId('assistant-tour')).toBeNull()
   })
 
   it('offers a visual destination after an AI answer and uses exact settings names', async () => {
@@ -125,6 +140,7 @@ describe('AssistantPet', () => {
         onBack={vi.fn()}
         onNext={vi.fn()}
         onClose={vi.fn()}
+        onTargetClick={vi.fn()}
       />
     </>)
     expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()

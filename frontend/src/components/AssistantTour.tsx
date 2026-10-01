@@ -16,12 +16,13 @@ function getRect(element: Element): HighlightRect {
   return { top, right, bottom, left, width: Math.max(1, right - left), height: Math.max(1, bottom - top) }
 }
 
-export default function AssistantTour({ steps, index, onBack, onNext, onClose }: {
+export default function AssistantTour({ steps, index, onBack, onNext, onClose, onTargetClick }: {
   steps: AssistantTourStep[]
   index: number
   onBack: () => void
   onNext: () => void
   onClose: () => void
+  onTargetClick: () => void
 }) {
   const { t } = useTranslation()
   const step = steps[index]
@@ -31,9 +32,14 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
   useLayoutEffect(() => {
     if (!step) return
     let targetElement: Element | null = null
+    let listeningElement: Element | null = null
     let revealed = false
     let retryTimers: number[] = []
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+    function handleTargetClick() {
+      onTargetClick()
+    }
 
     function findTarget(): Element | null {
       try {
@@ -55,6 +61,11 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
       if (!targetElement) {
         setRect(null)
         return
+      }
+      if (listeningElement !== targetElement) {
+        listeningElement?.removeEventListener('click', handleTargetClick)
+        listeningElement = targetElement
+        listeningElement.addEventListener('click', handleTargetClick)
       }
       const disclosure = targetElement.closest('details')
       if (disclosure && !disclosure.open) disclosure.open = true
@@ -81,12 +92,13 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
     window.addEventListener('scroll', update, true)
     return () => {
       retryTimers.forEach((timer) => window.clearTimeout(timer))
+      listeningElement?.removeEventListener('click', handleTargetClick)
       resizeObserver?.disconnect()
       mutationObserver.disconnect()
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [step, t])
+  }, [onTargetClick, step, t])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -107,12 +119,12 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose }:
 
   return createPortal(<div className="assistant-tour" role="dialog" aria-modal="true" aria-label={t('assistant.tour.label')} data-testid="assistant-tour">
     {rect ? <>
-      <div className="assistant-tour__shade" style={{ inset: `0 0 ${window.innerHeight - rect.top}px 0` }} />
-      <div className="assistant-tour__shade" style={{ inset: `${rect.bottom}px 0 0 0` }} />
-      <div className="assistant-tour__shade" style={{ top: rect.top, left: 0, width: rect.left, height: rect.height }} />
-      <div className="assistant-tour__shade" style={{ top: rect.top, left: rect.right, right: 0, height: rect.height }} />
+      <div className="assistant-tour__shade" onClick={onClose} style={{ inset: `0 0 ${window.innerHeight - rect.top}px 0` }} />
+      <div className="assistant-tour__shade" onClick={onClose} style={{ inset: `${rect.bottom}px 0 0 0` }} />
+      <div className="assistant-tour__shade" onClick={onClose} style={{ top: rect.top, left: 0, width: rect.left, height: rect.height }} />
+      <div className="assistant-tour__shade" onClick={onClose} style={{ top: rect.top, left: rect.right, right: 0, height: rect.height }} />
       <div className="assistant-tour__ring" style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }} aria-hidden="true" />
-    </> : <div className="assistant-tour__shade assistant-tour__shade--full" />}
+    </> : <div className="assistant-tour__shade assistant-tour__shade--full" onClick={onClose} />}
 
     <section className={`assistant-tour__card assistant-tour__card--${placement}${rect ? '' : ' assistant-tour__card--missing'}`} style={tooltipStyle}>
       <div className="assistant-tour__eyebrow">

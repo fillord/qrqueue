@@ -130,7 +130,7 @@ describe('AssistantPet', () => {
 
   it('offers a visual destination after an AI answer and uses exact settings names', async () => {
     getStatus.mockResolvedValue({ available: true })
-    ask.mockResolvedValue({ answer: 'Откройте **«Настройки организации»**.', source: 'gemini' })
+    ask.mockResolvedValue({ answer: 'Откройте **«Настройки организации»**.', source: 'gemini', action_id: 'admin.organization' })
     const aiUser = { ...user, assistant_ai_enabled: true }
     render(<MemoryRouter initialEntries={['/admin/queues']}><OrganizationJourney currentUser={aiUser} /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
@@ -145,6 +145,18 @@ describe('AssistantPet', () => {
     await waitFor(() => expect(screen.getByText('Здесь изменяются название, логотип, цвет, язык, часовой пояс и правила талонов организации.')).toBeTruthy())
     expect(screen.getAllByRole('heading', { name: 'Настройки организации' }).length).toBeGreaterThanOrEqual(2)
     expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
+  })
+
+  it('does not invent a visual destination when the catalog returns no action', async () => {
+    getStatus.mockResolvedValue({ available: true })
+    ask.mockResolvedValue({ answer: 'Эта информация показана на текущей странице.', source: 'gemini', action_id: null })
+    const aiUser = { ...user, assistant_ai_enabled: true }
+    render(<MemoryRouter initialEntries={['/admin/queues']}><AssistantPet user={aiUser} /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Напишите вопрос о системе' }), { target: { value: 'Что означает этот показатель?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }))
+    await screen.findByText('Эта информация показана на текущей странице.')
+    expect(screen.queryByRole('button', { name: 'Показать, куда нажать' })).toBeNull()
   })
 
   it('continues a password walkthrough after navigating to profile settings', async () => {

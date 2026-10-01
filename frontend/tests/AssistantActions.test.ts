@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAssistantAction } from '../src/lib/assistantActions'
+import { getAssistantAction, getAssistantActionById } from '../src/lib/assistantActions'
 import { getAssistantTour } from '../src/lib/assistantGuidance'
 
 function action(question: string, path = '/admin/tv-screens') {
@@ -8,6 +8,21 @@ function action(question: string, path = '/admin/tv-screens') {
 }
 
 describe('assistant visual actions', () => {
+  it('uses a structured catalog action instead of guessing from answer wording', () => {
+    const editTv = getAssistantActionById('tv.manage', '/admin/queues', 'org_admin')
+    expect(editTv?.destination?.path).toBe('/admin/tv-screens')
+    expect(editTv?.destination?.steps[0].selector).toContain('screen-settings')
+
+    const importStaff = getAssistantActionById('attendance.employee.import', '/admin', 'org_admin')
+    expect(importStaff?.destination?.path).toBe('/admin/attendance/employees')
+    expect(importStaff?.destination?.steps[0].selector).toContain('attendance-admin__import')
+  })
+
+  it('rejects catalog actions that do not belong to the current role', () => {
+    expect(getAssistantActionById('sa.organization.create', '/admin', 'org_admin')).toBeUndefined()
+    expect(getAssistantActionById('tv.manage', '/sa/analytics', 'superadmin')).toBeUndefined()
+  })
+
   it('distinguishes creating a TV from editing an existing TV', () => {
     expect(action('как добавить новый тв').steps[0].selector).toContain('create-screen')
     expect(action('как редактировать тв').steps[0].selector).toContain('screen-settings')

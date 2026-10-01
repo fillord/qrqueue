@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { askAssistant, getAssistantStatus } from '../api/assistant'
 import type { User } from '../api/types'
-import { getAssistantAction, type AssistantAction } from '../lib/assistantActions'
+import { getAssistantAction, getAssistantActionById, type AssistantAction } from '../lib/assistantActions'
 import { getAssistantGuidance, getAssistantTour } from '../lib/assistantGuidance'
 import AssistantTour from './AssistantTour'
 import './assistant-pet.css'
@@ -190,7 +190,10 @@ export default function AssistantPet({ user }: { user: User }) {
     const locale = (['ru', 'kk', 'en'].includes(i18n.language.slice(0, 2)) ? i18n.language.slice(0, 2) : 'ru') as 'ru' | 'kk' | 'en'
     try {
       const result = await askAssistant(text, pathname, locale)
-      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: cleanAssistantText(result.answer), action }])
+      const resolvedAction = result.action_id === undefined
+        ? action
+        : getAssistantActionById(result.action_id, pathname, user.role)
+      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: cleanAssistantText(result.answer), action: resolvedAction }])
     } catch {
       setConfigured(false)
       setMessages((current) => [...current, {

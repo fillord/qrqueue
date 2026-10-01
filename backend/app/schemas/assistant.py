@@ -27,6 +27,7 @@ class AssistantQuestion(BaseModel):
 class AssistantAnswer(BaseModel):
     answer: str
     source: Literal["gemini"] = "gemini"
+    action_id: str | None = None
 
 
 class AssistantStatus(BaseModel):

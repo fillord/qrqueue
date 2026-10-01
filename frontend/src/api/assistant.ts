@@ -7,6 +7,7 @@ export interface AssistantStatus {
 export interface AssistantAnswer {
   answer: string
   source: 'gemini'
+  action_id?: string | null
 }
 
 export const getAssistantStatus = () => apiGet<AssistantStatus>('/api/assistant/status')

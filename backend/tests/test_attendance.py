@@ -140,11 +140,12 @@ async def test_admin_scoping_enrollment_and_phone_marks(client, db_session, make
         'employee_id': employee_id, 'kind': 'out', 'occurred_at': (utcnow() - timedelta(days=1)).isoformat(), 'reason': 'Forgot to mark',
     })
     assert manual.status_code == 201 and manual.json()['source'] == 'manual'
+    corrected_at = utcnow() - timedelta(days=1, hours=1)
     corrected = await client.patch(f"/api/attendance/admin/events/{manual.json()['id']}", json={
-        'kind': 'in', 'occurred_at': (utcnow() - timedelta(days=1, hours=1)).isoformat(), 'reason': 'Corrected type',
+        'kind': 'in', 'occurred_at': corrected_at.isoformat(), 'reason': 'Corrected type',
     })
     assert corrected.status_code == 200 and corrected.json()['kind'] == 'in'
-    previous_local_day = (utcnow() - timedelta(days=1)).astimezone(ZoneInfo(org_a.timezone)).date().isoformat()
+    previous_local_day = corrected_at.astimezone(ZoneInfo(org_a.timezone)).date().isoformat()
     assert len((await client.get('/api/attendance/admin/events', params={'day': previous_local_day})).json()) == 1
 
     await client.post('/api/auth/logout')

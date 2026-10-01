@@ -1,0 +1,10 @@
+[Unit]
+Description=Check freshness of the latest verified QRQueue database backup
+After=qrqueue-backup.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/qrqueue
+Environment=BACKUP_MAX_AGE_HOURS=30
+ExecStart=/usr/bin/bash /home/ubuntu/qrqueue/scripts/check-backup-freshness.sh

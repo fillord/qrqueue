@@ -74,13 +74,10 @@ docker compose exec backend python scripts/recover_superadmin_totp.py admin@exam
 ## Проверки
 
 ```sh
-docker compose exec -T backend python scripts/test.py -q
-npm --prefix frontend ci
-npm --prefix frontend test
-npm --prefix frontend run build
+bash scripts/release-check.sh
 ```
 
-Backend-проверки создают отдельную временную БД, применяют всю цепочку миграций, затем удаляют только эту БД. Тестовому пользователю PostgreSQL нужно право `CREATEDB`; используйте локальное окружение. Backend-зависимости зафиксированы в `requirements.txt`, frontend — в `package-lock.json`.
+Скрипт заново устанавливает frontend-зависимости, запускает frontend-тесты и production build, собирает актуальный backend-образ и запускает полный backend suite. Backend-проверки создают отдельную временную БД, применяют всю цепочку миграций, затем удаляют только эту БД. Тестовому пользователю PostgreSQL нужно право `CREATEDB`; используйте локальное окружение. Backend-зависимости зафиксированы в `requirements.txt`, frontend — в `package-lock.json`.
 
 ## Выпуск на сервер
 
@@ -116,6 +113,20 @@ curl -fsS http://127.0.0.1:8080/api/health
 Публичный `queue.omni-book.site` работает на Oracle через третий файл `docker-compose.tunnel.yml`; на Mac коннектор qrqueue и его сторожевой процесс отключены. Для запуска после подготовки базы используйте `sudo docker compose -f docker-compose.yml -f docker-compose.oracle.yml -f docker-compose.tunnel.yml up -d`. Секреты и токен туннеля лежат только в серверных `.env` и `.tunnel.env`, которых нет в Git. Не запускайте одновременно старый и новый коннекторы одного Cloudflare Tunnel с разными базами: посетители могут попасть на разные экземпляры. После изменения frontend проверьте `/api/health`, откройте ТВ-страницу заново и убедитесь на самом телевизоре, что плейлист проходит несколько полных циклов.
 
 На Oracle проверенный дамп создаётся командой `sudo QUEUE_DEPLOYMENT=oracle bash scripts/backup-verified.sh`. Файлы `deploy/oracle/qrqueue-backup.service` и `.timer` задают ежедневный запуск в 20:00 UTC; это локальная копия сервера. Ежедневная автоматизация Google Drive уже настроена на загрузку проверенной копии с Oracle через MacBook. Её успешность зависит от доступности MacBook и подключения Google Drive.
+
+Каждый production-образ получает полный Git SHA. `/api/health` возвращает `status` и `version`, а вошедшие сотрудники видят короткую версию в верхней панели. GitHub Actions продолжает внешнюю проверку доступности; точное совпадение production с `main` проверяют deploy- и verify-скрипты.
+
+Для штатного выпуска с MacBook используйте единый сценарий:
+
+```bash
+QRQUEUE_ORACLE_SSH_TARGET=ubuntu@<IP> \
+QRQUEUE_ORACLE_SSH_KEY=<путь-к-ключу> \
+bash scripts/deploy-oracle.sh
+```
+
+Сценарий разрешает выпуск только из чистого локального `main`, совпадающего с GitHub. Он прогоняет все проверки, создаёт и скачивает проверенный backup, сохраняет предыдущие исходники и Docker-образы, доставляет только Git-tracked файлы, применяет Alembic, запускает backend/frontend и сверяет Git SHA через локальный и публичный health. При ошибке исходники и предыдущие образы восстанавливаются автоматически; откат миграции БД автоматически не выполняется. `docker-compose.override.yml` на Oracle не используется.
+
+`qrqueue-backup-check.timer` ежечасно проверяет, что последний восстановленный `queue-verified-*.dump` не старше 30 часов. Результат доступен через `systemctl status qrqueue-backup-check.service`; неуспешная проверка переводит unit в failed. Полная проверка релиза выполняется командой `bash scripts/verify-oracle-release.sh <полный-git-sha>` с теми же SSH-переменными.
 
 С MacBook можно получить проверенный файл сервера командой `QRQUEUE_ORACLE_SSH_TARGET=ubuntu@<IP> QRQUEUE_ORACLE_SSH_KEY=<путь-к-ключу> bash scripts/pull-oracle-backup.sh`. Скрипт запускает резервное копирование и пробное восстановление на Oracle, скачивает именно проверенный файл и сравнивает SHA-256; результат сохраняется в `backups/oracle-*.dump`. Ежедневная автоматизация сначала проверяет, есть ли копия за сегодня в Google Drive, затем вызывает этот скрипт и загружает полученный файл.
 

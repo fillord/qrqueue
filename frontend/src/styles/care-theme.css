@@ -43,6 +43,7 @@ body { background: var(--color-surface-muted); }
 .app-header__staff-link { padding: 9px 13px; border: 1px solid var(--color-border-strong); border-radius: 10px; color: var(--color-ink); font-size: .84rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .app-header__staff-link:hover { border-color: var(--color-primary); background: var(--color-surface-brand-tint); }
 .app-header__user { color: var(--color-text-secondary); }
+.app-header__version { color: var(--color-muted); font-size: .68rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .app-header__auth button { border-color: var(--color-border-strong); color: var(--color-ink); background: #fff; }
 .language-switcher__button { color: var(--color-text-secondary); }
 .language-switcher__button--active { background: var(--color-surface-brand-tint); }

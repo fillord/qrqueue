@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_domain: str = "localhost"
+    app_version: str = "dev"
 
     postgres_db: str = "queue"
     postgres_user: str = "queue"

@@ -3,6 +3,13 @@
 Дата среза: **2 октября 2026, Asia/Almaty**  
 Рабочий проект: система электронной очереди, ТВ-экранов, расписаний и учёта рабочего времени.
 
+### Обновление после первичного handoff
+
+- Проверенная исходная точка до внедрения release tooling: `e4f5b628cf56cae401b223274ad32c4162ed998e`.
+- Локальный `main` и GitHub `main` были синхронизированы; backend прошёл 194 теста, frontend — 83 теста и production build.
+- Добавлен план штатного выпуска: Git SHA в образах и `/api/health`, `scripts/release-check.sh`, `scripts/deploy-oracle.sh`, `scripts/verify-oracle-release.sh` и ежечасная проверка свежести verified backup.
+- Папки `design-preview/`, `portfolio/`, `tools/` остаются локальными и не должны добавляться в Git.
+
 ## 1. Где находится проект
 
 ### MacBook — основной Git-репозиторий и рабочая копия

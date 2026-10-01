@@ -123,5 +123,8 @@ async def health() -> dict | JSONResponse:
         await asyncio.wait_for(redis_client.ping(), timeout=3)
     except Exception:
         logger.exception("Readiness check failed")
-        return JSONResponse(status_code=503, content={"status": "unavailable"})
-    return {"status": "ok"}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "version": settings.app_version},
+        )
+    return {"status": "ok", "version": settings.app_version}

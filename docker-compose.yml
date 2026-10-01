@@ -4,7 +4,10 @@
 
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     container_name: queue-frontend
     restart: unless-stopped
     depends_on:
@@ -19,10 +22,15 @@ services:
       - internal
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     container_name: queue-backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      APP_VERSION: ${APP_VERSION:-dev}
     depends_on:
       db:
         condition: service_healthy

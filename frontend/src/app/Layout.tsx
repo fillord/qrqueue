@@ -5,6 +5,9 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import AssistantPet from '../components/AssistantPet'
 import { useAuth } from './AuthContext'
 
+const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
+const appVersionLabel = appVersion === 'dev' ? appVersion : appVersion.slice(0, 7)
+
 export default function Layout() {
   const { t } = useTranslation()
   const { user, status, logout } = useAuth()
@@ -43,6 +46,7 @@ export default function Layout() {
             </div>
           )}
           {isLanding && status !== 'authenticated' && <Link className="app-header__staff-link" to="/login">{t('landing.footer.staffLogin')}</Link>}
+          {status === 'authenticated' && <span className="app-header__version" title={appVersion}>v{appVersionLabel}</span>}
           <LanguageSwitcher />
         </div>
       </header>

@@ -98,7 +98,7 @@ describe('AssistantPet', () => {
 
   it('offers a visual destination after an AI answer and uses exact settings names', async () => {
     getStatus.mockResolvedValue({ available: true })
-    ask.mockResolvedValue({ answer: 'Откройте «Настройки организации».', source: 'gemini' })
+    ask.mockResolvedValue({ answer: 'Откройте **«Настройки организации»**.', source: 'gemini' })
     const aiUser = { ...user, assistant_ai_enabled: true }
     render(<MemoryRouter initialEntries={['/admin/queues']}><OrganizationJourney currentUser={aiUser} /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))

@@ -193,12 +193,12 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
                   </small>}
                 </div>
                 <div className="admin-tv-screens__card-actions">
-                  <button type="button" aria-expanded={expandedScreenId === screen.id} aria-controls={`screen-settings-${screen.id}`}
+                  <button type="button" data-assistant-tour="screen-settings" aria-expanded={expandedScreenId === screen.id} aria-controls={`screen-settings-${screen.id}`}
                     onClick={() => setExpandedScreenId((current) => current === screen.id ? null : screen.id)}>
                     {t(expandedScreenId === screen.id ? 'adminTv.hideSettings' : 'adminTv.showSettings')}
                   </button>
-                  {!screen.pairing_code && <button type="button" disabled={submitting} onClick={() => void handleUnpair(screen)}>{t('adminTv.unpair')}</button>}
-                  <button type="button" className="admin-tv-screens__delete" disabled={submitting} onClick={() => void handleDelete(screen.id)}>{t('adminTv.delete')}</button>
+                  {!screen.pairing_code && <button type="button" data-assistant-tour="screen-unpair" disabled={submitting} onClick={() => void handleUnpair(screen)}>{t('adminTv.unpair')}</button>}
+                  <button type="button" data-assistant-tour="screen-delete" className="admin-tv-screens__delete" disabled={submitting} onClick={() => void handleDelete(screen.id)}>{t('adminTv.delete')}</button>
                 </div>
               </header>
 

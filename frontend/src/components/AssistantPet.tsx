@@ -39,6 +39,13 @@ function PetMark() {
 
 type Message = { id: number; kind: 'user' | 'assistant'; text: string; action?: AssistantAction }
 
+function cleanAssistantText(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/gs, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .trim()
+}
+
 export default function AssistantPet({ user }: { user: User }) {
   const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
@@ -183,7 +190,7 @@ export default function AssistantPet({ user }: { user: User }) {
     const locale = (['ru', 'kk', 'en'].includes(i18n.language.slice(0, 2)) ? i18n.language.slice(0, 2) : 'ru') as 'ru' | 'kk' | 'en'
     try {
       const result = await askAssistant(text, pathname, locale)
-      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: result.answer, action }])
+      setMessages((current) => [...current, { id: ++idRef.current, kind: 'assistant', text: cleanAssistantText(result.answer), action }])
     } catch {
       setConfigured(false)
       setMessages((current) => [...current, {

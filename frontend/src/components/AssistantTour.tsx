@@ -1,10 +1,75 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import type { AssistantTourStep } from '../lib/assistantGuidance'
 
 type HighlightRect = { top: number; right: number; bottom: number; left: number; width: number; height: number }
+type TooltipSize = { width: number; height: number }
+type TooltipPlacement = 'above' | 'below' | 'left' | 'right' | 'center'
+
+const VIEWPORT_MARGIN = 12
+const TARGET_GAP = 14
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum))
+}
+
+export function getTooltipLayout(rect: HighlightRect | null, size: TooltipSize, viewport: TooltipSize): {
+  placement: TooltipPlacement
+  left: number
+  top: number
+} {
+  const width = Math.min(size.width, viewport.width - VIEWPORT_MARGIN * 2)
+  const height = Math.min(size.height, viewport.height - VIEWPORT_MARGIN * 2)
+  const maxLeft = viewport.width - width - VIEWPORT_MARGIN
+  const maxTop = viewport.height - height - VIEWPORT_MARGIN
+
+  if (!rect) {
+    return {
+      placement: 'center',
+      left: clamp((viewport.width - width) / 2, VIEWPORT_MARGIN, maxLeft),
+      top: clamp((viewport.height - height) / 2, VIEWPORT_MARGIN, maxTop),
+    }
+  }
+
+  const spaces = {
+    below: viewport.height - rect.bottom - TARGET_GAP - VIEWPORT_MARGIN,
+    above: rect.top - TARGET_GAP - VIEWPORT_MARGIN,
+    right: viewport.width - rect.right - TARGET_GAP - VIEWPORT_MARGIN,
+    left: rect.left - TARGET_GAP - VIEWPORT_MARGIN,
+  }
+  let placement: TooltipPlacement
+  if (spaces.below >= height) placement = 'below'
+  else if (spaces.above >= height) placement = 'above'
+  else if (spaces.right >= width) placement = 'right'
+  else if (spaces.left >= width) placement = 'left'
+  else {
+    placement = (Object.entries(spaces) as Array<[Exclude<TooltipPlacement, 'center'>, number]>)
+      .sort((a, b) => b[1] - a[1])[0][0]
+  }
+
+  if (placement === 'below' || placement === 'above') {
+    return {
+      placement,
+      left: clamp(rect.left, VIEWPORT_MARGIN, maxLeft),
+      top: clamp(
+        placement === 'below' ? rect.bottom + TARGET_GAP : rect.top - TARGET_GAP - height,
+        VIEWPORT_MARGIN,
+        maxTop,
+      ),
+    }
+  }
+  return {
+    placement,
+    left: clamp(
+      placement === 'right' ? rect.right + TARGET_GAP : rect.left - TARGET_GAP - width,
+      VIEWPORT_MARGIN,
+      maxLeft,
+    ),
+    top: clamp(rect.top, VIEWPORT_MARGIN, maxTop),
+  }
+}
 
 function getRect(element: Element): HighlightRect {
   const rect = element.getBoundingClientRect()
@@ -27,7 +92,25 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose, o
   const { t } = useTranslation()
   const step = steps[index]
   const [rect, setRect] = useState<HighlightRect | null>(null)
-  const [placement, setPlacement] = useState<'above' | 'below'>('below')
+  const cardRef = useRef<HTMLElement | null>(null)
+  const [cardSize, setCardSize] = useState<TooltipSize>({ width: 360, height: 280 })
+
+  useLayoutEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    const updateCardSize = () => {
+      const measured = card.getBoundingClientRect()
+      if (measured.width > 0 && measured.height > 0) {
+        setCardSize((current) => measured.width === current.width && measured.height === current.height
+          ? current
+          : { width: measured.width, height: measured.height })
+      }
+    }
+    updateCardSize()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateCardSize)
+    observer?.observe(card)
+    return () => observer?.disconnect()
+  }, [index, rect])
 
   useLayoutEffect(() => {
     if (!step) return
@@ -79,7 +162,6 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose, o
         return
       }
       setRect(next)
-      setPlacement(next.bottom + 250 < window.innerHeight ? 'below' : 'above')
     }
 
     update()
@@ -111,11 +193,11 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose, o
   }, [index, onBack, onClose, onNext])
 
   if (!step) return null
-  const tooltipStyle = rect && window.innerWidth > 620 ? {
-    left: `${Math.min(Math.max(12, rect.left), window.innerWidth - 372)}px`,
-    top: placement === 'below' ? `${rect.bottom + 14}px` : undefined,
-    bottom: placement === 'above' ? `${window.innerHeight - rect.top + 14}px` : undefined,
-  } : !rect ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' } : undefined
+  const layout = getTooltipLayout(rect, cardSize, { width: window.innerWidth, height: window.innerHeight })
+  const tooltipStyle = {
+    left: `${layout.left}px`,
+    top: `${layout.top}px`,
+  }
 
   return createPortal(<div className="assistant-tour" role="dialog" aria-modal="true" aria-label={t('assistant.tour.label')} data-testid="assistant-tour">
     {rect ? <>
@@ -126,7 +208,7 @@ export default function AssistantTour({ steps, index, onBack, onNext, onClose, o
       <div className="assistant-tour__ring" style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }} aria-hidden="true" />
     </> : <div className="assistant-tour__shade assistant-tour__shade--full" onClick={onClose} />}
 
-    <section className={`assistant-tour__card assistant-tour__card--${placement}${rect ? '' : ' assistant-tour__card--missing'}`} style={tooltipStyle}>
+    <section ref={cardRef} className={`assistant-tour__card assistant-tour__card--${layout.placement}${rect ? '' : ' assistant-tour__card--missing'}`} style={tooltipStyle}>
       <div className="assistant-tour__eyebrow">
         <span className="assistant-tour__paw" aria-hidden="true">●</span>
         {t('assistant.tour.step', { current: index + 1, total: steps.length })}

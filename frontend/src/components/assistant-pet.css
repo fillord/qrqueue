@@ -220,10 +220,13 @@
 .assistant-tour__shade { position: fixed; z-index: 1800; background: rgb(8 27 22 / .70); backdrop-filter: blur(1px); pointer-events: auto; cursor: pointer; }
 .assistant-tour__shade--full { inset: 0; }
 .assistant-tour__ring { position: fixed; z-index: 1801; border: 3px solid #ffd56a; border-radius: 12px; box-shadow: 0 0 0 4px rgb(255 213 106 / .28), 0 10px 40px rgb(0 0 0 / .22); pointer-events: none; animation: assistant-highlight 1.25s ease-in-out infinite alternate; }
-.assistant-tour__card { position: fixed; z-index: 1803; width: min(360px, calc(100vw - 24px)); padding: 18px; border: 1px solid #d1dfd8; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgb(0 0 0 / .32); animation: assistant-arrive .22s ease both; pointer-events: auto; }
+.assistant-tour__card { position: fixed; z-index: 1803; width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; padding: 18px; border: 1px solid #d1dfd8; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgb(0 0 0 / .32); animation: assistant-arrive .22s ease both; pointer-events: auto; }
 .assistant-tour__card::before { content: ''; position: absolute; left: 28px; width: 18px; height: 18px; background: #fff; transform: rotate(45deg); }
 .assistant-tour__card--below::before { top: -9px; border-top: 1px solid #d1dfd8; border-left: 1px solid #d1dfd8; }
 .assistant-tour__card--above::before { bottom: -9px; border-right: 1px solid #d1dfd8; border-bottom: 1px solid #d1dfd8; }
+.assistant-tour__card--right::before { top: 28px; left: -9px; border-left: 1px solid #d1dfd8; border-bottom: 1px solid #d1dfd8; }
+.assistant-tour__card--left::before { top: 28px; left: auto; right: -9px; border-top: 1px solid #d1dfd8; border-right: 1px solid #d1dfd8; }
+.assistant-tour__card--center::before { display: none; }
 .assistant-tour__card--missing::before { display: none; }
 .assistant-tour__eyebrow { display: flex; align-items: center; gap: 7px; color: #5c776e; font-size: .7rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .assistant-tour__paw { color: #f0b640; font-size: .8rem; }

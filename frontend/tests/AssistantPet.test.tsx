@@ -3,7 +3,7 @@ import { Link, MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AssistantPet from '../src/components/AssistantPet'
-import AssistantTour from '../src/components/AssistantTour'
+import AssistantTour, { getTooltipLayout } from '../src/components/AssistantTour'
 import type { User } from '../src/api/types'
 import i18n from '../src/app/i18n'
 
@@ -146,5 +146,31 @@ describe('AssistantPet', () => {
     </>)
     expect(document.querySelector('.assistant-tour__ring')).toBeTruthy()
     expect(document.querySelector('.assistant-tour__shade--full')).toBeFalsy()
+  })
+})
+
+describe('assistant tour positioning', () => {
+  it('places the card beside a tall target and keeps it inside the viewport', () => {
+    const layout = getTooltipLayout(
+      { top: 100, right: 470, bottom: 790, left: 20, width: 450, height: 690 },
+      { width: 360, height: 300 },
+      { width: 1200, height: 800 },
+    )
+    expect(layout.placement).toBe('right')
+    expect(layout.left).toBe(484)
+    expect(layout.top).toBeLessThanOrEqual(488)
+    expect(layout.top).toBeGreaterThanOrEqual(12)
+  })
+
+  it('clamps every fallback position to the visible viewport', () => {
+    const layout = getTooltipLayout(
+      { top: 2, right: 995, bottom: 695, left: 2, width: 993, height: 693 },
+      { width: 360, height: 420 },
+      { width: 1000, height: 700 },
+    )
+    expect(layout.left).toBeGreaterThanOrEqual(12)
+    expect(layout.top).toBeGreaterThanOrEqual(12)
+    expect(layout.left + 360).toBeLessThanOrEqual(988)
+    expect(layout.top + 420).toBeLessThanOrEqual(688)
   })
 })

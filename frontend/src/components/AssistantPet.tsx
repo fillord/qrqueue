@@ -69,10 +69,11 @@ export default function AssistantPet({ user }: { user: User }) {
   const latestUser = [...messages].reverse().find((message) => message.kind === 'user')
 
   useEffect(() => {
-    const key = `assistant-hint:${pathname}`
-    let seen = false
-    try { seen = sessionStorage.getItem(key) === '1' } catch { /* storage may be disabled */ }
-    setBubble(!seen)
+    // Every independently opened section gets its own contextual invitation.
+    // Keeping a session-wide "seen" flag made the pet fall silent after the
+    // first visit and left an open panel showing advice for the previous page.
+    setOpen(false)
+    setBubble(true)
     let resumed = false
     try {
       const raw = sessionStorage.getItem(PENDING_TOUR_KEY)
@@ -118,7 +119,6 @@ export default function AssistantPet({ user }: { user: User }) {
 
   function dismissBubble() {
     setBubble(false)
-    try { sessionStorage.setItem(`assistant-hint:${pathname}`, '1') } catch { /* no-op */ }
   }
 
   function openPanel() {

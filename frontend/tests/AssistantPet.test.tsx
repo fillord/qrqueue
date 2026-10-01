@@ -40,6 +40,16 @@ function OrganizationJourney({ currentUser }: { currentUser: User }) {
   </>
 }
 
+function NavigationJourney({ currentUser }: { currentUser: User }) {
+  return <>
+    <nav>
+      <Link to="/admin/queues">Очереди</Link>
+      <Link to="/admin/tv-screens">ТВ-экраны</Link>
+    </nav>
+    <AssistantPet user={currentUser} />
+  </>
+}
+
 describe('AssistantPet', () => {
   afterEach(() => cleanup())
   beforeEach(async () => {
@@ -66,6 +76,28 @@ describe('AssistantPet', () => {
     expect(screen.getByText(/Для подробного ответа включите ИИ/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'История разговора' }))
     expect(document.querySelector<HTMLElement>('.assistant-pet__messages')?.scrollTop).toBe(480)
+  })
+
+  it('offers fresh contextual help after every independent section change', () => {
+    render(<MemoryRouter initialEntries={['/admin/queues']}><NavigationJourney currentUser={user} /></MemoryRouter>)
+    const firstBubble = document.querySelector<HTMLElement>('.assistant-pet__bubble')
+    expect(firstBubble?.textContent).toContain('Очереди')
+    fireEvent.click(document.querySelector<HTMLButtonElement>('.assistant-pet__bubble-close')!)
+    expect(document.querySelector('.assistant-pet__bubble')).toBeNull()
+
+    fireEvent.click(screen.getByRole('link', { name: 'ТВ-экраны' }))
+    const nextBubble = document.querySelector<HTMLElement>('.assistant-pet__bubble')
+    expect(nextBubble?.textContent).toContain('ТВ-экраны')
+  })
+
+  it('closes advice from the previous page when the user navigates independently', () => {
+    render(<MemoryRouter initialEntries={['/admin/queues']}><NavigationJourney currentUser={user} /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть помощника' }))
+    expect(screen.getByRole('dialog', { name: 'Навигатор' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('link', { name: 'ТВ-экраны' }))
+    expect(screen.queryByRole('dialog', { name: 'Навигатор' })).toBeNull()
+    expect(document.querySelector<HTMLElement>('.assistant-pet__bubble')?.textContent).toContain('ТВ-экраны')
   })
 
   it('dims the page and highlights the relevant control in guided mode', () => {

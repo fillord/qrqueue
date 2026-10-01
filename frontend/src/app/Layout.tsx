@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import AssistantPet from '../components/AssistantPet'
 import { useAuth } from './AuthContext'
 
 export default function Layout() {
@@ -48,6 +49,7 @@ export default function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      {status === 'authenticated' && user?.assistant_enabled && <AssistantPet user={user} />}
     </div>
   )
 }

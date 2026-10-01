@@ -115,7 +115,11 @@
   },
   "scan": {
     "joining": "Joining the queue…",
-    "choose": { "title": "Choose a queue", "hint": "Your ticket will be issued after you choose. These queues belong to this display.", "back": "Choose another queue" },
+    "choose": {
+      "title": "Choose a queue",
+      "hint": "Your ticket will be issued after you choose. These queues belong to this display.",
+      "back": "Choose another queue"
+    },
     "hints": {
       "rescan": "Please scan the code on the screen again."
     },
@@ -231,7 +235,16 @@
       "invalid_photo_type": "Choose a JPG, PNG or WebP file.",
       "photo_too_large": "Photo must be 2 MB or smaller.",
       "invalid_photo": "Could not read this photo. Choose another image."
-    }
+    },
+    "assistantTitle": "Navigator assistant",
+    "assistantHint": "Control page hints and cloud AI access.",
+    "showAssistant": "Show the assistant",
+    "showAssistantHint": "The pet explains the current section and helps you find your way.",
+    "allowAi": "Allow AI answers",
+    "allowAiHint": "Extra answers through Gemini. Built-in page hints keep working when this is off.",
+    "assistantPrivacy": "Only your question, role and current section are added automatically. The system does not insert visitor names, ticket numbers or photos. Do not type them into a question.",
+    "saveAssistant": "Save assistant settings",
+    "assistantSaved": "Assistant settings saved"
   },
   "login": {
     "title": "Staff sign in",
@@ -352,16 +365,39 @@
       "intro": "What is affecting queues and screens right now. Updates every 30 seconds.",
       "updated": "Checked at {{time}}",
       "filterLabel": "Filter issues",
-      "filters": { "all": "All: {{count}}", "critical": "Needs attention: {{count}}", "warning": "Warnings: {{count}}" },
-      "severity": { "critical": "Needs attention", "warning": "Warning" },
+      "filters": {
+        "all": "All: {{count}}",
+        "critical": "Needs attention: {{count}}",
+        "warning": "Warnings: {{count}}"
+      },
+      "severity": {
+        "critical": "Needs attention",
+        "warning": "Warning"
+      },
       "emptyTitle": "No issues right now",
       "emptyHint": "No problems detected in active queues or paired screens.",
       "noMatches": "No issues in this group.",
       "kind": {
-        "queue_not_open": { "title": "Queue “{{name}}” is stopped", "detail": "Waiting: {{count}}. Check the queue status and schedule.", "action": "Open queue" },
-        "no_cabinet": { "title": "No working counter for “{{name}}”", "detail": "Waiting: {{count}}. Check the counter and operator sign-in.", "action": "Check counters" },
-        "long_wait": { "title": "Long wait in “{{name}}”", "detail": "The first visitor has waited {{minutes}} min; {{count}} are waiting.", "action": "Open queue" },
-        "screen_offline": { "title": "TV “{{name}}” is offline", "detail": "No signal from this screen for over 90 seconds.", "action": "Check screen" }
+        "queue_not_open": {
+          "title": "Queue “{{name}}” is stopped",
+          "detail": "Waiting: {{count}}. Check the queue status and schedule.",
+          "action": "Open queue"
+        },
+        "no_cabinet": {
+          "title": "No working counter for “{{name}}”",
+          "detail": "Waiting: {{count}}. Check the counter and operator sign-in.",
+          "action": "Check counters"
+        },
+        "long_wait": {
+          "title": "Long wait in “{{name}}”",
+          "detail": "The first visitor has waited {{minutes}} min; {{count}} are waiting.",
+          "action": "Open queue"
+        },
+        "screen_offline": {
+          "title": "TV “{{name}}” is offline",
+          "detail": "No signal from this screen for over 90 seconds.",
+          "action": "Check screen"
+        }
       }
     },
     "report": {
@@ -370,14 +406,29 @@
       "day": "Date",
       "download": "Download Excel",
       "timezone": "The day is calculated in the {{timezone}} time zone.",
-      "metrics": { "issued_count": "Tickets created", "served_count": "Served", "no_show_count": "No-shows", "left_count": "Left", "active_count": "Still active" },
+      "metrics": {
+        "issued_count": "Tickets created",
+        "served_count": "Served",
+        "no_show_count": "No-shows",
+        "left_count": "Left",
+        "active_count": "Still active"
+      },
       "averages": "Average wait: {{wait}} min · average service: {{service}} min",
       "queuesTitle": "By queue",
       "empty": "No tickets were created on this day.",
       "operatorsTitle": "By employee ({{count}})",
       "operatorsLabel": "Employee statistics",
       "noOperators": "No completed services on this day.",
-      "columns": { "queue": "Queue", "operator": "Employee", "issued_count": "Created", "served_count": "Served", "no_show_count": "No-shows", "left_count": "Left", "active_count": "Active", "avg_wait": "Wait, min" },
+      "columns": {
+        "queue": "Queue",
+        "operator": "Employee",
+        "issued_count": "Created",
+        "served_count": "Served",
+        "no_show_count": "No-shows",
+        "left_count": "Left",
+        "active_count": "Active",
+        "avg_wait": "Wait, min"
+      },
       "footnote": "Current statuses of tickets created on this day are shown. A transfer creates another ticket in the target queue and is counted separately."
     },
     "organization": {
@@ -969,7 +1020,14 @@
     }
   },
   "adminTv": {
-    "preview": { "show": "Show preview", "hide": "Hide preview", "title": "Preview: {{name}}", "badge": "Preview", "error": "Could not load preview", "noQr": "QR code is available only on the paired TV" },
+    "preview": {
+      "show": "Show preview",
+      "hide": "Hide preview",
+      "title": "Preview: {{name}}",
+      "badge": "Preview",
+      "error": "Could not load preview",
+      "noQr": "QR code is available only on the paired TV"
+    },
     "connection": {
       "online": "Online",
       "offline": "Offline",
@@ -1078,8 +1136,24 @@
     "invalidExcelRow": "Error in row {{row}}. Use one row per doctor and one HH:MM–HH:MM interval in each day cell.",
     "scheduleFor": "Schedule: {{name}}",
     "weekday": "Day of week",
-    "weekdays": { "0": "Monday", "1": "Tuesday", "2": "Wednesday", "3": "Thursday", "4": "Friday", "5": "Saturday", "6": "Sunday" },
-    "shortWeekdays": { "0": "Mon", "1": "Tue", "2": "Wed", "3": "Thu", "4": "Fri", "5": "Sat", "6": "Sun" },
+    "weekdays": {
+      "0": "Monday",
+      "1": "Tuesday",
+      "2": "Wednesday",
+      "3": "Thursday",
+      "4": "Friday",
+      "5": "Saturday",
+      "6": "Sunday"
+    },
+    "shortWeekdays": {
+      "0": "Mon",
+      "1": "Tue",
+      "2": "Wed",
+      "3": "Thu",
+      "4": "Fri",
+      "5": "Sat",
+      "6": "Sun"
+    },
     "doctor": "Doctor",
     "service": "Specialty or note",
     "specialty": "Specialty",
@@ -1167,6 +1241,125 @@
       "org_admin": "Administrator",
       "operator": "Operator",
       "registrar": "Registrar"
+    }
+  },
+  "assistant": {
+    "name": "Navigator",
+    "subtitle": "Your OmniBook guide",
+    "dismiss": "Dismiss hint",
+    "close": "Close",
+    "open": "Open assistant",
+    "ask": "Ask",
+    "onThisPage": "On this page",
+    "thinking": "Thinking…",
+    "placeholder": "Ask about the system",
+    "send": "Send",
+    "openSettings": "Settings",
+    "aiDisabled": "AI answers are off. Built-in hints still work.",
+    "freeAiUnavailable": "AI is not connected yet. Built-in hints still work.",
+    "localOnlyAnswer": "Enable AI in your profile for a detailed answer.",
+    "unavailableAnswer": "AI is unavailable now, so I am showing the built-in hint.",
+    "privacy": "Do not enter visitor names, ticket numbers, passwords or medical details.",
+    "defaultPrompt": "What can I do in this section?",
+    "roles": {
+      "superadmin": {
+        "title": "Superadmin dashboard",
+        "hint": "Manage organizations, users and system-wide metrics here."
+      },
+      "org_admin": {
+        "title": "Administrator dashboard",
+        "hint": "Organization, queue, staff and screen settings are collected here."
+      },
+      "operator": {
+        "title": "Operator workspace",
+        "hint": "Choose a cabinet and call visitors from its assigned queue."
+      },
+      "registrar": {
+        "title": "Registrar workspace",
+        "hint": "Find visitors and issue queue tickets here."
+      }
+    },
+    "pages": {
+      "profile": {
+        "title": "Profile settings",
+        "hint": "Change your name, photo, password and assistant preferences. Email changes depend on your role.",
+        "prompt": "How do I configure the assistant?"
+      },
+      "problems": {
+        "title": "Problem center",
+        "hint": "Start with critical cards: closed queues, missing cabinets and offline screens.",
+        "prompt": "How should I review these problems?"
+      },
+      "tv": {
+        "title": "TV screens",
+        "hint": "Pair screens by code, select a display mode, queues and playback settings.",
+        "prompt": "How do I set up a TV correctly?"
+      },
+      "signage": {
+        "title": "Schedule and media",
+        "hint": "Add departments and weekly schedules, import Excel and manage TV media.",
+        "prompt": "How do I prepare a TV schedule?"
+      },
+      "attendance": {
+        "title": "Attendance",
+        "hint": "Manage employees, check-in and check-out events, kiosks and attendance settings.",
+        "prompt": "How do I set up employee check-in?"
+      },
+      "users": {
+        "title": "Organization staff",
+        "hint": "Create accounts, assign roles and manage employee access.",
+        "prompt": "How do I add an employee?"
+      },
+      "queues": {
+        "title": "Queues",
+        "hint": "Set the ticket prefix, status, geofence and weekly hours for each queue.",
+        "prompt": "How do I create and open a queue?"
+      },
+      "schedule": {
+        "title": "Queue hours",
+        "hint": "Add working intervals for each weekday. Tickets are unavailable outside these hours.",
+        "prompt": "How do I fill in queue hours?"
+      },
+      "cabinets": {
+        "title": "Cabinets",
+        "hint": "Connect a cabinet to an existing queue or create one, then assign operators.",
+        "prompt": "How do I connect a cabinet to a queue?"
+      },
+      "adminHome": {
+        "title": "Organization overview",
+        "hint": "Review metrics and warnings first, then open queues, cabinets or screens.",
+        "prompt": "What should I check first today?"
+      },
+      "organizations": {
+        "title": "Organizations",
+        "hint": "Search for an organization, open its card and manage settings and access.",
+        "prompt": "How do I review an organization?"
+      },
+      "allUsers": {
+        "title": "All users",
+        "hint": "Use search and filters to find a person and check their role or organization.",
+        "prompt": "How do I find and edit a user?"
+      },
+      "superadmin": {
+        "title": "System management",
+        "hint": "Use analytics, requests, organizations, users and the audit log here.",
+        "prompt": "What should a superadmin check?"
+      },
+      "operatorQueue": {
+        "title": "Queue operation",
+        "hint": "Call the next visitor, confirm arrival and complete service in order.",
+        "prompt": "What should I do with the current ticket?"
+      },
+      "operator": {
+        "title": "Choose a cabinet",
+        "hint": "Select a cabinet assigned to you to open its working queue.",
+        "prompt": "Why is a cabinet unavailable?"
+      },
+      "registrar": {
+        "title": "Registration desk",
+        "hint": "Choose a queue, issue a ticket and share or print its number.",
+        "prompt": "How do I issue a ticket?"
+      }
     }
   }
 }

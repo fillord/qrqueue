@@ -106,3 +106,28 @@ async def test_photo_is_private_and_can_be_replaced_and_removed(client, make_use
     assert removed.status_code == 200
     assert removed.json()["has_photo"] is False
     assert (await client.get("/api/auth/me/photo")).status_code == 404
+
+
+async def test_user_controls_assistant_and_cloud_ai_separately(client, make_user):
+    user, _ = await make_user(email="assistant-profile@example.com", role=UserRole.operator)
+    sign_in(client, user)
+
+    current = await client.get("/api/auth/me")
+    assert current.status_code == 200
+    assert current.json()["assistant_enabled"] is True
+    assert current.json()["assistant_ai_enabled"] is True
+
+    changed = await client.patch("/api/auth/me/assistant", json={
+        "assistant_enabled": True,
+        "assistant_ai_enabled": False,
+    })
+    assert changed.status_code == 200
+    assert changed.json()["assistant_enabled"] is True
+    assert changed.json()["assistant_ai_enabled"] is False
+
+    hidden = await client.patch("/api/auth/me/assistant", json={
+        "assistant_enabled": False,
+        "assistant_ai_enabled": False,
+    })
+    assert hidden.status_code == 200
+    assert hidden.json()["assistant_enabled"] is False

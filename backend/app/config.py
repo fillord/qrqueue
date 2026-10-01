@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     rate_limit_scan_per_minute: int = 10
     rate_limit_login_per_minute: int = 5
     rate_limit_tv_pair_per_minute: int = 5
+    rate_limit_assistant_per_minute: int = 10
 
     qr_token_secret: str
     qr_token_ttl_seconds: int = 45
@@ -51,6 +52,13 @@ class Settings(BaseSettings):
     vapid_public_key: str | None = None
     vapid_private_key: str | None = None
     vapid_subject: str | None = None
+
+    # Optional cloud answers for the in-product navigator. The navigator's
+    # built-in page hints work without these values.
+    assistant_ai_enabled: bool = True
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_timeout_seconds: float = 12.0
 
 
     @property

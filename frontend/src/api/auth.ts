@@ -33,3 +33,6 @@ export const uploadMyPhoto = (file: File) =>
 
 export const deleteMyPhoto = () =>
   apiDelete<User>('/api/auth/me/photo')
+
+export const updateMyAssistant = (assistant_enabled: boolean, assistant_ai_enabled: boolean) =>
+  apiPatch<User>('/api/auth/me/assistant', { assistant_enabled, assistant_ai_enabled })

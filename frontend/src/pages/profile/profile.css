@@ -13,6 +13,7 @@
 .profile-page__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 22px; align-items: start; }
 .profile-card { min-width: 0; padding: clamp(22px, 3vw, 30px); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-xs); }
 .profile-card--email { grid-column: 1 / -1; }
+.profile-card--assistant { grid-column: 1 / -1; }
 .profile-card__heading { margin-bottom: 24px; }
 .profile-card__heading h2 { margin: 0 0 6px; font-size: 1.23rem; letter-spacing: -.025em; }
 .profile-card__heading p { margin: 0; color: var(--color-text-secondary); line-height: 1.5; }
@@ -34,6 +35,13 @@
 .profile-card__managed-email { padding: 16px; border-left: 3px solid var(--color-primary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--color-surface-muted); }
 .profile-card__managed-email strong { overflow-wrap: anywhere; }
 .profile-card__managed-email p { margin: 7px 0 0; color: var(--color-text-secondary); line-height: 1.5; }
+.profile-card__switch { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-muted); cursor: pointer; }
+.profile-card__switch input { width: 19px; height: 19px; flex: 0 0 auto; margin-top: 1px; accent-color: var(--color-primary); }
+.profile-card__switch span { display: grid; gap: 4px; }
+.profile-card__switch strong { font-size: .93rem; }
+.profile-card__switch small { color: var(--color-text-secondary); font-size: .79rem; line-height: 1.45; }
+.profile-card__switch--disabled { opacity: .55; cursor: default; }
+.profile-card__privacy-note { margin: 0; padding: 11px 13px; border-left: 3px solid #86bda5; background: #f6faf6; color: var(--color-text-secondary); font-size: .78rem; line-height: 1.45; }
 .app-header__profile { display: inline-flex; align-items: center; gap: 9px; min-width: 0; color: var(--color-ink); font-weight: 700; text-decoration: none; }
 .app-header__profile:hover .app-header__user { color: var(--color-primary); text-decoration: underline; }
 .app-header__avatar { display: grid; place-items: center; flex: 0 0 31px; height: 31px; overflow: hidden; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: .88rem; }
@@ -41,6 +49,7 @@
 @media (max-width: 680px) {
   .profile-page__grid { grid-template-columns: 1fr; }
   .profile-card--email { grid-column: auto; }
+  .profile-card--assistant { grid-column: auto; }
   .profile-page__header { align-items: flex-start; }
   .profile-page__identity span { line-height: 1.45; }
   .app-header__profile .app-header__user { display: none; }

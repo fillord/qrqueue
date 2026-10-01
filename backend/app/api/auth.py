@@ -18,7 +18,7 @@ from app.models.user import User
 from app.models.user_profile_photo import UserProfilePhoto
 from app.redis import get_redis
 from app.schemas.auth import (
-    LoginRequest, LoginResponse, ProfileEmailUpdate, ProfileNameUpdate,
+    LoginRequest, LoginResponse, ProfileAssistantUpdate, ProfileEmailUpdate, ProfileNameUpdate,
     ProfilePasswordUpdate, TotpRequest, TotpSetupOut, UserOut,
 )
 from app.security import (
@@ -187,6 +187,36 @@ async def logout(response: Response) -> dict:
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(current_user)) -> User:
+    return user
+
+
+@router.patch("/me/assistant", response_model=UserOut)
+async def update_my_assistant(
+    payload: ProfileAssistantUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
+) -> User:
+    changed = (
+        user.assistant_enabled != payload.assistant_enabled
+        or user.assistant_ai_enabled != payload.assistant_ai_enabled
+    )
+    if changed:
+        user.assistant_enabled = payload.assistant_enabled
+        user.assistant_ai_enabled = payload.assistant_ai_enabled
+        await log_action(
+            db,
+            actor_type=AuditActorType.user,
+            actor_id=user.id,
+            action="user.profile_updated",
+            entity_type="user",
+            entity_id=user.id,
+            organization_id=user.organization_id,
+            payload={
+                "assistant_enabled": payload.assistant_enabled,
+                "assistant_ai_enabled": payload.assistant_ai_enabled,
+            },
+        )
+        await db.commit()
     return user
 
 

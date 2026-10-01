@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { deleteMyPhoto, updateMyEmail, updateMyName, updateMyPassword, uploadMyPhoto } from '../../api/auth'
+import { deleteMyPhoto, updateMyAssistant, updateMyEmail, updateMyName, updateMyPassword, uploadMyPhoto } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import { roleHome } from '../../app/roleHome'
@@ -19,12 +19,16 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [email, setEmail] = useState(user?.email ?? '')
   const [emailPassword, setEmailPassword] = useState('')
+  const [assistantEnabled, setAssistantEnabled] = useState(user?.assistant_enabled ?? true)
+  const [assistantAiEnabled, setAssistantAiEnabled] = useState(user?.assistant_ai_enabled ?? true)
   const [pending, setPending] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => { setFullName(user?.full_name ?? '') }, [user?.full_name])
   useEffect(() => { setEmail(user?.email ?? '') }, [user?.email])
+  useEffect(() => { setAssistantEnabled(user?.assistant_enabled ?? true) }, [user?.assistant_enabled])
+  useEffect(() => { setAssistantAiEnabled(user?.assistant_ai_enabled ?? true) }, [user?.assistant_ai_enabled])
 
   if (!user) return null
 
@@ -93,6 +97,17 @@ export default function ProfilePage() {
       await deleteMyPhoto()
       await refreshUser()
       setNotice(t('profile.photoRemoved'))
+    } catch (cause) { showError(cause) }
+    finally { setPending(null) }
+  }
+
+  async function saveAssistant(event: React.FormEvent) {
+    event.preventDefault()
+    setPending('assistant'); setError(''); setNotice('')
+    try {
+      await updateMyAssistant(assistantEnabled, assistantAiEnabled)
+      await refreshUser()
+      setNotice(t('profile.assistantSaved'))
     } catch (cause) { showError(cause) }
     finally { setPending(null) }
   }
@@ -168,6 +183,22 @@ export default function ProfilePage() {
           <strong>{user.email}</strong>
           <p>{t(user.role === 'org_admin' ? 'profile.emailManagedBySuperadmin' : 'profile.emailManagedByOrgAdmin')}</p>
         </div>}
+      </section>
+
+      <section className="profile-card profile-card--assistant">
+        <div className="profile-card__heading"><h2>{t('profile.assistantTitle')}</h2><p>{t('profile.assistantHint')}</p></div>
+        <form onSubmit={(event) => void saveAssistant(event)}>
+          <label className="profile-card__switch">
+            <input type="checkbox" checked={assistantEnabled} onChange={(event) => setAssistantEnabled(event.target.checked)} />
+            <span><strong>{t('profile.showAssistant')}</strong><small>{t('profile.showAssistantHint')}</small></span>
+          </label>
+          <label className={`profile-card__switch${assistantEnabled ? '' : ' profile-card__switch--disabled'}`}>
+            <input type="checkbox" checked={assistantAiEnabled} disabled={!assistantEnabled} onChange={(event) => setAssistantAiEnabled(event.target.checked)} />
+            <span><strong>{t('profile.allowAi')}</strong><small>{t('profile.allowAiHint')}</small></span>
+          </label>
+          <p className="profile-card__privacy-note">{t('profile.assistantPrivacy')}</p>
+          <button className="profile-card__submit" type="submit" disabled={pending !== null || (assistantEnabled === user.assistant_enabled && assistantAiEnabled === user.assistant_ai_enabled)}>{t('profile.saveAssistant')}</button>
+        </form>
       </section>
     </div>
   </div>

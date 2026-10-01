@@ -107,6 +107,8 @@ export interface User {
   totp_enabled: boolean
   has_photo: boolean
   photo_revision: number
+  assistant_enabled: boolean
+  assistant_ai_enabled: boolean
 }
 
 export interface TotpSetup {

@@ -36,6 +36,8 @@ class UserOut(BaseModel):
     totp_enabled: bool = False
     has_photo: bool = False
     photo_revision: int = 0
+    assistant_enabled: bool = True
+    assistant_ai_enabled: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -52,3 +54,8 @@ class ProfilePasswordUpdate(BaseModel):
 class ProfileEmailUpdate(BaseModel):
     current_password: str
     email: EmailStr
+
+
+class ProfileAssistantUpdate(BaseModel):
+    assistant_enabled: bool
+    assistant_ai_enabled: bool

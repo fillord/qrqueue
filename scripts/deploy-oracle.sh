@@ -113,7 +113,16 @@ tar -xf "$archive"
 
 compose=(sudo env "APP_VERSION=$release" docker compose -f docker-compose.yml -f docker-compose.oracle.yml -f docker-compose.tunnel.yml)
 "${compose[@]}" build backend frontend
-"${compose[@]}" run --rm backend alembic upgrade head
+backend_network="$(sudo docker inspect queue-db --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | head -n 1)"
+if [[ -z "$backend_network" ]]; then
+  echo "Unable to determine the Oracle backend network." >&2
+  exit 1
+fi
+sudo docker run --rm \
+  --network "$backend_network" \
+  --env-file .env \
+  -e "APP_VERSION=$release" \
+  qrqueue-backend:latest alembic upgrade head
 "${compose[@]}" up -d --force-recreate backend frontend
 
 for _ in $(seq 1 30); do

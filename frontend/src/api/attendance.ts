@@ -1,4 +1,10 @@
-import { ApiError, apiDelete, apiGet, apiPatch, apiPost } from './client'
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut } from './client'
+
+export interface WorkScheduleDay {
+  weekday: number
+  starts_at: string
+  ends_at: string
+}
 
 export interface Employee {
   id: string
@@ -14,6 +20,35 @@ export interface Employee {
   face_review_photo_available: boolean
   pending_face_submitted_at: string | null
   deleted_at: string | null
+  schedule: WorkScheduleDay[]
+}
+
+export type AttendanceReportStatus = 'planned' | 'in_progress' | 'completed' | 'late' | 'early_leave' | 'late_early' | 'absent' | 'incomplete'
+
+export interface AttendanceReportRow {
+  date: string
+  employee_id: string
+  employee_name: string
+  department: string | null
+  position: string | null
+  planned_start: string
+  planned_end: string
+  first_in: string | null
+  last_out: string | null
+  worked_minutes: number | null
+  late_minutes: number
+  early_leave_minutes: number
+  overtime_minutes: number
+  status: AttendanceReportStatus
+}
+
+export interface AttendanceReport {
+  timezone: string
+  date_from: string
+  date_to: string
+  missing_schedule: number
+  totals: { scheduled: number; completed: number; absent: number; late: number; early_leave: number; incomplete: number; overtime_minutes: number }
+  rows: AttendanceReportRow[]
 }
 
 export interface AttendanceStats {
@@ -100,8 +135,9 @@ export interface AttendanceEvent {
 
 export const attendanceApi = {
   employees: () => apiGet<Employee[]>('/api/attendance/admin/employees'),
-  createEmployee: (body: { full_name: string; department_id: string; position?: string }) => apiPost<Employee & { code: string }>('/api/attendance/admin/employees', body),
+  createEmployee: (body: { full_name: string; department_id: string; position?: string; schedule?: WorkScheduleDay[] }) => apiPost<Employee & { code: string }>('/api/attendance/admin/employees', body),
   updateEmployee: (id: string, body: Partial<Pick<Employee, 'full_name' | 'department_id' | 'position' | 'is_active'>>) => apiPatch<Employee>(`/api/attendance/admin/employees/${id}`, body),
+  updateSchedule: (id: string, schedule: WorkScheduleDay[]) => apiPut<Employee>(`/api/attendance/admin/employees/${id}/schedule`, { schedule }),
   archiveEmployee: (id: string) => apiDelete<void>(`/api/attendance/admin/employees/${id}`),
   resetCode: (id: string) => apiPost<{ code: string }>(`/api/attendance/admin/employees/${id}/reset-code`),
   enroll: (id: string, images: string[]) => apiPost<Employee>(`/api/attendance/admin/employees/${id}/face`, { images, consent_confirmed: true }),
@@ -109,6 +145,7 @@ export const attendanceApi = {
   approveFace: (id: string) => apiPost<Employee>(`/api/attendance/admin/employees/${id}/approve-face`, { identity_checked: true }),
   rejectFace: (id: string) => apiPost<Employee>(`/api/attendance/admin/employees/${id}/reject-face`),
   stats: () => apiGet<AttendanceStats>('/api/attendance/admin/stats'),
+  report: (dateFrom: string, dateTo: string, departmentId?: string) => apiGet<AttendanceReport>(`/api/attendance/admin/report?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}${departmentId ? `&department_id=${encodeURIComponent(departmentId)}` : ''}`),
   settings: () => apiGet<AttendanceSettings>('/api/attendance/admin/settings'),
   updateSettings: (body: Partial<Pick<AttendanceSettings, 'enrollment_enabled' | 'enrollment_on_kiosk' | 'geo_enabled' | 'geo_latitude' | 'geo_longitude' | 'geo_radius_m'>>) => apiPatch<AttendanceSettings>('/api/attendance/admin/settings', body),
   rotateEnrollmentQr: () => apiPost<AttendanceSettings>('/api/attendance/admin/settings/rotate-enrollment-qr'),

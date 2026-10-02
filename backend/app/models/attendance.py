@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, LargeBinary, String, Text, Time, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +28,21 @@ class Employee(UUIDPkMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class EmployeeWorkSchedule(UUIDPkMixin, Base):
+    __tablename__ = "attendance_employee_schedules"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "weekday", name="uq_attendance_employee_schedule_day"),
+        CheckConstraint("weekday >= 0 AND weekday <= 6", name="ck_attendance_employee_schedule_weekday"),
+        CheckConstraint("starts_at < ends_at", name="ck_attendance_employee_schedule_time"),
+    )
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("attendance_employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    weekday: Mapped[int] = mapped_column(Integer, nullable=False)
+    starts_at: Mapped[time] = mapped_column(Time, nullable=False)
+    ends_at: Mapped[time] = mapped_column(Time, nullable=False)
 
 class AttendanceEvent(UUIDPkMixin, Base):
     __tablename__ = "attendance_events"

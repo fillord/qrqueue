@@ -3,22 +3,22 @@ import uuid
 import hashlib
 import secrets
 from io import BytesIO
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, Request, Response
 from openpyxl import Workbook
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import current_admin, current_organization_id
 from app.clock import utcnow
 from app.db import get_db
-from app.models.attendance import AttendanceEvent, AttendanceKiosk, Employee
+from app.models.attendance import AttendanceEvent, AttendanceKiosk, Employee, EmployeeWorkSchedule
 from app.models.department import Department
 from app.models.enums import AuditActorType
 from app.models.organization import Organization
@@ -35,11 +35,42 @@ from app.services.rate_limit import client_ip, enforce_rate_limit
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
+class WorkScheduleDay(BaseModel):
+    weekday: int = Field(ge=0, le=6)
+    starts_at: time
+    ends_at: time
+
+    @model_validator(mode="after")
+    def valid_interval(self):
+        if self.starts_at >= self.ends_at:
+            raise ValueError("Shift end must be after shift start")
+        return self
+
+
+class WorkScheduleReplace(BaseModel):
+    schedule: list[WorkScheduleDay] = Field(max_length=7)
+
+    @model_validator(mode="after")
+    def unique_weekdays(self):
+        weekdays = [item.weekday for item in self.schedule]
+        if len(weekdays) != len(set(weekdays)):
+            raise ValueError("Each weekday may occur only once")
+        return self
+
+
 class EmployeeCreate(BaseModel):
     full_name: str = Field(min_length=2, max_length=200)
     department_id: uuid.UUID
     position: str | None = Field(default=None, max_length=200)
     user_id: uuid.UUID | None = None
+    schedule: list[WorkScheduleDay] = Field(default_factory=list, max_length=7)
+
+    @model_validator(mode="after")
+    def unique_schedule_weekdays(self):
+        weekdays = [item.weekday for item in self.schedule]
+        if len(weekdays) != len(set(weekdays)):
+            raise ValueError("Each weekday may occur only once")
+        return self
 
 
 class EmployeeUpdate(BaseModel):
@@ -127,13 +158,20 @@ async def current_kiosk(db: AsyncSession = Depends(get_db), x_kiosk_token: str |
     return kiosk
 
 
-def employee_view(employee: Employee, department_name: str | None = None) -> dict:
+def schedule_view(schedule: list[EmployeeWorkSchedule] | tuple = ()) -> list[dict]:
+    return [{"weekday": item.weekday, "starts_at": item.starts_at.strftime("%H:%M"),
+             "ends_at": item.ends_at.strftime("%H:%M")} for item in sorted(schedule, key=lambda item: item.weekday)]
+
+
+def employee_view(employee: Employee, department_name: str | None = None,
+                  schedule: list[EmployeeWorkSchedule] | tuple = ()) -> dict:
     return {"id": employee.id, "full_name": employee.full_name, "department": department_name or employee.department,
             "department_id": employee.department_id, "position": employee.position, "code_length": employee.code_length,
             "user_id": employee.user_id, "is_active": employee.is_active,
             "face_enrolled": employee.face_template is not None, "face_pending": employee.pending_face_template is not None,
             "face_review_photo_available": employee.pending_face_photo is not None,
-            "pending_face_submitted_at": employee.pending_face_submitted_at, "deleted_at": employee.deleted_at}
+            "pending_face_submitted_at": employee.pending_face_submitted_at, "deleted_at": employee.deleted_at,
+            "schedule": schedule_view(schedule)}
 
 
 def event_view(event: AttendanceEvent, employee: Employee) -> dict:
@@ -190,7 +228,12 @@ async def _available_code(db: AsyncSession, organization_id: uuid.UUID, used: se
 async def list_employees(db: AsyncSession = Depends(get_db), actor: User = Depends(current_admin), organization_id: uuid.UUID = Depends(current_organization_id)) -> list[dict]:
     rows = (await db.execute(select(Employee, Department.name).outerjoin(Department, Employee.department_id == Department.id).where(
         Employee.organization_id == organization_id, Employee.deleted_at.is_(None)).order_by(Employee.full_name))).all()
-    return [employee_view(employee, department_name) for employee, department_name in rows]
+    schedule_rows = (await db.scalars(select(EmployeeWorkSchedule).where(
+        EmployeeWorkSchedule.organization_id == organization_id))).all()
+    schedules: dict[uuid.UUID, list[EmployeeWorkSchedule]] = {}
+    for item in schedule_rows:
+        schedules.setdefault(item.employee_id, []).append(item)
+    return [employee_view(employee, department_name, schedules.get(employee.id, [])) for employee, department_name in rows]
 
 
 @router.post("/admin/employees", status_code=201)
@@ -212,9 +255,32 @@ async def create_employee(payload: EmployeeCreate, db: AsyncSession = Depends(ge
                         user_id=payload.user_id, code_digest=digest, code_length=4)
     db.add(employee)
     await db.flush()
+    work_schedule = [EmployeeWorkSchedule(organization_id=organization_id, employee_id=employee.id,
+        weekday=item.weekday, starts_at=item.starts_at, ends_at=item.ends_at) for item in payload.schedule]
+    db.add_all(work_schedule)
     await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id, action="attendance.employee_created", entity_type="attendance_employee", entity_id=employee.id, organization_id=organization_id)
     await db.commit()
-    return {**employee_view(employee, department.name), "code": code}
+    return {**employee_view(employee, department.name, work_schedule), "code": code}
+
+
+@router.put("/admin/employees/{employee_id}/schedule")
+async def replace_employee_schedule(employee_id: uuid.UUID, payload: WorkScheduleReplace,
+                                    db: AsyncSession = Depends(get_db), actor: User = Depends(current_admin),
+                                    organization_id: uuid.UUID = Depends(current_organization_id)) -> dict:
+    employee = await _employee(db, organization_id, employee_id)
+    await db.execute(delete(EmployeeWorkSchedule).where(
+        EmployeeWorkSchedule.organization_id == organization_id,
+        EmployeeWorkSchedule.employee_id == employee.id,
+    ))
+    schedule = [EmployeeWorkSchedule(organization_id=organization_id, employee_id=employee.id,
+        weekday=item.weekday, starts_at=item.starts_at, ends_at=item.ends_at) for item in payload.schedule]
+    db.add_all(schedule)
+    await log_action(db, actor_type=AuditActorType.user, actor_id=actor.id,
+                     action="attendance.schedule_updated", entity_type="attendance_employee",
+                     entity_id=employee.id, organization_id=organization_id,
+                     payload={"days": len(schedule)})
+    await db.commit()
+    return employee_view(employee, schedule=schedule)
 
 
 @router.patch("/admin/employees/{employee_id}")
@@ -490,6 +556,99 @@ async def attendance_stats(db: AsyncSession = Depends(get_db), actor: User = Dep
             "pending": sum(face is not None for _, _, _, _, face in employees), "present": len(present_ids),
             "arrivals_today": len(today_in), "departures_today": len(today_out), "unresolved": unresolved or 0,
             "daily": [{"date": day, **counts} for day, counts in daily.items()], "departments": list(by_department.values())}
+
+
+@router.get("/admin/report")
+async def attendance_report(date_from: date, date_to: date, department_id: uuid.UUID | None = None,
+                            db: AsyncSession = Depends(get_db), actor: User = Depends(current_admin),
+                            organization_id: uuid.UUID = Depends(current_organization_id)) -> dict:
+    if date_to < date_from or (date_to - date_from).days > 92:
+        raise ServiceError("attendance_report_range_invalid", 422)
+    org = await _active_org(db, organization_id)
+    tz = ZoneInfo(org.timezone)
+    employee_query = select(Employee, Department.name).outerjoin(
+        Department, Employee.department_id == Department.id
+    ).where(Employee.organization_id == organization_id, Employee.deleted_at.is_(None), Employee.is_active.is_(True))
+    if department_id is not None:
+        employee_query = employee_query.where(Employee.department_id == department_id)
+    employees = (await db.execute(employee_query.order_by(Employee.full_name))).all()
+    employee_ids = [employee.id for employee, _ in employees]
+    if not employee_ids:
+        return {"timezone": org.timezone, "date_from": date_from, "date_to": date_to,
+                "missing_schedule": 0, "totals": {"scheduled": 0, "completed": 0, "absent": 0,
+                "late": 0, "early_leave": 0, "incomplete": 0, "overtime_minutes": 0}, "rows": []}
+
+    schedules = (await db.scalars(select(EmployeeWorkSchedule).where(
+        EmployeeWorkSchedule.organization_id == organization_id,
+        EmployeeWorkSchedule.employee_id.in_(employee_ids),
+    ))).all()
+    schedule_by_employee: dict[uuid.UUID, dict[int, EmployeeWorkSchedule]] = {}
+    for item in schedules:
+        schedule_by_employee.setdefault(item.employee_id, {})[item.weekday] = item
+
+    range_start = datetime.combine(date_from, time.min, tzinfo=tz).astimezone(timezone.utc)
+    range_end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz).astimezone(timezone.utc)
+    events = (await db.scalars(select(AttendanceEvent).where(
+        AttendanceEvent.organization_id == organization_id,
+        AttendanceEvent.employee_id.in_(employee_ids),
+        AttendanceEvent.occurred_at >= range_start,
+        AttendanceEvent.occurred_at < range_end,
+    ).order_by(AttendanceEvent.occurred_at))).all()
+    events_by_day: dict[tuple[uuid.UUID, date], list[AttendanceEvent]] = {}
+    for event in events:
+        local_day = event.occurred_at.astimezone(tz).date()
+        events_by_day.setdefault((event.employee_id, local_day), []).append(event)
+
+    now = utcnow()
+    report_rows: list[dict] = []
+    totals = {"scheduled": 0, "completed": 0, "absent": 0, "late": 0,
+              "early_leave": 0, "incomplete": 0, "overtime_minutes": 0}
+    current_day = date_from
+    while current_day <= date_to:
+        for employee, department_name in employees:
+            shift = schedule_by_employee.get(employee.id, {}).get(current_day.weekday())
+            if shift is None:
+                continue
+            planned_start = datetime.combine(current_day, shift.starts_at, tzinfo=tz)
+            planned_end = datetime.combine(current_day, shift.ends_at, tzinfo=tz)
+            day_events = events_by_day.get((employee.id, current_day), [])
+            arrivals = [event.occurred_at for event in day_events if event.kind == "in"]
+            departures = [event.occurred_at for event in day_events if event.kind == "out"]
+            first_in = min(arrivals) if arrivals else None
+            last_out = max(departures) if departures else None
+            late_minutes = max(0, int((first_in.astimezone(tz) - planned_start).total_seconds() // 60)) if first_in else 0
+            early_minutes = max(0, int((planned_end - last_out.astimezone(tz)).total_seconds() // 60)) if last_out else 0
+            overtime_minutes = max(0, int((last_out.astimezone(tz) - planned_end).total_seconds() // 60)) if last_out else 0
+            worked_minutes = max(0, int((last_out - first_in).total_seconds() // 60)) if first_in and last_out else None
+            if first_in and last_out:
+                status = "late_early" if late_minutes and early_minutes else "late" if late_minutes else "early_leave" if early_minutes else "completed"
+                totals["completed"] += 1
+            elif first_in or last_out:
+                status = "in_progress" if first_in and not last_out and now < planned_end.astimezone(timezone.utc) else "incomplete"
+                if status == "incomplete":
+                    totals["incomplete"] += 1
+            elif now < planned_end.astimezone(timezone.utc):
+                status = "planned"
+            else:
+                status = "absent"
+                totals["absent"] += 1
+            totals["scheduled"] += 1
+            totals["late"] += int(late_minutes > 0)
+            totals["early_leave"] += int(early_minutes > 0)
+            totals["overtime_minutes"] += overtime_minutes
+            report_rows.append({
+                "date": current_day, "employee_id": employee.id, "employee_name": employee.full_name,
+                "department": department_name or employee.department, "position": employee.position,
+                "planned_start": planned_start, "planned_end": planned_end,
+                "first_in": first_in, "last_out": last_out, "worked_minutes": worked_minutes,
+                "late_minutes": late_minutes, "early_leave_minutes": early_minutes,
+                "overtime_minutes": overtime_minutes, "status": status,
+            })
+        current_day += timedelta(days=1)
+    report_rows.sort(key=lambda item: (-item["date"].toordinal(), item["employee_name"].casefold()))
+    missing_schedule = sum(employee.id not in schedule_by_employee for employee, _ in employees)
+    return {"timezone": org.timezone, "date_from": date_from, "date_to": date_to,
+            "missing_schedule": missing_schedule, "totals": totals, "rows": report_rows}
 
 
 @router.get("/enroll/context")

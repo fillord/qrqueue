@@ -653,6 +653,7 @@
           "employee_updated": "Employee details updated",
           "employee_archived": "Employee archived",
           "employees_imported": "Employees imported from Excel",
+          "schedule_updated": "Employee work schedule updated",
           "code_reset": "Employee personal code reset",
           "face_enrolled": "Employee face enrolled",
           "face_submitted": "Face enrollment request submitted",

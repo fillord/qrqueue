@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { Link } from 'react-router-dom'
 import { attendanceApi, importEmployeeFile, pendingFacePhoto } from '../../api/attendance'
-import type { AttendanceEvent, AttendanceKiosk, AttendanceSettings, AttendanceStats, Employee, EmployeeImportResult } from '../../api/attendance'
+import type { AttendanceEvent, AttendanceKiosk, AttendanceReport, AttendanceReportRow, AttendanceSettings, AttendanceStats, Employee, EmployeeImportResult, WorkScheduleDay } from '../../api/attendance'
 import { listDepartments } from '../../api/signage'
 import type { Department } from '../../api/signage'
 import { useAttendanceCamera } from '../../hooks/useAttendanceCamera'
@@ -30,6 +30,7 @@ const errorText = (error: unknown) => {
     face_review_photo_missing: 'У этой заявки нет снимка. Отклоните её и попросите сотрудника отправить новую.',
     face_identity_check_required: 'Перед подтверждением лично сверьте сотрудника со снимком.',
     attendance_geo_config_incomplete: 'Укажите координаты и радиус перед включением геоограничения.',
+    attendance_report_range_invalid: 'Период отчёта должен быть корректным и не длиннее 93 дней.',
   }
   const base = known[error.code] ?? 'Не удалось выполнить действие. Проверьте данные и попробуйте снова.'
   return error.row ? `${base} Строка ${error.row}.` : base
@@ -41,6 +42,53 @@ function localDateTime(value: string) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
+const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const SHORT_WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const DEFAULT_SCHEDULE: WorkScheduleDay[] = [0, 1, 2, 3, 4].map((weekday) => ({ weekday, starts_at: '09:00', ends_at: '18:00' }))
+
+function dateInputValue(date: Date) {
+  return date.toLocaleDateString('sv-SE')
+}
+
+function ScheduleEditor({ value, onChange, disabled = false }: { value: WorkScheduleDay[]; onChange: (value: WorkScheduleDay[]) => void; disabled?: boolean }) {
+  const byDay = new Map(value.map((item) => [item.weekday, item]))
+  function update(weekday: number, patch: Partial<WorkScheduleDay>) {
+    const current = byDay.get(weekday)
+    if (!current) return
+    onChange(value.map((item) => item.weekday === weekday ? { ...item, ...patch } : item).sort((a, b) => a.weekday - b.weekday))
+  }
+  function toggle(weekday: number, checked: boolean) {
+    onChange((checked ? [...value, { weekday, starts_at: '09:00', ends_at: '18:00' }] : value.filter((item) => item.weekday !== weekday)).sort((a, b) => a.weekday - b.weekday))
+  }
+  return <div className="attendance-schedule-editor">
+    {WEEKDAYS.map((label, weekday) => { const item = byDay.get(weekday); return <div className="attendance-schedule-editor__day" key={label}>
+      <label className="attendance-schedule-editor__toggle"><input type="checkbox" checked={Boolean(item)} disabled={disabled} onChange={(event) => toggle(weekday, event.target.checked)} /><span>{label}</span></label>
+      <label>Начало<input type="time" value={item?.starts_at ?? '09:00'} disabled={disabled || !item} required={Boolean(item)} onChange={(event) => update(weekday, { starts_at: event.target.value })} /></label>
+      <label>Окончание<input type="time" value={item?.ends_at ?? '18:00'} disabled={disabled || !item} required={Boolean(item)} min={item?.starts_at} onChange={(event) => update(weekday, { ends_at: event.target.value })} /></label>
+    </div> })}
+  </div>
+}
+
+function scheduleText(schedule: WorkScheduleDay[]) {
+  if (!schedule.length) return 'График не задан'
+  return schedule.map((item) => `${SHORT_WEEKDAYS[item.weekday]} ${item.starts_at}–${item.ends_at}`).join(' · ')
+}
+
+function durationText(minutes: number | null) {
+  if (minutes === null) return '—'
+  return `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`
+}
+
+function timeText(value: string | null, timezoneName: string) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('ru-RU', { timeZone: timezoneName, hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+}
+
+const REPORT_STATUS: Record<AttendanceReportRow['status'], string> = {
+  planned: 'Запланировано', in_progress: 'На работе', completed: 'По графику', late: 'Опоздание',
+  early_leave: 'Ранний уход', late_early: 'Опоздание и ранний уход', absent: 'Отсутствие', incomplete: 'Нет одной отметки',
+}
+
 export default function AdminAttendancePage({ section }: { section: 'summary' | 'employees' | 'events' | 'settings' }) {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [events, setEvents] = useState<AttendanceEvent[]>([])
@@ -49,9 +97,14 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
   const [departments, setDepartments] = useState<Department[]>([])
   const [departmentId, setDepartmentId] = useState('')
   const [position, setPosition] = useState('')
+  const [newSchedule, setNewSchedule] = useState<WorkScheduleDay[]>(DEFAULT_SCHEDULE)
   const [search, setSearch] = useState('')
   const [filterDepartment, setFilterDepartment] = useState('')
   const [stats, setStats] = useState<AttendanceStats | null>(null)
+  const [report, setReport] = useState<AttendanceReport | null>(null)
+  const [reportFrom, setReportFrom] = useState(() => { const date = new Date(); date.setDate(date.getDate() - 6); return dateInputValue(date) })
+  const [reportTo, setReportTo] = useState(() => dateInputValue(new Date()))
+  const [reportDepartment, setReportDepartment] = useState('')
   const [settings, setSettings] = useState<AttendanceSettings | null>(null)
   const [geoEnabled, setGeoEnabled] = useState(false)
   const [geoLatitude, setGeoLatitude] = useState('')
@@ -70,6 +123,8 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
   const [reviewLoading, setReviewLoading] = useState(false)
   const [identityChecked, setIdentityChecked] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [scheduleEmployee, setScheduleEmployee] = useState<Employee | null>(null)
+  const [editSchedule, setEditSchedule] = useState<WorkScheduleDay[]>([])
   const [editName, setEditName] = useState('')
   const [editDepartment, setEditDepartment] = useState('')
   const [editPosition, setEditPosition] = useState('')
@@ -104,8 +159,9 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
   function closeReview() { setReviewing(null); setIdentityChecked(false); setReviewImage(null) }
 
   async function load() {
-    const [people, marks, summary, options, currentSettings, currentKiosks] = await Promise.all([
+    const [people, marks, summary, options, currentSettings, currentKiosks, currentReport] = await Promise.all([
       attendanceApi.employees(), attendanceApi.events(day), attendanceApi.stats(), listDepartments(), attendanceApi.settings(), attendanceApi.kiosks(),
+      section === 'summary' ? attendanceApi.report(reportFrom, reportTo, reportDepartment || undefined) : Promise.resolve(null),
     ])
     setEmployees(people)
     setEvents(marks)
@@ -117,6 +173,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
     setGeoLongitude(currentSettings.geo_longitude?.toString() ?? '')
     setGeoRadius(currentSettings.geo_radius_m?.toString() ?? '200')
     setKiosks(currentKiosks)
+    setReport(currentReport)
   }
 
   useEffect(() => {
@@ -125,7 +182,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
     void QRCode.toDataURL(url, { width: 240, margin: 1 }).then(setEnrollmentQr).catch(() => setEnrollmentQr(''))
   }, [settings?.enrollment_token])
 
-  useEffect(() => { void load().catch((err) => setError(errorText(err))) }, [day])
+  useEffect(() => { void load().catch((err) => setError(errorText(err))) }, [day, reportFrom, reportTo, reportDepartment, section])
 
   async function perform(action: () => Promise<void>) {
     setBusy(true)
@@ -138,9 +195,9 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
   async function create(event: React.FormEvent) {
     event.preventDefault()
     await perform(async () => {
-      const created = await attendanceApi.createEmployee({ full_name: name.trim(), department_id: departmentId, position: position.trim() || undefined })
+      const created = await attendanceApi.createEmployee({ full_name: name.trim(), department_id: departmentId, position: position.trim() || undefined, schedule: newSchedule })
       setRevealedCode({ name: created.full_name, code: created.code })
-      setName(''); setPosition('')
+      setName(''); setPosition(''); setNewSchedule(DEFAULT_SCHEDULE)
     })
   }
 
@@ -162,6 +219,24 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
     })]
     const url = URL.createObjectURL(new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a'); link.href = url; link.download = 'attendance-codes.csv'; link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  function downloadReport() {
+    if (!report) return
+    const safe = (value: string | number | null) => {
+      const text = value === null ? '' : String(value)
+      const protectedText = /^\s*[=+\-@]/.test(text) ? `'${text}` : text
+      return `"${protectedText.replace(/"/g, '""')}"`
+    }
+    const rows = report.rows.map((item) => [item.date, item.employee_name, item.department, item.position,
+      `${timeText(item.planned_start, report.timezone)}–${timeText(item.planned_end, report.timezone)}`,
+      timeText(item.first_in, report.timezone), timeText(item.last_out, report.timezone), durationText(item.worked_minutes),
+      item.late_minutes, item.early_leave_minutes, item.overtime_minutes, REPORT_STATUS[item.status]])
+    const lines = [['Дата', 'Сотрудник', 'Отделение', 'Должность', 'План', 'Приход', 'Уход', 'Отработано', 'Опоздание, мин', 'Ранний уход, мин', 'Переработка, мин', 'Статус'], ...rows]
+      .map((row) => row.map(safe).join(';'))
+    const url = URL.createObjectURL(new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a'); link.href = url; link.download = `attendance-${report.date_from}-${report.date_to}.csv`; link.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
@@ -192,13 +267,31 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
 
     {section === 'summary' && <>
     <section id="attendance-summary" className="attendance-admin__section">
-      <div className="attendance-admin__section-heading"><div><h2>Сводка сегодня</h2><p>Фактические отметки без расчёта опозданий и смен.</p></div><button type="button" onClick={() => void load().catch((err) => setError(errorText(err)))}>Обновить</button></div>
+      <div className="attendance-admin__section-heading"><div><h2>Сводка сегодня</h2><p>Фактическое присутствие по последним отметкам.</p></div><button type="button" onClick={() => void load().catch((err) => setError(errorText(err)))}>Обновить</button></div>
       {stats && <><div className="attendance-admin__stats">
         {[
           ['Сотрудников', stats.employees], ['На работе сейчас', stats.present], ['Пришли сегодня', stats.arrivals_today],
           ['Ушли сегодня', stats.departures_today], ['Лицо зарегистрировано', stats.enrolled], ['Заявки на лицо', stats.pending], ['Нужна проверка', stats.unresolved],
         ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
       </div><div className="attendance-admin__summary-grid"><div><h3>Последние 7 дней</h3><div className="attendance-admin__daily">{stats.daily.map((item) => <div key={item.date}><time>{new Date(`${item.date}T12:00:00`).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}</time><span>Приход {item.in}</span><span>Уход {item.out}</span></div>)}</div></div><div><h3>По отделениям</h3><div className="attendance-admin__daily">{stats.departments.map((item) => <div key={item.department_id}><span>{item.name}</span><span>{item.present} на работе</span><span>из {item.employees}</span></div>)}</div></div></div></>}
+    </section>
+    <section className="attendance-admin__section">
+      <div className="attendance-admin__section-heading"><div><h2>Подробный отчёт по графику</h2><p>Первый приход и последний уход сравниваются с плановым временем в часовом поясе организации.</p></div><button type="button" onClick={downloadReport} disabled={!report?.rows.length}>Скачать CSV</button></div>
+      <div className="attendance-admin__report-filters">
+        <label>С даты<input type="date" value={reportFrom} max={reportTo} onChange={(event) => setReportFrom(event.target.value)} /></label>
+        <label>По дату<input type="date" value={reportTo} min={reportFrom} onChange={(event) => setReportTo(event.target.value)} /></label>
+        <label>Отделение<select value={reportDepartment} onChange={(event) => setReportDepartment(event.target.value)}><option value="">Все отделения</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      </div>
+      {report && <>
+        {report.missing_schedule > 0 && <p className="attendance-admin__schedule-warning">Без графика: {report.missing_schedule}. Для этих сотрудников нельзя рассчитать опоздания и отсутствие — задайте график во вкладке «Сотрудники».</p>}
+        <div className="attendance-admin__stats attendance-admin__report-stats">{[
+          ['Смен по графику', report.totals.scheduled], ['Закрыто смен', report.totals.completed], ['Опозданий', report.totals.late],
+          ['Ранних уходов', report.totals.early_leave], ['Отсутствий', report.totals.absent], ['Неполных отметок', report.totals.incomplete],
+          ['Переработка', durationText(report.totals.overtime_minutes)],
+        ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+        {report.rows.length === 0 ? <p className="attendance-empty">За выбранный период нет запланированных смен.</p> : <div className="attendance-table-scroll"><table className="attendance-table attendance-report-table"><thead><tr><th>Дата</th><th>Сотрудник</th><th>План</th><th>Факт</th><th>Отработано</th><th>Отклонение</th><th>Статус</th></tr></thead><tbody>{report.rows.map((item) => <tr key={`${item.date}-${item.employee_id}`}><td>{new Date(`${item.date}T12:00:00`).toLocaleDateString('ru-RU')}</td><td><strong>{item.employee_name}</strong><small>{item.department || 'Без отделения'}{item.position ? ` · ${item.position}` : ''}</small></td><td>{timeText(item.planned_start, report.timezone)}–{timeText(item.planned_end, report.timezone)}</td><td>Приход {timeText(item.first_in, report.timezone)}<br />Уход {timeText(item.last_out, report.timezone)}</td><td>{durationText(item.worked_minutes)}</td><td>{item.late_minutes ? `Опоздание ${item.late_minutes} мин` : ''}{item.early_leave_minutes ? <><br />Ранний уход {item.early_leave_minutes} мин</> : null}{item.overtime_minutes ? <><br />Переработка {item.overtime_minutes} мин</> : null}{!item.late_minutes && !item.early_leave_minutes && !item.overtime_minutes ? '—' : null}</td><td><span className={`attendance-report-status attendance-report-status--${item.status}`}>{REPORT_STATUS[item.status]}</span></td></tr>)}</tbody></table></div>}
+        <small className="attendance-admin__timezone-note">Часовой пояс: {report.timezone}. Период отчёта ограничен 93 днями.</small>
+      </>}
     </section>
     </>}
 
@@ -209,7 +302,8 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
         <label>Имя и фамилия<input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={200} required placeholder="Например, Айгуль Садыкова" /></label>
         <label>Отделение<select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} required><option value="">Выберите отделение</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label>Должность<input value={position} onChange={(event) => setPosition(event.target.value)} maxLength={200} placeholder="Например, врач" /></label>
-        <button disabled={busy || !departmentId}>Добавить сотрудника</button>
+        <fieldset className="attendance-admin__schedule-fieldset"><legend>Рабочий график</legend><p>Отметьте рабочие дни и укажите, когда сотрудник должен приходить и уходить.</p><ScheduleEditor value={newSchedule} onChange={setNewSchedule} disabled={busy} /></fieldset>
+        <button disabled={busy || !departmentId || newSchedule.length === 0 || newSchedule.some((item) => item.starts_at >= item.ends_at)}>Добавить сотрудника</button>
       </form>
       {departments.length === 0 && <p className="attendance-empty">Нет действующих отделений. Создайте отделение в разделе «ТВ и расписание».</p>}
       <details className="attendance-admin__import"><summary>Импорт сотрудников из Excel</summary><p>Скачайте шаблон. Столбцы: ФИО, Отделение, Должность. Названия отделений должны совпадать с существующими. При ошибке ни одна строка не будет добавлена.</p><a href="/api/attendance/admin/employees/template" download>Скачать шаблон Excel</a><form onSubmit={(event) => void importEmployees(event)}><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} aria-label="Excel-файл сотрудников" /><button disabled={busy || !importFile}>Импортировать</button></form></details>
@@ -217,9 +311,10 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
       <div className="attendance-admin__filters"><label>Поиск<input type="search" placeholder="Имя или должность" value={search} onChange={(event) => setSearch(event.target.value)} /></label><label>Отделение<select value={filterDepartment} onChange={(event) => setFilterDepartment(event.target.value)}><option value="">Все отделения</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><span>Показано: {visibleEmployees.length} из {employees.length}</span></div>
       {visibleEmployees.length === 0 ? <p className="attendance-empty">{employees.length ? 'По фильтру сотрудники не найдены.' : 'Пока нет сотрудников. Добавьте первого человека в форме выше.'}</p> : <div className="attendance-admin__people">
         {visibleEmployees.map((person) => <article className="attendance-person" key={person.id}>
-          <div><strong>{person.full_name}</strong><span>{person.department || 'Без отделения'}{person.position ? ` · ${person.position}` : ''}</span><small>{person.face_pending ? 'Лицо ожидает подтверждения' : person.face_enrolled ? 'Лицо зарегистрировано' : 'Лицо ещё не зарегистрировано'} · {person.is_active ? 'Активен' : 'Отключён'}{person.code_length !== 4 ? ' · замените старый код' : ''}</small></div>
+          <div><strong>{person.full_name}</strong><span>{person.department || 'Без отделения'}{person.position ? ` · ${person.position}` : ''}</span><small>{person.face_pending ? 'Лицо ожидает подтверждения' : person.face_enrolled ? 'Лицо зарегистрировано' : 'Лицо ещё не зарегистрировано'} · {person.is_active ? 'Активен' : 'Отключён'}{person.code_length !== 4 ? ' · замените старый код' : ''}</small><small className={person.schedule.length ? '' : 'attendance-person__schedule-missing'}>{scheduleText(person.schedule)}</small></div>
           <div className="attendance-person__actions">
             <button type="button" disabled={busy} onClick={() => { setEditingEmployee(person); setEditName(person.full_name); setEditDepartment(person.department_id || ''); setEditPosition(person.position || '') }}>Изменить</button>
+            <button type="button" disabled={busy} onClick={() => { setScheduleEmployee(person); setEditSchedule(person.schedule.map((item) => ({ ...item }))) }}>График</button>
             {person.face_pending && <button type="button" disabled={busy} onClick={() => { setError(null); setIdentityChecked(false); setReviewing(person) }}>Проверить заявку</button>}
             <button type="button" disabled={busy} onClick={() => { setEnrolling(person); setConsent(false) }}>{person.face_enrolled ? 'Обновить лицо' : 'Зарегистрировать лицо'}</button>
             {person.face_enrolled && <button type="button" disabled={busy} onClick={() => { if (window.confirm(`Удалить данные лица ${person.full_name}? Отметка через камеру станет недоступна.`)) void perform(async () => { await attendanceApi.removeFace(person.id) }) }}>Удалить лицо</button>}
@@ -290,6 +385,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
 
     {revealedCode && <div className="attendance-dialog-backdrop"><div className="attendance-dialog" role="dialog" aria-modal="true" aria-label="Личный код сотрудника"><h2>Личный код</h2><p>Передайте код сотруднику лично. После закрытия окна он больше не будет показан.</p><strong className="attendance-code">{revealedCode.code}</strong><p>{revealedCode.name}</p><button type="button" onClick={() => setRevealedCode(null)}>Код записан</button></div></div>}
     {editingEmployee && <div className="attendance-dialog-backdrop"><form className="attendance-dialog" role="dialog" aria-modal="true" aria-label="Изменение сотрудника" onSubmit={(event) => { event.preventDefault(); void perform(async () => { await attendanceApi.updateEmployee(editingEmployee.id, { full_name: editName.trim(), department_id: editDepartment || undefined, position: editPosition.trim() || null }); setEditingEmployee(null) }) }}><h2>Изменить сотрудника</h2><label>Имя и фамилия<input value={editName} onChange={(event) => setEditName(event.target.value)} minLength={2} maxLength={200} required /></label><label>Отделение<select value={editDepartment} onChange={(event) => setEditDepartment(event.target.value)}><option value="">Оставить прежнее</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Должность<input value={editPosition} onChange={(event) => setEditPosition(event.target.value)} maxLength={200} /></label><div className="attendance-dialog__actions"><button type="button" onClick={() => setEditingEmployee(null)}>Отмена</button><button disabled={busy}>Сохранить</button></div></form></div>}
+    {scheduleEmployee && <div className="attendance-dialog-backdrop"><form className="attendance-dialog attendance-dialog--schedule" role="dialog" aria-modal="true" aria-label="Рабочий график сотрудника" onSubmit={(event) => { event.preventDefault(); void perform(async () => { await attendanceApi.updateSchedule(scheduleEmployee.id, editSchedule); setScheduleEmployee(null) }) }}><h2>Рабочий график</h2><p>{scheduleEmployee.full_name}. Время указывается в часовом поясе организации.</p><ScheduleEditor value={editSchedule} onChange={setEditSchedule} disabled={busy} /><div className="attendance-dialog__actions"><button type="button" onClick={() => setScheduleEmployee(null)}>Отмена</button><button disabled={busy || editSchedule.length === 0 || editSchedule.some((item) => item.starts_at >= item.ends_at)}>Сохранить график</button></div></form></div>}
     {reviewing && <div className="attendance-dialog-backdrop"><div className="attendance-dialog attendance-dialog--review" role="dialog" aria-modal="true" aria-label="Проверка заявки на регистрацию лица"><h2>Проверка заявки</h2><div className="attendance-review-person"><strong>{reviewing.full_name}</strong><span>{reviewing.department || 'Без отделения'}{reviewing.position ? ` · ${reviewing.position}` : ''}</span><small>Отправлена {reviewing.pending_face_submitted_at ? new Date(reviewing.pending_face_submitted_at).toLocaleString('ru-RU') : 'недавно'}</small></div>{reviewLoading ? <p>Загружаем снимок…</p> : reviewImage ? <img className="attendance-review-photo" src={reviewImage} alt={`Лицо из заявки: ${reviewing.full_name}`} /> : <p className="attendance-error">Снимок недоступен. Отклоните заявку и попросите сотрудника зарегистрироваться заново.</p>}<p>Снимок показывает, какое лицо было отправлено, но сам по себе не подтверждает личность. Лично сверьте человека перед вами с кадровыми данными и снимком.</p><label className="attendance-consent"><input type="checkbox" checked={identityChecked} onChange={(event) => setIdentityChecked(event.target.checked)} disabled={!reviewImage || busy} />Я лично сверил сотрудника, его имя и лицо на снимке</label><div className="attendance-dialog__actions"><button type="button" onClick={closeReview} disabled={busy}>Закрыть</button><button type="button" onClick={() => void perform(async () => { await attendanceApi.rejectFace(reviewing.id); closeReview() })} disabled={busy}>Отклонить</button><button type="button" onClick={() => void perform(async () => { await attendanceApi.approveFace(reviewing.id); closeReview() })} disabled={busy || !reviewImage || !identityChecked}>Подтвердить</button></div></div></div>}
     {enrolling && <div className="attendance-dialog-backdrop"><div className="attendance-dialog" role="dialog" aria-modal="true" aria-label="Регистрация лица"><h2>Регистрация лица</h2><p>{enrolling.full_name} должен лично находиться перед камерой. Снимки будут обработаны для создания шаблона и не сохранятся.</p><video ref={videoRef} autoPlay muted playsInline className={`attendance-camera ${cameraActive ? 'is-active' : ''}`} /><button type="button" className="attendance-preview-button" onClick={() => cameraActive ? stopPreview() : void startPreview().catch((err) => setError(errorText(err)))} disabled={busy}>{cameraActive ? 'Выключить камеру' : 'Включить камеру и проверить кадр'}</button><label className="attendance-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />Сотрудник дал согласие на обработку биометрии</label><div className="attendance-dialog__actions"><button type="button" onClick={() => { stopPreview(); setEnrolling(null) }} disabled={busy}>Отмена</button><button type="button" onClick={() => void enroll()} disabled={busy || !consent || !cameraActive}>Зарегистрировать</button></div></div></div>}
     {editing && <div className="attendance-dialog-backdrop"><form className="attendance-dialog" role="dialog" aria-modal="true" aria-label="Исправление отметки" onSubmit={(event) => { event.preventDefault(); void perform(async () => { await attendanceApi.correct(editing.id, editKind, new Date(editTime).toISOString(), reason.trim()); setEditing(null) }) }}><h2>Исправить отметку</h2><p>{editing.employee_name}</p><label>Тип<select value={editKind} onChange={(event) => setEditKind(event.target.value as 'in' | 'out')}><option value="in">Приход</option><option value="out">Уход</option></select></label><label>Дата и время<input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} required /></label><label>Причина<input value={reason} onChange={(event) => setReason(event.target.value)} minLength={5} maxLength={500} required placeholder="Например, сотрудник забыл отметить уход" /></label><div className="attendance-dialog__actions"><button type="button" onClick={() => setEditing(null)}>Отмена</button><button disabled={busy}>Сохранить исправление</button></div></form></div>}

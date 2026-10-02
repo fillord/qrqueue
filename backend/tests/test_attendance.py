@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta, timezone
 import base64
 from io import BytesIO
 from zoneinfo import ZoneInfo
@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.api import attendance as attendance_api
 from app.clock import utcnow
-from app.models.attendance import AttendanceEvent, Employee
+from app.models.attendance import AttendanceEvent, Employee, EmployeeWorkSchedule
 from app.models.department import Department
 from app.models.enums import UserRole
 from app.services.attendance import qr_token, verify_qr
@@ -88,6 +88,65 @@ def test_face_capture_checks_consistency_without_movement(monkeypatch):
         assert False, 'different faces accepted'
     except ServiceError as error:
         assert error.code == 'face_capture_inconsistent'
+
+
+async def test_employee_schedule_and_detailed_report(client, db_session, make_user, make_organization):
+    org = await make_organization(name='Scheduled Org', timezone='UTC')
+    admin, password = await make_user(email='schedule-admin@example.com', role=UserRole.org_admin, organization_id=org.id)
+    department = Department(organization_id=org.id, name='Diagnostics')
+    db_session.add(department)
+    await db_session.commit()
+    await login(client, admin.email, password)
+    report_day = (utcnow() - timedelta(days=2)).date()
+    schedule = [{'weekday': report_day.weekday(), 'starts_at': '09:00', 'ends_at': '18:00'}]
+    created = await client.post('/api/attendance/admin/employees', json={
+        'full_name': 'Scheduled Worker', 'department_id': str(department.id), 'position': 'Doctor', 'schedule': schedule,
+    })
+    assert created.status_code == 201, created.text
+    assert created.json()['schedule'] == schedule
+    employee_id = created.json()['id']
+    second = await client.post('/api/attendance/admin/employees', json={
+        'full_name': 'Missing Schedule', 'department_id': str(department.id),
+    })
+    assert second.status_code == 201
+    db_session.add_all([
+        AttendanceEvent(organization_id=org.id, employee_id=employee_id, kind='in', source='manual',
+                        occurred_at=datetime.combine(report_day, time(9, 15), tzinfo=timezone.utc)),
+        AttendanceEvent(organization_id=org.id, employee_id=employee_id, kind='out', source='manual',
+                        occurred_at=datetime.combine(report_day, time(17, 45), tzinfo=timezone.utc)),
+    ])
+    await db_session.commit()
+    response = await client.get('/api/attendance/admin/report', params={
+        'date_from': report_day.isoformat(), 'date_to': report_day.isoformat(),
+    })
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report['timezone'] == 'UTC' and report['missing_schedule'] == 1
+    assert report['totals'] == {'scheduled': 1, 'completed': 1, 'absent': 0, 'late': 1,
+                                'early_leave': 1, 'incomplete': 0, 'overtime_minutes': 0}
+    assert report['rows'][0]['status'] == 'late_early'
+    assert report['rows'][0]['late_minutes'] == 15
+    assert report['rows'][0]['early_leave_minutes'] == 15
+    assert report['rows'][0]['worked_minutes'] == 510
+    replaced = await client.put(f'/api/attendance/admin/employees/{employee_id}/schedule', json={
+        'schedule': [{'weekday': report_day.weekday(), 'starts_at': '08:30', 'ends_at': '17:30'}],
+    })
+    assert replaced.status_code == 200 and replaced.json()['schedule'][0]['starts_at'] == '08:30'
+    stored = (await db_session.scalars(select(EmployeeWorkSchedule).where(
+        EmployeeWorkSchedule.employee_id == employee_id))).all()
+    assert len(stored) == 1 and stored[0].starts_at == time(8, 30)
+    duplicate = await client.put(f'/api/attendance/admin/employees/{employee_id}/schedule', json={
+        'schedule': [schedule[0], schedule[0]],
+    })
+    assert duplicate.status_code == 422
+    invalid = await client.put(f'/api/attendance/admin/employees/{employee_id}/schedule', json={
+        'schedule': [{'weekday': 1, 'starts_at': '18:00', 'ends_at': '09:00'}],
+    })
+    assert invalid.status_code == 422
+    too_wide = await client.get('/api/attendance/admin/report', params={
+        'date_from': '2026-01-01', 'date_to': '2026-05-01',
+    })
+    assert too_wide.status_code == 422 and too_wide.json()['detail']['code'] == 'attendance_report_range_invalid'
 
 
 async def test_admin_scoping_enrollment_and_phone_marks(client, db_session, make_user, make_organization, monkeypatch):

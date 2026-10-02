@@ -28,6 +28,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
   const [displayMode, setDisplayMode] = useState<TvScreen['display_mode']>('queue')
   const [name, setName] = useState('')
   const [queueId, setQueueId] = useState('')
+  const [createQueueSelectionMode, setCreateQueueSelectionMode] = useState<TvScreen['queue_selection_mode']>('all')
   const [createQueueIds, setCreateQueueIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(false)
@@ -70,17 +71,21 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim() || (displayMode === 'queue' && !queueId && createQueueIds.length === 0)) return
+    if (!name.trim() || (displayMode === 'queue' && !queueId && createQueueSelectionMode === 'selected' && createQueueIds.length === 0)) return
     setSubmitting(true)
     setError(false)
     try {
       await createTvScreen({
         name: name.trim(), queue_id: displayMode === 'queue' ? queueId || null : null,
         language, display_mode: displayMode,
-        ...(displayMode === 'queue' && !queueId ? { queue_selection_mode: 'selected' as const, selected_queue_ids: createQueueIds } : {}),
+        ...(displayMode === 'queue' && !queueId ? {
+          queue_selection_mode: createQueueSelectionMode,
+          selected_queue_ids: createQueueSelectionMode === 'selected' ? createQueueIds : [],
+        } : {}),
       }, organizationId)
       setName('')
       setQueueId('')
+      setCreateQueueSelectionMode('all')
       setCreateQueueIds([])
       await load()
     } catch {
@@ -127,6 +132,8 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
     ))
   }
 
+  const activeQueues = queues.filter((queue) => queue.is_active && !queue.deleted_at)
+
   return (
     <div className="admin-tv-screens">
       <h1>{t('adminTv.title')}</h1>
@@ -143,7 +150,7 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
         </select>
         <select aria-label={t('adminTv.columns.queue')} value={queueId} disabled={displayMode !== 'queue'} onChange={(e) => setQueueId(e.target.value)}>
           <option value="">{t('adminTv.multiQueue')}</option>
-          {queues.filter((queue) => queue.is_active && !queue.deleted_at).map((queue) => (
+          {activeQueues.map((queue) => (
             <option key={queue.id} value={queue.id}>
               {queue.name}
             </option>
@@ -152,15 +159,17 @@ export default function AdminTvScreensPage({ organizationId }: { organizationId?
         <select aria-label={t('adminTv.language')} value={language} onChange={(e) => setLanguage(e.target.value as TvScreen['language'])}><option value="kk">Қазақша</option><option value="ru">Русский</option><option value="en">English</option></select>
         {displayMode === 'queue' && !queueId && <fieldset className="admin-tv-screens__create-queues">
           <legend>{t('adminTv.queueBoard.createQueuesTitle')}</legend>
-          <div className="admin-tv-screens__create-queue-list">
-            {queues.filter((queue) => queue.is_active && !queue.deleted_at).map((queue) => <label key={queue.id}>
+          <label><input type="radio" name="create-queues" checked={createQueueSelectionMode === 'all'} disabled={submitting} onChange={() => setCreateQueueSelectionMode('all')} />{t('adminTv.queueBoard.allQueues')}</label>
+          <label><input type="radio" name="create-queues" checked={createQueueSelectionMode === 'selected'} disabled={submitting} onChange={() => setCreateQueueSelectionMode('selected')} />{t('adminTv.queueBoard.selectedQueues')}</label>
+          {createQueueSelectionMode === 'selected' && <div className="admin-tv-screens__create-queue-list">
+            {activeQueues.length === 0 ? <p>{t('adminTv.queueBoard.noQueues')}</p> : activeQueues.map((queue) => <label key={queue.id}>
               <input type="checkbox" checked={createQueueIds.includes(queue.id)} disabled={submitting} onChange={() => setCreateQueueIds((current) => current.includes(queue.id) ? current.filter((id) => id !== queue.id) : [...current, queue.id])} />
               {queue.name}
             </label>)}
-          </div>
+          </div>}
           <small>{t('adminTv.queueBoard.createQueuesHint')}</small>
         </fieldset>}
-        <button type="submit" disabled={submitting || !name.trim() || (displayMode === 'queue' && !queueId && createQueueIds.length === 0)}>
+        <button type="submit" disabled={submitting || !name.trim() || (displayMode === 'queue' && !queueId && createQueueSelectionMode === 'selected' && createQueueIds.length === 0)}>
           {t('adminTv.create')}
         </button>
       </form>

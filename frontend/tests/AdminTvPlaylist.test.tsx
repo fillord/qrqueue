@@ -66,8 +66,8 @@ it('lets an admin select several queues and cabinets for a hall display', async 
   })
   render(<AdminTvScreensPage />)
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
-  fireEvent.click(await screen.findByRole('radio', { name: 'Only checked queues' }))
   const queueOptions = within(screen.getByRole('group', { name: 'Queues on the hall display' }))
+  fireEvent.click(await queueOptions.findByRole('radio', { name: 'Only checked queues' }))
   await waitFor(() => expect(queueOptions.getByRole<HTMLInputElement>('checkbox', { name: 'Therapy' }).disabled).toBe(false))
   fireEvent.click(queueOptions.getByRole('checkbox', { name: 'Therapy' }))
   await waitFor(() => expect(updateTvScreen).toHaveBeenCalledWith('screen-1', { selected_queue_ids: ['queue-1'] }, undefined))
@@ -89,14 +89,27 @@ it('creates a hall screen with selected queues so its QR offers exactly those qu
     { ...base, id: 'queue-2', name: 'Surgery' },
   ])
   render(<AdminTvScreensPage />)
-  const createQueues = within(await screen.findByRole('group', { name: 'Select queues for this TV' }))
+  const createQueues = within(await screen.findByRole('group', { name: 'Queues for this TV' }))
   fireEvent.change(screen.getByPlaceholderText('Screen name'), { target: { value: 'Lobby' } })
+  fireEvent.click(createQueues.getByRole('radio', { name: 'Only checked queues' }))
   fireEvent.click(createQueues.getByRole('checkbox', { name: 'Therapy' }))
   fireEvent.click(createQueues.getByRole('checkbox', { name: 'Surgery' }))
   fireEvent.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(createTvScreen).toHaveBeenCalledWith({
     name: 'Lobby', queue_id: null, language: 'ru', display_mode: 'queue',
     queue_selection_mode: 'selected', selected_queue_ids: ['queue-1', 'queue-2'],
+  }, undefined))
+})
+
+it('creates a hall screen for all active queues without requiring manual selection', async () => {
+  render(<AdminTvScreensPage />)
+  const createQueues = within(await screen.findByRole('group', { name: 'Queues for this TV' }))
+  expect(createQueues.getByRole<HTMLInputElement>('radio', { name: 'All active queues' }).checked).toBe(true)
+  fireEvent.change(screen.getByPlaceholderText('Screen name'), { target: { value: 'Main hall' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+  await waitFor(() => expect(createTvScreen).toHaveBeenCalledWith({
+    name: 'Main hall', queue_id: null, language: 'ru', display_mode: 'queue',
+    queue_selection_mode: 'all', selected_queue_ids: [],
   }, undefined))
 })
 

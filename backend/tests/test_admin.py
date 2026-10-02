@@ -179,6 +179,34 @@ async def test_admin_manual_pause_is_sticky_against_cabinet_resume(
     assert resp.json()["status"] == "open"
 
 
+async def test_opening_inactive_queue_reactivates_it(
+    client, db_session, make_user, make_organization
+):
+    org = await make_organization(name="Queue state invariant")
+    _admin, password = await make_user(
+        email="queue-state@example.com", role=UserRole.org_admin, organization_id=org.id
+    )
+    queue = Queue(
+        organization_id=org.id, name="Inactive", ticket_prefix="I",
+        counter_date=date.today(), status=QueueStatus.closed, is_active=False,
+    )
+    db_session.add(queue)
+    await db_session.commit()
+
+    await login(client, "queue-state@example.com", password)
+    response = await client.patch(f"/api/admin/queues/{queue.id}", json={"status": "open"})
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "open"
+    assert response.json()["is_active"] is True
+
+    response = await client.patch(
+        f"/api/admin/queues/{queue.id}", json={"status": "open", "is_active": False}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "closed"
+    assert response.json()["is_active"] is False
+
+
 async def test_queue_schedule_round_trip(client, db_session, make_user, make_organization):
     org = await make_organization(name="Организация З")
     _admin, password = await make_user(

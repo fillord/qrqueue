@@ -84,6 +84,17 @@ async def create_queue(
 async def update_queue(db: AsyncSession, queue: Queue, payload: QueueUpdate, actor: User) -> Queue:
     changes = payload.model_dump(exclude_unset=True)
 
+    # A queue that is open or paused must also be visible to the rest of the
+    # system (TV setup, registrar and public QR flows).  Previously the admin
+    # UI could change an inactive queue from ``closed`` to ``open`` without
+    # restoring ``is_active``, leaving an apparently open queue hidden from
+    # TV screens.  Keep the two fields consistent at the service boundary so
+    # every API client gets the same behaviour.
+    if changes.get("is_active") is False:
+        changes["status"] = QueueStatus.closed
+    elif changes.get("status") in (QueueStatus.open, QueueStatus.paused):
+        changes["is_active"] = True
+
     latitude = changes.get("latitude", queue.latitude)
     longitude = changes.get("longitude", queue.longitude)
     geo_radius_m = changes.get("geo_radius_m", queue.geo_radius_m)

@@ -1059,8 +1059,8 @@
     },
     "language": "Screen language",
     "queueBoard": {
-      "createQueuesTitle": "Select queues for this TV",
-      "createQueuesHint": "After scanning the QR code, visitors choose one of these queues.",
+      "createQueuesTitle": "Queues for this TV",
+      "createQueuesHint": "Show all active queues or only selected ones. After scanning the QR code, visitors choose a queue.",
       "screenSource": "Queues shown on screen",
       "queuesTitle": "Queues on the hall display",
       "allQueues": "All active queues",

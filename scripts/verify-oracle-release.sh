@@ -16,7 +16,7 @@ remote_result="$(ssh "${ssh_args[@]}" "$QRQUEUE_ORACLE_SSH_TARGET" 'bash -s' -- 
 set -euo pipefail
 expected="$1"
 cd /home/ubuntu/qrqueue
-deployed="$(tr -d '\r\n' < .deployed-commit 2>/dev/null || true)"
+deployed="$(if [[ -f .deployed-commit ]]; then tr -d '\r\n' < .deployed-commit; fi)"
 backend="$(sudo docker inspect queue-backend --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
 frontend="$(sudo docker inspect queue-frontend --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
 bash scripts/check-backup-freshness.sh
@@ -28,7 +28,9 @@ REMOTE
 )"
 printf '%s\n' "$remote_result"
 
-health="$(curl --fail --silent --show-error --max-time 20 https://queue.omni-book.site/api/health)"
+health="$(curl --fail --silent --show-error --max-time 20 \
+  --retry 10 --retry-all-errors --retry-delay 2 \
+  https://queue.omni-book.site/api/health)"
 HEALTH_JSON="$health" EXPECTED_RELEASE="$expected" python3 - <<'PY'
 import json
 import os

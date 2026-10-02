@@ -92,6 +92,9 @@ rollback() {
     sudo env APP_VERSION="$previous_version" docker compose \
       -f docker-compose.yml -f docker-compose.oracle.yml -f docker-compose.tunnel.yml \
       up -d --force-recreate backend frontend || true
+    sudo docker compose \
+      -f docker-compose.yml -f docker-compose.oracle.yml -f docker-compose.tunnel.yml \
+      restart cloudflared || true
   fi
   exit "$status"
 }
@@ -111,7 +114,7 @@ tar -xf "$archive"
 compose=(sudo env "APP_VERSION=$release" docker compose -f docker-compose.yml -f docker-compose.oracle.yml -f docker-compose.tunnel.yml)
 "${compose[@]}" build backend frontend
 "${compose[@]}" run --rm backend alembic upgrade head
-"${compose[@]}" up -d backend frontend
+"${compose[@]}" up -d --force-recreate backend frontend
 
 for _ in $(seq 1 30); do
   if health="$(curl -fsS --max-time 5 http://127.0.0.1:8080/api/health 2>/dev/null)"; then
@@ -138,6 +141,7 @@ if body.get("status") != "ok" or body.get("version") != expected:
     raise SystemExit(f"Local health does not match release: {body!r}")
 PY
 
+"${compose[@]}" restart cloudflared
 install -m 0644 "$new_manifest" .deploy-manifest
 printf '%s\n' "$release" > .deployed-commit
 sudo cp deploy/oracle/qrqueue-backup.service deploy/oracle/qrqueue-backup.timer /etc/systemd/system/

@@ -59,14 +59,23 @@ success=false
 
 sudo docker image inspect qrqueue-backend:latest >/dev/null 2>&1 && sudo docker tag qrqueue-backend:latest qrqueue-backend:previous || true
 sudo docker image inspect qrqueue-frontend:latest >/dev/null 2>&1 && sudo docker tag qrqueue-frontend:latest qrqueue-frontend:previous || true
+snapshot_candidates=(
+  backend frontend scripts deploy .github
+  docker-compose.yml docker-compose.oracle.yml docker-compose.override.yml docker-compose.tunnel.yml
+  README.md ARCHITECTURE.md PROJECT_STATUS.md PROJECT_HANDOFF_2026-10-02.md
+  .env.example .tunnel.env.example .gitignore
+)
+snapshot_paths=()
+for snapshot_candidate in "${snapshot_candidates[@]}"; do
+  if [[ -e "$snapshot_candidate" ]]; then
+    snapshot_paths+=("$snapshot_candidate")
+  fi
+done
 tar \
   --exclude='backend/face_models' --exclude='backend/**/__pycache__' \
   --exclude='frontend/node_modules' --exclude='frontend/dist' \
   -czf "$source_snapshot" \
-  backend frontend scripts deploy .github \
-  docker-compose.yml docker-compose.oracle.yml docker-compose.override.yml docker-compose.tunnel.yml \
-  README.md ARCHITECTURE.md PROJECT_STATUS.md PROJECT_HANDOFF_2026-10-02.md \
-  .env.example .tunnel.env.example .gitignore 2>/dev/null
+  "${snapshot_paths[@]}"
 
 rollback() {
   status=$?

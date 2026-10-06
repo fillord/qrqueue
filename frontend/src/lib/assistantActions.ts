@@ -56,6 +56,7 @@ const CATALOG_ACTIONS: Record<string, CatalogAction> = {
   'staff.manage': { roles: ['org_admin'], path: '/admin/users', nav: '[href="/admin/users"]', title: 'assistant.pages.users.title', body: 'assistant.tour.actions.searchUsers', selector: '.directory__toolbar, .admin-table' },
 
   'attendance.summary': { roles: ['org_admin'], path: '/admin/attendance', nav: '[href="/admin/attendance"]', title: 'assistant.pages.attendance.title', body: 'assistant.tour.actions.attendanceSummary', selector: '#attendance-summary' },
+  'attendance.departments': { roles: ['org_admin'], path: '/admin/attendance/departments', nav: '[href="/admin/attendance/departments"]', title: 'attendanceDirectory.title', body: 'attendanceDirectory.subtitle', selector: '#attendance-departments' },
   'attendance.employee.create': { roles: ['org_admin'], path: '/admin/attendance/employees', nav: '[href="/admin/attendance/employees"]', title: 'assistant.pages.attendance.title', body: 'assistant.tour.actions.attendanceEmployees', selector: '.attendance-admin__create, #attendance-employees' },
   'attendance.employee.import': { roles: ['org_admin'], path: '/admin/attendance/employees', nav: '[href="/admin/attendance/employees"]', title: 'assistant.pages.attendance.title', body: 'assistant.tour.actions.attendanceEmployees', selector: '.attendance-admin__import, #attendance-employees' },
   'attendance.face': { roles: ['org_admin'], path: '/admin/attendance/employees', nav: '[href="/admin/attendance/employees"]', title: 'assistant.pages.attendance.title', body: 'assistant.tour.actions.attendanceEmployees', selector: '#attendance-employees' },
@@ -126,7 +127,11 @@ export function getAssistantAction(message: string, path: string, role: UserRole
     if ((has(text, 'организац', 'ұйым', 'organization') && has(text, 'настрой', 'назван', 'логотип', 'цвет', 'язык', 'часов', 'setting', 'name', 'logo', 'баптау')) || has(text, 'бренд')) {
       return sectionAction('/admin/organization', path, '[href="/admin/organization"]', 'assistant.pages.organizationSettings.title', 'assistant.tour.actions.organizationSettings', '.admin-organization__form')
     }
-    if (has(text, 'чек-ин', 'чекин', 'приход', 'уход', 'рабочего времени', 'attendance', 'келу', 'кету')) {
+    const attendanceDepartmentContext = path.startsWith('/admin/attendance')
+      && has(text, 'отделен', 'department', 'бөлімше')
+      && !has(text, 'телевиз', 'тв', 'расписан', 'tv', 'schedule')
+    if (attendanceDepartmentContext || has(text, 'чек-ин', 'чекин', 'приход', 'уход', 'рабочего времени', 'attendance', 'келу', 'кету')) {
+      if (has(text, 'отделен', 'department', 'бөлімше')) return sectionAction('/admin/attendance/departments', path, '[href="/admin/attendance/departments"]', 'attendanceDirectory.title', 'attendanceDirectory.subtitle', '#attendance-departments')
       if (has(text, 'стойк', 'киоск', 'гео', 'qr', 'регистрац', 'kiosk', 'geofence')) return sectionAction('/admin/attendance/settings', path, '[href="/admin/attendance/settings"]', 'assistant.pages.attendance.title', 'assistant.tour.actions.attendanceSettings', '#attendance-settings, .attendance-admin__settings')
       if (has(text, 'исправ', 'отмет', 'событ', 'correct', 'event')) return sectionAction('/admin/attendance/events', path, '[href="/admin/attendance/events"]', 'assistant.pages.attendance.title', 'assistant.tour.actions.attendanceEvents', '#attendance-events')
       if (has(text, 'сотруд', 'лиц', 'импорт', 'employee', 'face', 'import')) return sectionAction('/admin/attendance/employees', path, '[href="/admin/attendance/employees"]', 'assistant.pages.attendance.title', 'assistant.tour.actions.attendanceEmployees', '.attendance-admin__create, #attendance-employees')

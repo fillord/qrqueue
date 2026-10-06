@@ -8,6 +8,7 @@ from sqlalchemy import select, text
 
 from app.api.admin import router as admin_router
 from app.api.attendance import router as attendance_router
+from app.api.attendance_departments import router as attendance_departments_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.operator import router as operator_router
@@ -112,6 +113,7 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
 app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(attendance_router, prefix="/api")
+app.include_router(attendance_departments_router, prefix="/api")
 app.include_router(workforce_router, prefix="/api")
 app.include_router(telegram_router, prefix="/api")
 app.include_router(assistant_router, prefix="/api")

@@ -19,7 +19,7 @@ from app.api.deps import current_admin, current_organization_id
 from app.clock import utcnow
 from app.db import get_db
 from app.models.attendance import AttendanceEvent, AttendanceKiosk, Employee, EmployeeWorkSchedule
-from app.models.department import Department
+from app.models.attendance import AttendanceDepartment as Department
 from app.models.enums import AuditActorType
 from app.models.organization import Organization
 from app.models.user import User
@@ -207,7 +207,9 @@ async def _active_org(db: AsyncSession, organization_id: uuid.UUID) -> Organizat
 
 async def _department(db: AsyncSession, organization_id: uuid.UUID, department_id: uuid.UUID) -> Department:
     department = await db.get(Department, department_id)
-    if department is None or department.organization_id != organization_id or not department.is_active:
+    if department is None or department.organization_id != organization_id:
+        raise ServiceError("attendance_department_invalid", 404)
+    if not department.is_active:
         raise ServiceError("attendance_department_invalid", 422)
     return department
 
@@ -242,6 +244,7 @@ async def create_employee(payload: EmployeeCreate, db: AsyncSession = Depends(ge
     await _active_org(db, organization_id)
     if len(payload.full_name.strip()) < 2:
         raise ServiceError("employee_name_invalid", 422)
+    await db.execute(select(Organization.id).where(Organization.id == organization_id).with_for_update())
     department = await _department(db, organization_id, payload.department_id)
     if payload.user_id:
         linked = await db.get(User, payload.user_id)
@@ -249,7 +252,6 @@ async def create_employee(payload: EmployeeCreate, db: AsyncSession = Depends(ge
             raise ServiceError("employee_user_invalid", 422)
         if await db.scalar(select(Employee.id).where(Employee.user_id == payload.user_id)):
             raise ServiceError("employee_user_already_linked", 409)
-    await db.execute(select(Organization.id).where(Organization.id == organization_id).with_for_update())
     code, digest = await _available_code(db, organization_id)
     employee = Employee(organization_id=organization_id, full_name=payload.full_name.strip(), department=department.name,
                         department_id=department.id, position=payload.position.strip() or None if payload.position else None,
@@ -286,6 +288,7 @@ async def replace_employee_schedule(employee_id: uuid.UUID, payload: WorkSchedul
 
 @router.patch("/admin/employees/{employee_id}")
 async def update_employee(employee_id: uuid.UUID, payload: EmployeeUpdate, db: AsyncSession = Depends(get_db), actor: User = Depends(current_admin), organization_id: uuid.UUID = Depends(current_organization_id)) -> dict:
+    await db.execute(select(Organization.id).where(Organization.id == organization_id).with_for_update())
     employee = await _employee(db, organization_id, employee_id)
     if "department_id" in payload.model_fields_set:
         if payload.department_id is None:
@@ -433,6 +436,8 @@ async def employee_template(db: AsyncSession = Depends(get_db), actor: User = De
     choices.column_dimensions["A"].width = 38
     for department in departments:
         choices.append([department.name])
+        # A user-entered department name must remain text, not an Excel formula.
+        choices.cell(choices.max_row, 1).data_type = "s"
     output = BytesIO()
     workbook.save(output)
     return Response(content=output.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

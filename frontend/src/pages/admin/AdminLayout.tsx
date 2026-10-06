@@ -19,6 +19,7 @@ export default function AdminLayout() {
           <summary className="admin-layout__nav-heading">{t('admin.nav.attendance')}</summary>
           <div className="admin-layout__nav-items">
             <NavLink to="/admin/attendance" end className={linkClass}>{t('admin.nav.attendanceSummary')}</NavLink>
+            <NavLink to="/admin/attendance/departments" className={linkClass}>{t('attendanceDirectory.title')}</NavLink>
             <NavLink to="/admin/attendance/calendar" className={linkClass}>{t('workforce.calendar')}</NavLink>
             <NavLink to="/admin/attendance/timesheet" className={linkClass}>{t('workforce.timesheet')}</NavLink>
             <NavLink to="/admin/attendance/employees" className={linkClass}>{t('admin.nav.attendanceEmployees')}</NavLink>

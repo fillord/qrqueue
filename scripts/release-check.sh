@@ -13,6 +13,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+python3 scripts/test-deploy-safety.py
 npm --prefix frontend ci
 npm --prefix frontend test -- --run
 npm --prefix frontend run build

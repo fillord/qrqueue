@@ -24,6 +24,12 @@ export interface Employee {
   telegram_connected?: boolean
 }
 
+export interface AttendanceDepartment {
+  id: string
+  name: string
+  is_active: boolean
+}
+
 export type CalendarKind = 'shift' | 'off' | 'vacation' | 'sick' | 'absence'
 export type AttendanceReportStatus = 'planned' | 'in_progress' | 'completed' | 'late' | 'early_leave' | 'late_early' | 'absent' | 'incomplete' | Exclude<CalendarKind, 'shift'>
 
@@ -142,6 +148,11 @@ export interface AttendanceEvent {
 }
 
 export const attendanceApi = {
+  departments: () => apiGet<AttendanceDepartment[]>('/api/attendance/admin/departments'),
+  createDepartment: (name: string) => apiPost<AttendanceDepartment>('/api/attendance/admin/departments', { name }),
+  renameDepartment: (id: string, name: string) => apiPatch<AttendanceDepartment>(`/api/attendance/admin/departments/${id}`, { name }),
+  archiveDepartment: (id: string) => apiDelete<void>(`/api/attendance/admin/departments/${id}`),
+  restoreDepartment: (id: string) => apiPost<AttendanceDepartment>(`/api/attendance/admin/departments/${id}/restore`),
   calendar: (month: string) => apiGet<AttendanceReport>(`/api/attendance/admin/calendar?month=${encodeURIComponent(month)}`),
   saveCalendar: (body: { employee_id: string; date_from: string; date_to: string; kind: CalendarKind; starts_at?: string; ends_at?: string; reason: string }) => apiPost<{ days: number }>('/api/attendance/admin/calendar', body),
   resetCalendar: (id: string, reason: string) => apiPost(`/api/attendance/admin/calendar/${id}/reset`, { reason }),

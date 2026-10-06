@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.api import attendance as attendance_api
 from app.clock import utcnow
 from app.models.attendance import AttendanceEvent, Employee, EmployeeWorkSchedule
-from app.models.department import Department
+from app.models.attendance import AttendanceDepartment as Department
 from app.models.enums import UserRole
 from app.services.attendance import qr_token, verify_qr
 from app.services.errors import ServiceError
@@ -362,10 +362,10 @@ async def test_employee_import_rejects_unknown_department_atomically(client, db_
     assert codes == ['0001', '0002']
     people = (await client.get('/api/attendance/admin/employees')).json()
     assert len(people) == 2 and {person['department_id'] for person in people} == {str(department.id)}
-    assert (await client.delete(f'/api/admin/departments/{department.id}')).status_code == 409
+    assert (await client.delete(f'/api/attendance/admin/departments/{department.id}')).status_code == 409
     for person in people:
         assert (await client.delete(f"/api/attendance/admin/employees/{person['id']}")).status_code == 204
-    assert (await client.delete(f'/api/admin/departments/{department.id}')).status_code == 204
+    assert (await client.delete(f'/api/attendance/admin/departments/{department.id}')).status_code == 204
 
 
 async def test_static_enrollment_requires_admin_approval(client, db_session, make_user, make_organization, monkeypatch):

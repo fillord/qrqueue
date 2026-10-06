@@ -8,13 +8,22 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, UUIDPkMixin
 
 
+class AttendanceDepartment(UUIDPkMixin, Base):
+    __tablename__ = "attendance_departments"
+    __table_args__ = (UniqueConstraint("organization_id", "name", name="uq_attendance_departments_org_name"),)
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class Employee(UUIDPkMixin, Base):
     __tablename__ = "attendance_employees"
 
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
     full_name: Mapped[str] = mapped_column(Text, nullable=False)
     department: Mapped[str | None] = mapped_column(Text, nullable=True)
-    department_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True, index=True)
+    department_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("attendance_departments.id"), nullable=True, index=True)
     position: Mapped[str | None] = mapped_column(Text, nullable=True)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True)
     code_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)

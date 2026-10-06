@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate, back up and deploy the current main commit to Oracle with rollback.
+# Validate, back up and deploy main; never roll old code over a changed schema.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -56,6 +56,8 @@ source_snapshot="backups/source-before-$timestamp-${release:0:12}.tar.gz"
 previous_version="$(sudo docker inspect queue-backend --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | sed -n 's/^APP_VERSION=//p' | head -n 1)"
 previous_version="${previous_version:-dev}"
 success=false
+migration_started=false
+migration_completed=false
 
 sudo docker image inspect qrqueue-backend:latest >/dev/null 2>&1 && sudo docker tag qrqueue-backend:latest qrqueue-backend:previous || true
 sudo docker image inspect qrqueue-frontend:latest >/dev/null 2>&1 && sudo docker tag qrqueue-frontend:latest qrqueue-frontend:previous || true
@@ -81,6 +83,17 @@ rollback() {
   status=$?
   rm -f "$archive" "$new_manifest"
   if [[ "$success" != "true" ]]; then
+    if [[ "$migration_started" == "true" ]]; then
+      echo "Deployment failed after migration began; automatic source/image rollback is unsafe and has been disabled." >&2
+      echo "Database and verified backups are preserved. Inspect the migration and roll forward; restoring the database requires a separate recovery plan." >&2
+      if [[ "$migration_completed" == "true" ]]; then
+        # Only the new code may run against the upgraded schema. A failed
+        # migration leaves the backend stopped rather than guessing its state.
+        "${compose[@]}" up -d --force-recreate backend frontend || true
+        "${compose[@]}" restart cloudflared || true
+      fi
+      exit "$status"
+    fi
     echo "Deployment failed; restoring the previous source and images." >&2
     tar -xzf "$source_snapshot"
     if sudo docker image inspect qrqueue-backend:previous >/dev/null 2>&1; then
@@ -118,11 +131,16 @@ if [[ -z "$backend_network" ]]; then
   echo "Unable to determine the Oracle backend network." >&2
   exit 1
 fi
+# Prevent the old application and its workers from writing while foreign keys
+# and data are migrated. Build first so downtime covers only migration/startup.
+"${compose[@]}" stop backend
+migration_started=true
 sudo docker run --rm \
   --network "$backend_network" \
   --env-file .env \
   -e "APP_VERSION=$release" \
   qrqueue-backend:latest alembic upgrade head
+migration_completed=true
 "${compose[@]}" up -d --force-recreate backend frontend
 
 for _ in $(seq 1 30); do

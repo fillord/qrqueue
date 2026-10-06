@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.clock import utcnow
 from app.models.attendance import AttendanceEvent, Employee, EmployeeCalendarDay, EmployeeWorkSchedule
-from app.models.department import Department
+from app.models.attendance import AttendanceDepartment as Department
 from app.models.enums import UserRole
 from app.redis import redis_client
 from app.services import telegram

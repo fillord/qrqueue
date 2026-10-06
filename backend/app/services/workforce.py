@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import utcnow
 from app.models.attendance import AttendanceEvent, Employee, EmployeeCalendarDay, EmployeeWorkSchedule
-from app.models.department import Department
+from app.models.attendance import AttendanceDepartment as Department
 from app.models.organization import Organization
 from app.services.errors import ServiceError
 

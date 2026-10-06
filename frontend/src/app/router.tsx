@@ -16,6 +16,7 @@ import AdminQueuesPage from '../pages/admin/AdminQueuesPage'
 import AdminTvScreensPage from '../pages/admin/AdminTvScreensPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminAttendancePage from '../pages/admin/AdminAttendancePage'
+import AdminAttendanceDepartmentsPage from '../pages/admin/AdminAttendanceDepartmentsPage'
 import AdminWorkforcePage from '../pages/admin/AdminWorkforcePage'
 import AttendanceKioskPage from '../pages/attendance/AttendanceKioskPage'
 import AttendancePhonePage from '../pages/attendance/AttendancePhonePage'
@@ -102,6 +103,7 @@ export default function AppRouter() {
           <Route path="cabinets" element={<AdminCabinetsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="attendance" element={<AdminAttendancePage section="summary" />} />
+          <Route path="attendance/departments" element={<AdminAttendanceDepartmentsPage />} />
           <Route path="attendance/employees" element={<AdminAttendancePage section="employees" />} />
           <Route path="attendance/events" element={<AdminAttendancePage section="events" />} />
           <Route path="attendance/settings" element={<AdminAttendancePage section="settings" />} />

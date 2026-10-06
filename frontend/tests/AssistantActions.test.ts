@@ -48,4 +48,12 @@ describe('assistant visual actions', () => {
     expect(result.destination?.path).toBe('/admin/attendance/events')
     expect(result.destination?.steps[0].selector).toBe('#attendance-events')
   })
+
+  it('opens the independent attendance department directory', () => {
+    expect(action('как добавить отделение для учёта рабочего времени', '/admin').destination?.path).toBe('/admin/attendance/departments')
+    expect(action('как добавить отделение', '/admin/attendance/employees').destination?.path).toBe('/admin/attendance/departments')
+    expect(action('как добавить отделение для тв', '/admin/attendance/departments').destination?.path).toBe('/admin/signage')
+    expect(getAssistantActionById('attendance.departments', '/admin', 'org_admin')?.destination?.path).toBe('/admin/attendance/departments')
+    expect(getAssistantActionById('attendance.departments', '/sa/analytics', 'superadmin')).toBeUndefined()
+  })
 })

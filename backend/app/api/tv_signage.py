@@ -11,7 +11,6 @@ from app.config import settings
 from app.db import get_db
 from app.media import TV_MEDIA_CHUNK_BYTES
 from app.models.department import Department, DepartmentScheduleItem
-from app.models.attendance import Employee
 from app.models.enums import AuditActorType
 from app.models.organization import Organization
 from app.models.tv_media import TVMedia, TVMediaChunk
@@ -154,9 +153,6 @@ async def delete_department(
     actor: User = Depends(current_admin), org_id: uuid.UUID = Depends(current_organization_id),
 ):
     department = await _department(db, department_id, org_id)
-    if await db.scalar(select(Employee.id).where(Employee.department_id == department.id, Employee.deleted_at.is_(None)).limit(1)):
-        raise HTTPException(status_code=409, detail={"code": "department_has_employees"})
-    await db.execute(update(Employee).where(Employee.department_id == department.id).values(department_id=None))
     await db.execute(delete(DepartmentScheduleItem).where(DepartmentScheduleItem.department_id == department.id))
     await db.delete(department)
     await _audit(db, actor, org_id, "department.deleted", "department", department_id,

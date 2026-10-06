@@ -11,7 +11,7 @@ from app.models.tv_screen import TVScreen
 from app.models.tv_media import TVMedia, TVMediaChunk
 from app.models.user import User
 from app.models.user_profile_photo import UserProfilePhoto
-from app.models.attendance import Employee, EmployeeCalendarDay, EmployeeWorkSchedule, AttendanceEvent, AttendanceKiosk
+from app.models.attendance import AttendanceDepartment, Employee, EmployeeCalendarDay, EmployeeWorkSchedule, AttendanceEvent, AttendanceKiosk
 
 __all__ = [
     "Base",
@@ -33,6 +33,7 @@ __all__ = [
     "TVMediaChunk",
     "AuditLog",
     "Employee",
+    "AttendanceDepartment",
     "EmployeeCalendarDay",
     "EmployeeWorkSchedule",
     "AttendanceEvent",

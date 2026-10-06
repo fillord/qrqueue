@@ -64,6 +64,7 @@ export function getAssistantTour(path: string, role: UserRole): AssistantTourSte
     pageStep('[data-assistant-tour="departments"]', 'signage', 'departments'),
     pageStep('[data-assistant-tour="media"]', 'signage', 'media'),
   ]
+  if (path === '/admin/attendance/departments') return [{ selector: '#attendance-departments', titleKey: 'attendanceDirectory.title', bodyKey: 'attendanceDirectory.subtitle' }]
   if (path.startsWith('/admin/attendance')) return [
     pageStep('.attendance-admin__create', 'attendance', 'attendanceEmployees'),
     pageStep('#attendance-events', 'attendance', 'attendanceEvents'),

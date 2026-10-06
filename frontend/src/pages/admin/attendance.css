@@ -1,4 +1,14 @@
 .attendance-admin { max-width: 1440px; margin: 0 auto; }
+.attendance-department-form { display: flex; align-items: end; gap: 14px; width: 100%; margin: 18px 0; flex-wrap: wrap; }
+.attendance-department-form > label { flex: 1 1 240px; }
+.attendance-directory-toggle { display: flex !important; align-items: center; gap: 10px !important; }
+.attendance-admin .attendance-directory-toggle input { width: 20px; height: 20px; }
+.attendance-department strong { overflow-wrap: anywhere; }
+.attendance-department > form { margin: 0; }
+@media (max-width: 600px) {
+  .attendance-department { align-items: stretch; flex-direction: column; gap: 12px; }
+  .attendance-department .attendance-person__actions { justify-content: flex-start; }
+}
 .workforce-table { width: max-content; min-width: 100%; font-size: .86rem; }
 .workforce-table th small { display: block; font-weight: 400; }
 .workforce-table th:first-child { position: sticky; left: 0; z-index: 1; background: #f0f6f1; min-width: 160px; }

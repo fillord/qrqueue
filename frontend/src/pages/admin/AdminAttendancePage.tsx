@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { Link } from 'react-router-dom'
 import { attendanceApi, importEmployeeFile, pendingFacePhoto } from '../../api/attendance'
-import type { AttendanceEvent, AttendanceKiosk, AttendanceReport, AttendanceReportRow, AttendanceSettings, AttendanceStats, Employee, EmployeeImportResult, WorkScheduleDay } from '../../api/attendance'
-import { listDepartments } from '../../api/signage'
-import type { Department } from '../../api/signage'
+import type { AttendanceDepartment, AttendanceEvent, AttendanceKiosk, AttendanceReport, AttendanceReportRow, AttendanceSettings, AttendanceStats, Employee, EmployeeImportResult, WorkScheduleDay } from '../../api/attendance'
 import { useAttendanceCamera } from '../../hooks/useAttendanceCamera'
 import { ApiError } from '../../api/client'
 import { getAttendanceLocation } from '../../lib/attendanceLocation'
@@ -99,7 +97,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
   const [events, setEvents] = useState<AttendanceEvent[]>([])
   const [day, setDay] = useState(new Date().toLocaleDateString('sv-SE'))
   const [name, setName] = useState('')
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [departments, setDepartments] = useState<AttendanceDepartment[]>([])
   const [departmentId, setDepartmentId] = useState('')
   const [position, setPosition] = useState('')
   const [newSchedule, setNewSchedule] = useState<WorkScheduleDay[]>(DEFAULT_SCHEDULE)
@@ -165,7 +163,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
 
   async function load() {
     const [people, marks, summary, options, currentSettings, currentKiosks, currentReport] = await Promise.all([
-      attendanceApi.employees(), attendanceApi.events(day), attendanceApi.stats(), listDepartments(), attendanceApi.settings(), attendanceApi.kiosks(),
+      attendanceApi.employees(), attendanceApi.events(day), attendanceApi.stats(), attendanceApi.departments(), attendanceApi.settings(), attendanceApi.kiosks(),
       section === 'summary' ? attendanceApi.report(reportFrom, reportTo, reportDepartment || undefined) : Promise.resolve(null),
     ])
     setEmployees(people)
@@ -310,7 +308,8 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
         <fieldset className="attendance-admin__schedule-fieldset"><legend>Рабочий график</legend><p>Отметьте рабочие дни и укажите, когда сотрудник должен приходить и уходить.</p><ScheduleEditor value={newSchedule} onChange={setNewSchedule} disabled={busy} /></fieldset>
         <button disabled={busy || !departmentId || newSchedule.length === 0 || newSchedule.some((item) => item.starts_at >= item.ends_at)}>Добавить сотрудника</button>
       </form>
-      {departments.length === 0 && <p className="attendance-empty">Нет действующих отделений. Создайте отделение в разделе «ТВ и расписание».</p>}
+      <p>{i18n.t('attendanceDirectory.employeeHint')} <Link to="/admin/attendance/departments">{i18n.t('attendanceDirectory.manage')}</Link></p>
+      {departments.length === 0 && <p className="attendance-empty">{i18n.t('attendanceDirectory.emptyEmployees')}</p>}
       <details className="attendance-admin__import"><summary>Импорт сотрудников из Excel</summary><p>Скачайте шаблон. Столбцы: ФИО, Отделение, Должность. Названия отделений должны совпадать с существующими. При ошибке ни одна строка не будет добавлена.</p><a href="/api/attendance/admin/employees/template" download>Скачать шаблон Excel</a><form onSubmit={(event) => void importEmployees(event)}><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} aria-label="Excel-файл сотрудников" /><button disabled={busy || !importFile}>Импортировать</button></form></details>
       {importResult && <div className="attendance-admin__import-result" role="status"><strong>Добавлено сотрудников: {importResult.count}</strong><p>Скачайте коды сейчас и передайте каждому сотруднику лично. После закрытия страницы коды больше не показываются.</p><button type="button" onClick={downloadCodes}>Скачать список кодов</button><button type="button" onClick={() => setImportResult(null)}>Закрыть</button></div>}
       <div className="attendance-admin__filters"><label>Поиск<input type="search" placeholder="Имя или должность" value={search} onChange={(event) => setSearch(event.target.value)} /></label><label>Отделение<select value={filterDepartment} onChange={(event) => setFilterDepartment(event.target.value)}><option value="">Все отделения</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><span>Показано: {visibleEmployees.length} из {employees.length}</span></div>

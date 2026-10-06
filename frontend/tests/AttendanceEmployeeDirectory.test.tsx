@@ -23,6 +23,15 @@ beforeEach(async () => {
 })
 afterEach(cleanup)
 
+it('does not show the obsolete TV setup paragraph above the employee form', async () => {
+  render(<MemoryRouter><AdminAttendancePage section="employees" /></MemoryRouter>)
+  await screen.findAllByRole('option', { name: 'Кадровое отделение' })
+  expect(screen.queryByRole('link', { name: '«ТВ и расписание»' })).toBeNull()
+  expect(screen.queryByText(/Сначала создайте отделения в разделе/)).toBeNull()
+  expect(screen.queryByText(/Лицо можно зарегистрировать здесь или через отдельный QR/)).toBeNull()
+  expect(screen.getByRole('link', { name: 'Управление отделениями' }).getAttribute('href')).toBe('/admin/attendance/departments')
+})
+
 it('creates an attendance employee without querying TV schedules or doctors', async () => {
   render(<MemoryRouter><AdminAttendancePage section="employees" /></MemoryRouter>)
   await screen.findAllByRole('option', { name: 'Кадровое отделение' })

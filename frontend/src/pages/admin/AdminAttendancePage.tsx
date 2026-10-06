@@ -300,7 +300,7 @@ export default function AdminAttendancePage({ section }: { section: 'summary' | 
 
     {section === 'employees' && <>
     <section id="attendance-employees" className="attendance-admin__section">
-      <div><h2>Сотрудники</h2><p>Сначала создайте отделения в разделе <Link to="/admin/signage">«ТВ и расписание»</Link>, затем добавьте сотрудников. Лицо можно зарегистрировать здесь или через отдельный QR.</p></div>
+      <div><h2>Сотрудники</h2></div>
       <form className="attendance-admin__create" onSubmit={(event) => void create(event)}>
         <label>Имя и фамилия<input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={200} required placeholder="Например, Айгуль Садыкова" /></label>
         <label>Отделение<select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} required><option value="">Выберите отделение</option>{departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

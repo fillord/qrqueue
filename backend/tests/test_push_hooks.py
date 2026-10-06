@@ -150,7 +150,7 @@ async def test_call_next_still_succeeds_when_push_delivery_raises(
     assert resp.json()["status"] == "called"
 
 
-async def test_first_three_notified_exactly_once_not_on_every_recompute(
+async def test_three_people_ahead_notified_exactly_once_not_on_every_recompute(
     db_session, make_organization, monkeypatch
 ):
     _configure_vapid(monkeypatch)
@@ -158,11 +158,11 @@ async def test_first_three_notified_exactly_once_not_on_every_recompute(
     queue = await _make_queue(db_session, org)
 
     clients = [
-        await _make_subscribed_client(db_session, f"https://push.example.com/pos-{i}") for i in range(4)
+        await _make_subscribed_client(db_session, f"https://push.example.com/pos-{i}") for i in range(5)
     ]
     tickets = [
         await _make_waiting_ticket(db_session, org, queue, number=i + 1, client=clients[i])
-        for i in range(4)
+        for i in range(5)
     ]
     third_ticket = tickets[2]
 
@@ -170,18 +170,19 @@ async def test_first_three_notified_exactly_once_not_on_every_recompute(
     monkeypatch.setattr(notifications, "webpush", lambda **kw: calls.append(kw))
 
     await tickets_service._notify_approaching_position(db_session, queue)
-    assert len(calls) == 3
-    assert {p["ticket_id"] for p in _payloads(calls)} == {str(t.id) for t in tickets[:3]}
+    assert len(calls) == 4
+    assert {p["ticket_id"] for p in _payloads(calls)} == {str(t.id) for t in tickets[:4]}
+    assert _payloads(calls)[3]["body"] == "Перед вами 3 человека. Будьте рядом."
 
     await db_session.refresh(third_ticket)
     assert third_ticket.position_notified is True
 
     # Recomputing again with no change in the queue must not re-notify.
     await tickets_service._notify_approaching_position(db_session, queue)
-    assert len(calls) == 3
+    assert len(calls) == 4
 
 
-async def test_call_next_notifies_new_position_three_ticket_each_time_without_duplicates(
+async def test_call_next_notifies_new_position_four_ticket_each_time_without_duplicates(
     client, db_session, make_user, make_organization, monkeypatch
 ):
     _configure_vapid(monkeypatch)
@@ -194,9 +195,9 @@ async def test_call_next_notifies_new_position_three_ticket_each_time_without_du
     await _assign_operator(db_session, cabinet, operator)
 
     clients = [
-        await _make_subscribed_client(db_session, f"https://push.example.com/cn-{i}") for i in range(5)
+        await _make_subscribed_client(db_session, f"https://push.example.com/cn-{i}") for i in range(6)
     ]
-    for i in range(5):
+    for i in range(6):
         await _make_waiting_ticket(db_session, org, queue, number=i + 1, client=clients[i])
 
     calls = []
@@ -209,13 +210,13 @@ async def test_call_next_notifies_new_position_three_ticket_each_time_without_du
     await client.post(f"/api/operator/cabinets/{cabinet.id}/select")
 
     # Ticket 1 called (its own "you're called" push) -> waiting becomes
-    # [2,3,4,5]: notify all first three, each once.
+    # [2,3,4,5,6]: notify the first four (0..3 people ahead), each once.
     await client.post("/api/operator/call-next")
-    assert len(approaching_titles()) == 3
+    assert len(approaching_titles()) == 4
     first_approaching = approaching_titles()[0]
 
-    # Free the cabinet, call again: ticket 2 called -> waiting is [3,4,5],
-    # position 3 is ticket 5: one more "approaching" push, but ticket 4
+    # Free the cabinet, call again: ticket 2 called -> waiting is [3,4,5,6],
+    # position 4 is ticket 6: one more "approaching" push, but ticket 4
     # (already notified above) must not be pushed again even though it
     # shifted position in the meantime.
     result = await db_session.execute(
@@ -226,9 +227,9 @@ async def test_call_next_notifies_new_position_three_ticket_each_time_without_du
     await client.post(f"/api/operator/tickets/{current.id}/finish")
     await client.post("/api/operator/call-next")
 
-    assert len(approaching_titles()) == 4
+    assert len(approaching_titles()) == 5
     assert approaching_titles()[0] == first_approaching  # unchanged, not repeated
-    assert approaching_titles()[3] != first_approaching  # a different ticket this time
+    assert approaching_titles()[4] != first_approaching  # a different ticket this time
 
 
 async def test_missed_call_push_uses_client_language(db_session, make_organization, monkeypatch):

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { confirmTicket, getMyTickets, leaveTicket } from '../../api/public'
 import type { TicketDetail } from '../../api/types'
 import PushOptInBanner from '../../components/PushOptInBanner'
+import TelegramTicketBanner from '../../components/TelegramTicketBanner'
 import RatingForm from '../../components/RatingForm'
 import { useTicket } from '../../hooks/useTicket'
 import { forgetTicketId, rememberTicketId } from '../../lib/ticketStorage'
@@ -142,6 +143,7 @@ export default function TicketPage() {
       )}
 
       {canLeave && <PushOptInBanner />}
+      {canLeave && id && <TelegramTicketBanner ticketId={id} />}
       </div>
     </div>
   )

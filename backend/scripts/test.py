@@ -34,6 +34,9 @@ def main() -> int:
     try:
         env = dict(os.environ)
         env['RATE_LIMIT_ENABLED'] = 'false'  # limit tests enable it explicitly
+        # Never contact a live bot with synthetic clients during a test run.
+        env['TELEGRAM_BOT_TOKEN'] = ''
+        env['TELEGRAM_BOT_USERNAME'] = ''
         env['DATABASE_URL'] = make_url(settings.database_url).set(database=database).render_as_string(hide_password=False)
         root = Path(__file__).resolve().parents[1]
         migration = subprocess.run([sys.executable, '-m', 'alembic', 'upgrade', 'head'], cwd=root, env=env)

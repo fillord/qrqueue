@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text, func
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,7 @@ class Client(UUIDPkMixin, Base):
         nullable=True,
     )
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 
 
 class PushSubscription(UUIDPkMixin, Base):

@@ -16,6 +16,7 @@ import AdminQueuesPage from '../pages/admin/AdminQueuesPage'
 import AdminTvScreensPage from '../pages/admin/AdminTvScreensPage'
 import AdminUsersPage from '../pages/admin/AdminUsersPage'
 import AdminAttendancePage from '../pages/admin/AdminAttendancePage'
+import AdminWorkforcePage from '../pages/admin/AdminWorkforcePage'
 import AttendanceKioskPage from '../pages/attendance/AttendanceKioskPage'
 import AttendancePhonePage from '../pages/attendance/AttendancePhonePage'
 import AttendanceEnrollPage from '../pages/attendance/AttendanceEnrollPage'
@@ -104,6 +105,8 @@ export default function AppRouter() {
           <Route path="attendance/employees" element={<AdminAttendancePage section="employees" />} />
           <Route path="attendance/events" element={<AdminAttendancePage section="events" />} />
           <Route path="attendance/settings" element={<AdminAttendancePage section="settings" />} />
+          <Route path="attendance/calendar" element={<AdminWorkforcePage mode="calendar" />} />
+          <Route path="attendance/timesheet" element={<AdminWorkforcePage mode="timesheet" />} />
           <Route path="tv-screens" element={<AdminTvScreensPage />} />
           <Route path="signage" element={<Suspense fallback={<div className="spinner" aria-hidden="true" />}><AdminSignagePage /></Suspense>} />
         </Route>

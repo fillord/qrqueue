@@ -16,6 +16,8 @@ from app.api.registrar import router as registrar_router
 from app.api.superadmin import router as superadmin_router
 from app.api.tv import router as tv_router
 from app.api.tv_signage import router as tv_signage_router
+from app.api.workforce import router as workforce_router
+from app.api.telegram import router as telegram_router
 from app.config import settings
 from app.db import async_session_factory
 from app.models.enums import UserRole
@@ -83,6 +85,11 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(_timeout_worker_loop()),
         asyncio.create_task(_schedule_worker_loop()),
     ]
+    from app.services.telegram import enabled as telegram_enabled
+    if telegram_enabled():
+        from app.workers.telegram import polling_loop, reminder_loop
+        worker_tasks.extend([asyncio.create_task(polling_loop(redis_client)),
+                             asyncio.create_task(reminder_loop(redis_client))])
     try:
         yield
     finally:
@@ -105,6 +112,8 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
 app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(attendance_router, prefix="/api")
+app.include_router(workforce_router, prefix="/api")
+app.include_router(telegram_router, prefix="/api")
 app.include_router(assistant_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
 app.include_router(public_router, prefix="/api")

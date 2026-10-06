@@ -44,6 +44,8 @@ async def send_push(db: AsyncSession, subscription: PushSubscription, payload: d
 
 
 async def notify_client(db: AsyncSession, client_id: uuid.UUID, payload: dict) -> None:
+    from app.services.telegram import notify_ticket
+    await notify_ticket(db, client_id, payload)
     result = await db.execute(select(PushSubscription).where(PushSubscription.client_id == client_id))
     for subscription in result.scalars().all():
         await send_push(db, subscription, payload)
@@ -83,27 +85,28 @@ async def unsubscribe(db: AsyncSession, client: Client, endpoint: str) -> None:
 _MESSAGES = {
     "ru": {
         "called": ("Вас вызывают — {number}", "Подойдите к {cabinet}."),
-        "approaching": ("Скоро ваша очередь — {number}", "Вы в числе первых трёх — будьте рядом."),
+        "approaching": ("Скоро ваша очередь — {number}", "Перед вами {ahead} {people}. Будьте рядом."),
         "missed": ("Вызов пропущен — {number}", "Обратитесь к сотруднику, чтобы вернуться в очередь."),
         "desk": "окну приёма",
     },
     "kk": {
         "called": ("Сізді шақырады — {number}", "{cabinet} келіңіз."),
-        "approaching": ("Кезегіңіз жақындады — {number}", "Сіз алғашқы үштіктесіз — жақын жерде болыңыз."),
+        "approaching": ("Кезегіңіз жақындады — {number}", "Алдыңызда {ahead} адам бар. Жақын жерде болыңыз."),
         "missed": ("Шақыру өткізіліп алынды — {number}", "Кезекке оралу үшін қызметкерге хабарласыңыз."),
         "desk": "қабылдау терезесіне",
     },
     "en": {
         "called": ("Your turn — {number}", "Please go to {cabinet}."),
-        "approaching": ("Your turn is approaching — {number}", "You are among the first three — please stay nearby."),
+        "approaching": ("Your turn is approaching — {number}", "There are {ahead} people ahead of you. Please stay nearby."),
         "missed": ("Missed call — {number}", "Contact a staff member to return to the queue."),
         "desk": "the service desk",
     },
 }
 
 
-def ticket_message(language, kind, ticket, cabinet=None):
+def ticket_message(language, kind, ticket, cabinet=None, *, ahead=3):
     messages = _MESSAGES.get(language, _MESSAGES["ru"])
     title, body = messages[kind]
-    values = {"number": ticket.display_number, "cabinet": cabinet or messages["desk"]}
+    people = "человек" if ahead % 10 == 1 and ahead % 100 != 11 else "человека" if ahead % 10 in (2, 3, 4) and ahead % 100 not in (12, 13, 14) else "человек"
+    values = {"number": ticket.display_number, "cabinet": cabinet or messages["desk"], "ahead": ahead, "people": people}
     return {"title": title.format(**values), "body": body.format(**values), "ticket_id": str(ticket.id)}

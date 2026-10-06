@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import en from './locales/en.json'
 import kk from './locales/kk.json'
 import ru from './locales/ru.json'
+import { workforce } from './locales/workforce'
 
 export const SUPPORTED_LANGUAGES = ['kk', 'ru', 'en'] as const
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
@@ -38,9 +39,9 @@ const initialLanguage = detectLanguage()
 
 void i18n.use(initReactI18next).init({
   resources: {
-    ru: { translation: ru },
-    kk: { translation: kk },
-    en: { translation: en },
+    ru: { translation: { ...ru, workforce: workforce.ru } },
+    kk: { translation: { ...kk, workforce: workforce.kk } },
+    en: { translation: { ...en, workforce: workforce.en } },
   },
   lng: initialLanguage,
   fallbackLng: DEFAULT_LANGUAGE,

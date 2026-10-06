@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import Field
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -53,6 +54,10 @@ class Settings(BaseSettings):
     vapid_public_key: str | None = None
     vapid_private_key: str | None = None
     vapid_subject: str | None = None
+
+    telegram_bot_token: str | None = None
+    telegram_bot_username: str | None = None
+    attendance_late_notify_minutes: int = Field(default=5, ge=1, le=120)
 
     # Optional cloud answers for the in-product navigator. The navigator's
     # built-in page hints work without these values.

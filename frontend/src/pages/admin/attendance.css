@@ -1,4 +1,12 @@
 .attendance-admin { max-width: 1440px; margin: 0 auto; }
+.workforce-table { width: max-content; min-width: 100%; font-size: .86rem; }
+.workforce-table th small { display: block; font-weight: 400; }
+.workforce-table th:first-child { position: sticky; left: 0; z-index: 1; background: #f0f6f1; min-width: 160px; }
+.workforce-table td { min-width: 90px; text-align: center; }
+.workforce-table td button { padding: 6px; font-size: .82rem; white-space: nowrap; }
+.workforce-day--vacation, .workforce-day--sick { background: #edf4ff; }
+.workforce-day--off { background: #f4f6f5; color: #586960; }
+.workforce-day--absence { background: #fff3e3; }
 .registrar-page__attendance-head { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; }
 .registrar-page__attendance-head a { color: #125b3d; font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
 .attendance-admin .admin-page__header { align-items: center; gap: 20px; }

@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, time
+from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, LargeBinary, String, Text, Time, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, LargeBinary, String, Text, Time, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +28,25 @@ class Employee(UUIDPkMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+
+
+class EmployeeCalendarDay(UUIDPkMixin, Base):
+    __tablename__ = "attendance_calendar_days"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "day", name="uq_attendance_calendar_day"),
+        CheckConstraint("kind IN ('shift','off','vacation','sick','absence')", name="ck_attendance_calendar_kind"),
+        CheckConstraint("(kind = 'shift' AND starts_at IS NOT NULL AND ends_at IS NOT NULL AND starts_at < ends_at) OR (kind <> 'shift' AND starts_at IS NULL AND ends_at IS NULL)", name="ck_attendance_calendar_time"),
+    )
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True)
+    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("attendance_employees.id"), nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    starts_at: Mapped[time | None] = mapped_column(Time, nullable=True)
+    ends_at: Mapped[time | None] = mapped_column(Time, nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class EmployeeWorkSchedule(UUIDPkMixin, Base):

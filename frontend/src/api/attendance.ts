@@ -21,9 +21,11 @@ export interface Employee {
   pending_face_submitted_at: string | null
   deleted_at: string | null
   schedule: WorkScheduleDay[]
+  telegram_connected?: boolean
 }
 
-export type AttendanceReportStatus = 'planned' | 'in_progress' | 'completed' | 'late' | 'early_leave' | 'late_early' | 'absent' | 'incomplete'
+export type CalendarKind = 'shift' | 'off' | 'vacation' | 'sick' | 'absence'
+export type AttendanceReportStatus = 'planned' | 'in_progress' | 'completed' | 'late' | 'early_leave' | 'late_early' | 'absent' | 'incomplete' | Exclude<CalendarKind, 'shift'>
 
 export interface AttendanceReportRow {
   date: string
@@ -31,8 +33,14 @@ export interface AttendanceReportRow {
   employee_name: string
   department: string | null
   position: string | null
-  planned_start: string
-  planned_end: string
+  planned_start: string | null
+  planned_end: string | null
+  planned_minutes: number
+  calendar_kind: CalendarKind
+  calendar_id: string | null
+  reason: string | null
+  needs_review: boolean
+  telegram_connected: boolean
   first_in: string | null
   last_out: string | null
   worked_minutes: number | null
@@ -134,6 +142,10 @@ export interface AttendanceEvent {
 }
 
 export const attendanceApi = {
+  calendar: (month: string) => apiGet<AttendanceReport>(`/api/attendance/admin/calendar?month=${encodeURIComponent(month)}`),
+  saveCalendar: (body: { employee_id: string; date_from: string; date_to: string; kind: CalendarKind; starts_at?: string; ends_at?: string; reason: string }) => apiPost<{ days: number }>('/api/attendance/admin/calendar', body),
+  resetCalendar: (id: string, reason: string) => apiPost(`/api/attendance/admin/calendar/${id}/reset`, { reason }),
+  telegram: (id: string) => apiPost<{ url: string; expires_in: number }>(`/api/attendance/admin/employees/${id}/telegram`),
   employees: () => apiGet<Employee[]>('/api/attendance/admin/employees'),
   createEmployee: (body: { full_name: string; department_id: string; position?: string; schedule?: WorkScheduleDay[] }) => apiPost<Employee & { code: string }>('/api/attendance/admin/employees', body),
   updateEmployee: (id: string, body: Partial<Pick<Employee, 'full_name' | 'department_id' | 'position' | 'is_active'>>) => apiPatch<Employee>(`/api/attendance/admin/employees/${id}`, body),

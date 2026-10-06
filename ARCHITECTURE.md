@@ -366,6 +366,16 @@ docker compose exec backend alembic upgrade head
 
 ## 9. Порядок реализации (MVP)
 
+### Дополнение 2026-10-06: рабочий календарь и Telegram
+
+- `attendance_calendar_days`: уникальная пара сотрудник/дата, тип `shift/off/vacation/sick/absence`, время только для смены, основание и автор. Dated-настройка заменяет недельный график. Все записи ограничены организацией и аудируются; фактические отметки не переписываются.
+- `services/workforce.py`: единый расчёт плана, закрытых интервалов работы и отклонений для подробного отчёта, календаря, XLSX и напоминаний. Незакрытые интервалы не дополняются; перерывы не включаются в факт.
+- API администратора: `GET/POST /attendance/admin/calendar`, `POST /attendance/admin/calendar/{id}/reset`, `GET /attendance/admin/timesheet.xlsx`; административные роли, чужая сущность — 404. Период записи до 366 дней, чтение по месяцу.
+- Nullable `telegram_chat_id` в `clients` и `attendance_employees`; API показывает лишь признак подключения. `services/telegram.py` выдаёт одноразовые Redis-ссылки (GETDEL, TTL 600), принимает только личные чаты, проверяет владельца талона. Callback отмены использует существующий `services/tickets.leave`; GET не меняет статус.
+- API подключения: `GET/POST /public/tickets/{id}/telegram` для владельца, `POST /attendance/admin/employees/{id}/telegram` для администратора своей организации. `/stop` отзывает связи чата.
+- `workers/telegram.py`: polling одного выделенного бота, Redis lease и сохранённый offset; напоминания с дедупликацией и повторной попыткой при сбое доставки. В lifespan задачи включаются только при наличии обеих настроек бота. Токен не логируется, секреты остаются в конфигурации. Сообщения ru/kk/en; внешний webhook не требуется.
+- Миграция `e3f5a7b9c1d4` следует за `d2e4f6a8b0c3` и только добавляет таблицу/nullable-поля. Production ещё не обновлён.
+
 1. Модели, миграции, auth с ролями, создание superadmin при старте.
 2. Superadmin: организации и админы. Admin: очереди, кабинеты, операторы.
 3. QR-токены, `POST /public/scan`, страница посетителя с восстановлением по cookie.

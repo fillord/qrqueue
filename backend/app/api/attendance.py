@@ -168,6 +168,7 @@ def employee_view(employee: Employee, department_name: str | None = None,
     return {"id": employee.id, "full_name": employee.full_name, "department": department_name or employee.department,
             "department_id": employee.department_id, "position": employee.position, "code_length": employee.code_length,
             "user_id": employee.user_id, "is_active": employee.is_active,
+            "telegram_connected": employee.telegram_chat_id is not None,
             "face_enrolled": employee.face_template is not None, "face_pending": employee.pending_face_template is not None,
             "face_review_photo_available": employee.pending_face_photo is not None,
             "pending_face_submitted_at": employee.pending_face_submitted_at, "deleted_at": employee.deleted_at,
@@ -562,93 +563,9 @@ async def attendance_stats(db: AsyncSession = Depends(get_db), actor: User = Dep
 async def attendance_report(date_from: date, date_to: date, department_id: uuid.UUID | None = None,
                             db: AsyncSession = Depends(get_db), actor: User = Depends(current_admin),
                             organization_id: uuid.UUID = Depends(current_organization_id)) -> dict:
-    if date_to < date_from or (date_to - date_from).days > 92:
-        raise ServiceError("attendance_report_range_invalid", 422)
+    from app.services.workforce import build_report
     org = await _active_org(db, organization_id)
-    tz = ZoneInfo(org.timezone)
-    employee_query = select(Employee, Department.name).outerjoin(
-        Department, Employee.department_id == Department.id
-    ).where(Employee.organization_id == organization_id, Employee.deleted_at.is_(None), Employee.is_active.is_(True))
-    if department_id is not None:
-        employee_query = employee_query.where(Employee.department_id == department_id)
-    employees = (await db.execute(employee_query.order_by(Employee.full_name))).all()
-    employee_ids = [employee.id for employee, _ in employees]
-    if not employee_ids:
-        return {"timezone": org.timezone, "date_from": date_from, "date_to": date_to,
-                "missing_schedule": 0, "totals": {"scheduled": 0, "completed": 0, "absent": 0,
-                "late": 0, "early_leave": 0, "incomplete": 0, "overtime_minutes": 0}, "rows": []}
-
-    schedules = (await db.scalars(select(EmployeeWorkSchedule).where(
-        EmployeeWorkSchedule.organization_id == organization_id,
-        EmployeeWorkSchedule.employee_id.in_(employee_ids),
-    ))).all()
-    schedule_by_employee: dict[uuid.UUID, dict[int, EmployeeWorkSchedule]] = {}
-    for item in schedules:
-        schedule_by_employee.setdefault(item.employee_id, {})[item.weekday] = item
-
-    range_start = datetime.combine(date_from, time.min, tzinfo=tz).astimezone(timezone.utc)
-    range_end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz).astimezone(timezone.utc)
-    events = (await db.scalars(select(AttendanceEvent).where(
-        AttendanceEvent.organization_id == organization_id,
-        AttendanceEvent.employee_id.in_(employee_ids),
-        AttendanceEvent.occurred_at >= range_start,
-        AttendanceEvent.occurred_at < range_end,
-    ).order_by(AttendanceEvent.occurred_at))).all()
-    events_by_day: dict[tuple[uuid.UUID, date], list[AttendanceEvent]] = {}
-    for event in events:
-        local_day = event.occurred_at.astimezone(tz).date()
-        events_by_day.setdefault((event.employee_id, local_day), []).append(event)
-
-    now = utcnow()
-    report_rows: list[dict] = []
-    totals = {"scheduled": 0, "completed": 0, "absent": 0, "late": 0,
-              "early_leave": 0, "incomplete": 0, "overtime_minutes": 0}
-    current_day = date_from
-    while current_day <= date_to:
-        for employee, department_name in employees:
-            shift = schedule_by_employee.get(employee.id, {}).get(current_day.weekday())
-            if shift is None:
-                continue
-            planned_start = datetime.combine(current_day, shift.starts_at, tzinfo=tz)
-            planned_end = datetime.combine(current_day, shift.ends_at, tzinfo=tz)
-            day_events = events_by_day.get((employee.id, current_day), [])
-            arrivals = [event.occurred_at for event in day_events if event.kind == "in"]
-            departures = [event.occurred_at for event in day_events if event.kind == "out"]
-            first_in = min(arrivals) if arrivals else None
-            last_out = max(departures) if departures else None
-            late_minutes = max(0, int((first_in.astimezone(tz) - planned_start).total_seconds() // 60)) if first_in else 0
-            early_minutes = max(0, int((planned_end - last_out.astimezone(tz)).total_seconds() // 60)) if last_out else 0
-            overtime_minutes = max(0, int((last_out.astimezone(tz) - planned_end).total_seconds() // 60)) if last_out else 0
-            worked_minutes = max(0, int((last_out - first_in).total_seconds() // 60)) if first_in and last_out else None
-            if first_in and last_out:
-                status = "late_early" if late_minutes and early_minutes else "late" if late_minutes else "early_leave" if early_minutes else "completed"
-                totals["completed"] += 1
-            elif first_in or last_out:
-                status = "in_progress" if first_in and not last_out and now < planned_end.astimezone(timezone.utc) else "incomplete"
-                if status == "incomplete":
-                    totals["incomplete"] += 1
-            elif now < planned_end.astimezone(timezone.utc):
-                status = "planned"
-            else:
-                status = "absent"
-                totals["absent"] += 1
-            totals["scheduled"] += 1
-            totals["late"] += int(late_minutes > 0)
-            totals["early_leave"] += int(early_minutes > 0)
-            totals["overtime_minutes"] += overtime_minutes
-            report_rows.append({
-                "date": current_day, "employee_id": employee.id, "employee_name": employee.full_name,
-                "department": department_name or employee.department, "position": employee.position,
-                "planned_start": planned_start, "planned_end": planned_end,
-                "first_in": first_in, "last_out": last_out, "worked_minutes": worked_minutes,
-                "late_minutes": late_minutes, "early_leave_minutes": early_minutes,
-                "overtime_minutes": overtime_minutes, "status": status,
-            })
-        current_day += timedelta(days=1)
-    report_rows.sort(key=lambda item: (-item["date"].toordinal(), item["employee_name"].casefold()))
-    missing_schedule = sum(employee.id not in schedule_by_employee for employee, _ in employees)
-    return {"timezone": org.timezone, "date_from": date_from, "date_to": date_to,
-            "missing_schedule": missing_schedule, "totals": totals, "rows": report_rows}
+    return await build_report(db, org, date_from, date_to, department_id)
 
 
 @router.get("/enroll/context")

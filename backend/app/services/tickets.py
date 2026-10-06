@@ -26,7 +26,7 @@ from app.services.wait_estimate import estimate_wait_seconds
 
 logger = logging.getLogger(__name__)
 
-_APPROACHING_POSITION = 3
+_APPROACHING_POSITION = 4  # Three waiting visitors ahead of the fourth ticket.
 
 _CALLED_LIKE_STATUSES = (TicketStatus.called, TicketStatus.confirmed, TicketStatus.serving)
 _ACTIVE_STATUSES = (
@@ -246,8 +246,9 @@ async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
         select(Ticket).where(Ticket.queue_id == queue.id, Ticket.status == TicketStatus.waiting)
         .order_by(*waiting_order()).limit(_APPROACHING_POSITION)
     )
-    candidates = [ticket for ticket in result.scalars().all() if ticket.client_id and not ticket.position_notified]
-    for ticket in candidates:
+    candidates = [(index, ticket) for index, ticket in enumerate(result.scalars().all())
+                  if ticket.client_id and not ticket.position_notified]
+    for ahead, ticket in candidates:
         # An atomic claim prevents concurrent queue transitions from notifying twice.
         from sqlalchemy import update
         claimed = await db.execute(update(Ticket).where(
@@ -258,7 +259,7 @@ async def _notify_approaching_position(db: AsyncSession, queue: Queue) -> None:
         await db.commit()
         client = await db.get(Client, ticket.client_id)
         if client:
-            await notifications.notify_client(db, client.id, notifications.ticket_message(client.language, "approaching", ticket))
+            await notifications.notify_client(db, client.id, notifications.ticket_message(client.language, "approaching", ticket, ahead=ahead))
 
 
 async def _notify_after_change(db: AsyncSession, ticket: Ticket, kind: str | None = None) -> None:

@@ -9,6 +9,7 @@ import { useAttendanceCamera } from '../../hooks/useAttendanceCamera'
 import { ApiError } from '../../api/client'
 import { getAttendanceLocation } from '../../lib/attendanceLocation'
 import './attendance.css'
+import i18n from '../../app/i18n'
 
 const errorText = (error: unknown) => {
   if (!(error instanceof ApiError)) return 'Не удалось выполнить действие. Попробуйте ещё раз.'
@@ -87,6 +88,10 @@ function timeText(value: string | null, timezoneName: string) {
 const REPORT_STATUS: Record<AttendanceReportRow['status'], string> = {
   planned: 'Запланировано', in_progress: 'На работе', completed: 'По графику', late: 'Опоздание',
   early_leave: 'Ранний уход', late_early: 'Опоздание и ранний уход', absent: 'Отсутствие', incomplete: 'Нет одной отметки',
+  get off() { return i18n.t('workforce.statuses.off') },
+  get vacation() { return i18n.t('workforce.statuses.vacation') },
+  get sick() { return i18n.t('workforce.statuses.sick') },
+  get absence() { return i18n.t('workforce.statuses.absence') },
 }
 
 export default function AdminAttendancePage({ section }: { section: 'summary' | 'employees' | 'events' | 'settings' }) {

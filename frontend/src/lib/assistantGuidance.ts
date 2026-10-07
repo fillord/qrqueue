@@ -13,6 +13,7 @@ export interface AssistantTourStep {
 }
 
 const GUIDE: { match: (path: string) => boolean; value: AssistantGuidance }[] = [
+  { match: (p) => p === '/admin/queue-kiosks', value: { titleKey: 'queueKiosk.title', hintKey: 'queueKiosk.subtitle', promptKey: 'queueKiosk.pairHint' } },
   { match: (p) => p === '/profile', value: { titleKey: 'assistant.pages.profile.title', hintKey: 'assistant.pages.profile.hint', promptKey: 'assistant.pages.profile.prompt' } },
   { match: (p) => p === '/admin/problems', value: { titleKey: 'assistant.pages.problems.title', hintKey: 'assistant.pages.problems.hint', promptKey: 'assistant.pages.problems.prompt' } },
   { match: (p) => p === '/admin/tv-screens', value: { titleKey: 'assistant.pages.tv.title', hintKey: 'assistant.pages.tv.hint', promptKey: 'assistant.pages.tv.prompt' } },
@@ -49,6 +50,7 @@ const pageStep = (selector: string, page: string, action: string): AssistantTour
 })
 
 export function getAssistantTour(path: string, role: UserRole): AssistantTourStep[] {
+  if (path === '/admin/queue-kiosks') return [{ selector: '.queue-kiosk-admin__form', titleKey: 'queueKiosk.title', bodyKey: 'queueKiosk.pairHint' }]
   if (path === '/profile') return [
     pageStep('.profile-card[data-profile-section="personal"]', 'profile', 'profilePersonal'),
     pageStep('.profile-card[data-profile-section="security"]', 'profile', 'profileSecurity'),

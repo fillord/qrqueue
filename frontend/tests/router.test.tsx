@@ -12,7 +12,7 @@ beforeEach(async () => {
   vi.mocked(useAuth).mockReturnValue({ status: 'anonymous', user: null, login: vi.fn(), completeTotp: vi.fn(), logout: vi.fn() })
 })
 function Location() { const value = useLocation(); return <output data-testid="location">{value.pathname}</output> }
-it.each(['/admin/users', '/admin/attendance/departments', '/sa/trial-requests', '/operator/queue', '/registrar'])('protects %s after the router upgrade', async (path) => {
+it.each(['/admin/users', '/admin/attendance/departments', '/admin/queue-kiosks', '/sa/trial-requests', '/operator/queue', '/registrar'])('protects %s after the router upgrade', async (path) => {
   render(<MemoryRouter initialEntries={[path]}><AppRouter /><Location /></MemoryRouter>)
   await screen.findByRole('button', { name: i18n.t('login.submit') })
   expect(screen.getByTestId('location').textContent).toBe('/login')

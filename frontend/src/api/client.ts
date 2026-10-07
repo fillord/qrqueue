@@ -59,7 +59,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const { code, ticketId, row, lastKind, retryAt, employeeName } = await parseErrorDetail(response)
-    if (response.status === 401) {
+    if (response.status === 401 && !new Headers(init?.headers).has('X-Queue-Kiosk-Token')) {
       window.dispatchEvent(new Event('api:unauthorized'))
     }
     throw new ApiError(response.status, code, ticketId, row, { lastKind, retryAt, employeeName })
@@ -71,15 +71,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-export function apiGet<T>(path: string, headers?: HeadersInit): Promise<T> {
-  return request<T>(path, { headers })
+export function apiGet<T>(path: string, headers?: HeadersInit, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, { headers, signal })
 }
 
-export function apiPost<T>(path: string, body?: unknown, headers?: HeadersInit): Promise<T> {
+export function apiPost<T>(path: string, body?: unknown, headers?: HeadersInit, signal?: AbortSignal): Promise<T> {
   return request<T>(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
     headers,
+    signal,
   })
 }
 

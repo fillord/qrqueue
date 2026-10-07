@@ -41,6 +41,8 @@ import Layout from './Layout'
 import ProtectedRoute from './ProtectedRoute'
 
 const AdminSignagePage = lazy(() => import('../pages/admin/AdminSignagePage'))
+const AdminQueueKiosksPage = lazy(() => import('../pages/admin/AdminQueueKiosksPage'))
+const QueueKioskPage = lazy(() => import('../pages/kiosk/QueueKioskPage'))
 
 export default function AppRouter() {
   return (
@@ -50,6 +52,7 @@ export default function AppRouter() {
       <Route path="/tv" element={<TvPage />} />
       <Route path="/tv/preview/:id" element={<ProtectedRoute role={['org_admin', 'superadmin']}><TvPreviewPage /></ProtectedRoute>} />
       <Route path="/attendance/kiosk" element={<AttendanceKioskPage />} />
+      <Route path="/kiosk" element={<Suspense fallback={<div className="spinner" />}><QueueKioskPage /></Suspense>} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
@@ -99,6 +102,7 @@ export default function AppRouter() {
           <Route path="audit-logs" element={<AdminAuditLogPage />} />
           <Route path="organization" element={<AdminOrganizationPage />} />
           <Route path="queues" element={<AdminQueuesPage />} />
+          <Route path="queue-kiosks" element={<Suspense fallback={<div className="spinner" />}><AdminQueueKiosksPage /></Suspense>} />
           <Route path="queues/:id/schedule" element={<AdminQueueSchedulePage />} />
           <Route path="cabinets" element={<AdminCabinetsPage />} />
           <Route path="users" element={<AdminUsersPage />} />

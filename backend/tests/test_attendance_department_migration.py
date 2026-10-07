@@ -66,7 +66,7 @@ async def test_separation_migration_preserves_staff_history_and_never_seeds_unus
         before_people = {row['id']: dict(row) for row in await connection.fetch('SELECT * FROM attendance_employees')}
         preserved_tables = ['departments', 'attendance_events', 'attendance_employee_schedules', 'attendance_calendar_days']
         before_tables = {table: [dict(row) for row in await connection.fetch(f'SELECT * FROM {table} ORDER BY id')] for table in preserved_tables}
-        await migrate(new_url, 'head')
+        await migrate(new_url, 'f4a6b8c0d2e5')
         own = await connection.fetch('SELECT * FROM attendance_departments')
         assert len(own) == 3  # Two organizations' Clinic, plus the legacy Old HR.
         assert not any(row['name'] == 'TV only' for row in own)

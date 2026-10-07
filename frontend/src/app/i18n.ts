@@ -6,6 +6,7 @@ import kk from './locales/kk.json'
 import ru from './locales/ru.json'
 import { workforce } from './locales/workforce'
 import { attendanceDirectory } from './locales/attendanceDirectory'
+import { queueKiosk } from './locales/queueKiosk'
 
 export const SUPPORTED_LANGUAGES = ['kk', 'ru', 'en'] as const
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
@@ -40,9 +41,9 @@ const initialLanguage = detectLanguage()
 
 void i18n.use(initReactI18next).init({
   resources: {
-    ru: { translation: { ...ru, workforce: workforce.ru, attendanceDirectory: attendanceDirectory.ru } },
-    kk: { translation: { ...kk, workforce: workforce.kk, attendanceDirectory: attendanceDirectory.kk } },
-    en: { translation: { ...en, workforce: workforce.en, attendanceDirectory: attendanceDirectory.en } },
+    ru: { translation: { ...ru, workforce: workforce.ru, attendanceDirectory: attendanceDirectory.ru, queueKiosk: queueKiosk.ru } },
+    kk: { translation: { ...kk, workforce: workforce.kk, attendanceDirectory: attendanceDirectory.kk, queueKiosk: queueKiosk.kk } },
+    en: { translation: { ...en, workforce: workforce.en, attendanceDirectory: attendanceDirectory.en, queueKiosk: queueKiosk.en } },
   },
   lng: initialLanguage,
   fallbackLng: DEFAULT_LANGUAGE,

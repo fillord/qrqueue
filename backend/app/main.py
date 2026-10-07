@@ -9,6 +9,7 @@ from sqlalchemy import select, text
 from app.api.admin import router as admin_router
 from app.api.attendance import router as attendance_router
 from app.api.attendance_departments import router as attendance_departments_router
+from app.api.queue_kiosk import router as queue_kiosk_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.operator import router as operator_router
@@ -114,6 +115,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(attendance_router, prefix="/api")
 app.include_router(attendance_departments_router, prefix="/api")
+app.include_router(queue_kiosk_router, prefix="/api")
 app.include_router(workforce_router, prefix="/api")
 app.include_router(telegram_router, prefix="/api")
 app.include_router(assistant_router, prefix="/api")

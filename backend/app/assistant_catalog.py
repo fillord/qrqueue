@@ -19,6 +19,7 @@ ALL_STAFF = ("superadmin", "org_admin", "operator", "registrar")
 # Russian interface. Routes and action ids are stable machine-readable anchors;
 # the model must select one of them instead of inventing a destination.
 CAPABILITIES: tuple[AssistantCapability, ...] = (
+    AssistantCapability("queue.kiosks", ("org_admin",), "/admin/queue-kiosks", "Стойки выдачи талонов", "Добавить стойку, выбрать очереди, при необходимости включить печать 58/80 мм. Открыть /kiosk на устройстве и ввести одноразовый код; посетитель нажимает пробел или кнопку, выбирает услугу и получает номер. Повторная печать не создаёт новый талон. Это отдельная стойка посетителей, не учёт рабочего времени."),
     AssistantCapability("profile.personal", ALL_STAFF, "/profile", "Настройки профиля — личные данные", "Нажать имя или фото справа сверху; изменить имя или фотографию; сохранить. Email здесь не меняется."),
     AssistantCapability("profile.password", ALL_STAFF, "/profile", "Настройки профиля — пароль", "Нажать имя или фото справа сверху; в блоке «Пароль и безопасность» ввести текущий и новый пароль; сохранить."),
     AssistantCapability("profile.assistant", ALL_STAFF, "/profile", "Настройки профиля — помощник", "Нажать имя или фото справа сверху; в блоке помощника отдельно включить питомца и ответы ИИ."),

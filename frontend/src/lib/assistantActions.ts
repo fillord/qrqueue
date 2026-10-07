@@ -35,6 +35,7 @@ type CatalogAction = {
 
 const PROFILE_NAV = '.app-header__profile'
 const CATALOG_ACTIONS: Record<string, CatalogAction> = {
+  'queue.kiosks': { roles: ['org_admin'], path: '/admin/queue-kiosks', nav: '[href="/admin/queue-kiosks"]', title: 'queueKiosk.title', body: 'queueKiosk.subtitle', selector: '.queue-kiosk-admin__form' },
   'profile.personal': { roles: ['superadmin', 'org_admin', 'operator', 'registrar'], path: '/profile', nav: PROFILE_NAV, title: 'assistant.pages.profile.title', body: 'assistant.tour.actions.profilePersonal', selector: '.profile-card[data-profile-section="personal"]' },
   'profile.password': { roles: ['superadmin', 'org_admin', 'operator', 'registrar'], path: '/profile', nav: PROFILE_NAV, title: 'profile.security', body: 'assistant.tour.actions.profileSecurity', selector: '.profile-card[data-profile-section="security"]' },
   'profile.assistant': { roles: ['superadmin', 'org_admin', 'operator', 'registrar'], path: '/profile', nav: PROFILE_NAV, title: 'assistant.pages.profile.title', body: 'assistant.tour.actions.profileSettings', selector: '.profile-card--assistant' },
@@ -124,6 +125,9 @@ export function getAssistantAction(message: string, path: string, role: UserRole
   }
 
   if (role === 'org_admin') {
+    if (has(text, 'терминал', 'ticket kiosk', 'талон басып') || (has(text, 'стойк', 'печать', 'распечат') && has(text, 'талон', 'очеред', 'ticket'))) {
+      return sectionAction('/admin/queue-kiosks', path, '[href="/admin/queue-kiosks"]', 'queueKiosk.title', 'queueKiosk.subtitle', '.queue-kiosk-admin__form')
+    }
     if ((has(text, 'организац', 'ұйым', 'organization') && has(text, 'настрой', 'назван', 'логотип', 'цвет', 'язык', 'часов', 'setting', 'name', 'logo', 'баптау')) || has(text, 'бренд')) {
       return sectionAction('/admin/organization', path, '[href="/admin/organization"]', 'assistant.pages.organizationSettings.title', 'assistant.tour.actions.organizationSettings', '.admin-organization__form')
     }

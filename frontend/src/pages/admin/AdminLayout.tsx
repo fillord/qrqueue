@@ -27,13 +27,14 @@ export default function AdminLayout() {
             <NavLink to="/admin/attendance/settings" className={linkClass}>{t('admin.nav.attendanceSettings')}</NavLink>
           </div>
         </details>
-        <details className="admin-layout__nav-group" open={pathname === '/admin' || /^\/admin\/(problems|queues|cabinets|users)(\/|$)/.test(pathname)}>
+        <details className="admin-layout__nav-group" open={pathname === '/admin' || /^\/admin\/(problems|queues|queue-kiosks|cabinets|users)(\/|$)/.test(pathname)}>
           <summary className="admin-layout__nav-heading">{t('admin.nav.groups.work')}</summary>
           <div className="admin-layout__nav-items">
           <NavLink to="/admin/problems" className={linkClass}>{t('admin.nav.problems')}</NavLink>
           <NavLink to="/admin/queues" className={linkClass}>
             {t('admin.nav.queues')}
           </NavLink>
+          <NavLink to="/admin/queue-kiosks" className={linkClass}>{t('queueKiosk.title')}</NavLink>
           <NavLink to="/admin/cabinets" className={linkClass}>
             {t('admin.nav.cabinets')}
           </NavLink>

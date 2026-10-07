@@ -48,6 +48,7 @@ class TicketSource(str, enum.Enum):
     qr = "qr"
     registrar = "registrar"
     transfer = "transfer"
+    kiosk = "kiosk"
 
 
 class AuditActorType(str, enum.Enum):

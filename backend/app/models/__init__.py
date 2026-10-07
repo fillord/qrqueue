@@ -7,6 +7,7 @@ from app.models.client import Client, PushSubscription
 from app.models.organization import Organization
 from app.models.queue import Queue, QueueSchedule
 from app.models.ticket import Ticket
+from app.models.queue_kiosk import QueueKiosk, QueueKioskIssue
 from app.models.tv_screen import TVScreen
 from app.models.tv_media import TVMedia, TVMediaChunk
 from app.models.user import User
@@ -28,6 +29,8 @@ __all__ = [
     "Client",
     "PushSubscription",
     "Ticket",
+    "QueueKiosk",
+    "QueueKioskIssue",
     "TVScreen",
     "TVMedia",
     "TVMediaChunk",

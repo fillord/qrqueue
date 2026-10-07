@@ -193,7 +193,7 @@ async def test_position_uses_return_priority_and_deterministic_ties(scenario):
     fresh = await seed_ticket(scenario, number=1, created_at=now - timedelta(hours=2))
     returned = await seed_ticket(scenario, number=2, created_at=now, called_at=now - timedelta(minutes=5))
     same_time = await seed_ticket(scenario, number=3, created_at=now - timedelta(hours=2))
-    expected = [returned, *sorted([fresh, same_time])]
+    expected = [returned, fresh, same_time]
     async with async_session_factory() as db:
         for position, ticket_id in enumerate(expected, 1):
             assert await tickets.get_position(db, await db.get(Ticket, ticket_id)) == position

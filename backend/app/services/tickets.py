@@ -124,6 +124,9 @@ async def create_ticket(
         status=TicketStatus.waiting,
         source=source,
         transferred_from=transferred_from,
+        # NOW() is fixed at transaction start, which can predate waiting for
+        # the queue lock. Record actual insertion time after numbering.
+        created_at=func.clock_timestamp(),
     )
     db.add(ticket)
     await db.flush()

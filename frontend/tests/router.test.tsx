@@ -22,6 +22,6 @@ it('renders the nested trial request page for a superadmin', async () => {
   render(<MemoryRouter initialEntries={['/sa/trial-requests']}><AppRouter /><Location /></MemoryRouter>)
   expect(await screen.findByRole('heading', { name: 'Trial requests' })).toBeTruthy()
   expect(await screen.findByText('No requests yet')).toBeTruthy()
-  expect(screen.getByText('vdev')).toBeTruthy()
+  expect(screen.queryByText('vdev')).toBeNull()
   expect(screen.getByTestId('location').textContent).toBe('/sa/trial-requests')
 })
